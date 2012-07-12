@@ -1,0 +1,172 @@
+#include "dingoo_sound.h"
+//#define PTHREAD_PRIORITY 1
+//#define PTHREAD_USLEEP 1
+#define MAX_SAMPLE_RATE 32000
+
+#define SAMPLE_COUNT 512
+#define SAMPLE_SIZE  (SAMPLE_COUNT)
+#define BUFFER_COUNT 16
+#define BUFFER_SIZE  (SAMPLE_SIZE)
+
+
+#if PTHREAD_PRIORITY
+pthread_attr_t pattr;
+#endif
+static pthread_t dingoo_sound_thread=0;		// Thread for dingoo_sound_thread_play()
+static volatile int dingoo_sound_thread_exit=0;	// Flag to end dingoo_sound_thread_play() thread
+
+static unsigned char sound_buffer[BUFFER_COUNT][BUFFER_SIZE];
+static unsigned char sound_buffer_ready[BUFFER_COUNT];
+
+static volatile unsigned char sound_read_index;
+static volatile unsigned int sound_read_offset;
+static volatile unsigned char sound_write_index;
+static volatile unsigned int sound_write_offset;
+
+void dingoo_sound_play(void *buf, int length)
+{
+	int buffer_free_length;
+    unsigned char *buffer = (unsigned char *)buf;
+
+	do
+	{
+		usleep(10);
+
+		if(dingoo_sound_thread_exit) {
+			return;
+		}
+
+next:;
+	} while(sound_buffer_ready[sound_write_index]);
+
+	buffer_free_length = BUFFER_SIZE - sound_write_offset;
+
+	if(buffer_free_length >= length) {
+		memcpy(&sound_buffer[sound_write_index][sound_write_offset], buffer, length);
+
+		sound_write_offset += length;
+	} else {
+		memcpy(&sound_buffer[sound_write_index][sound_write_offset], buffer, buffer_free_length);
+
+		buffer += buffer_free_length;
+		length -= buffer_free_length;
+
+		sound_buffer_ready[sound_write_index] = 1;
+		sound_write_index++;
+		sound_write_offset = 0;
+
+		if(sound_write_index >= BUFFER_COUNT) {
+			sound_write_index = 0;
+		}
+
+		goto next;
+	}
+}
+
+void dingoo_sound_thread_mute(void)
+{
+	for(int i = 0; i < BUFFER_COUNT; i++)
+	{
+		memset(sound_buffer[i], 0, BUFFER_SIZE);
+		sound_buffer_ready[i] = 0;
+	}
+}
+
+static void *dingoo_sound_thread_play(void *none)
+{
+	ioctl(dingoo_dev_dsp, SOUND_PCM_SYNC, 0);
+	do {
+		usleep(100);
+
+		if(!sound_buffer_ready[sound_read_index]) {
+			continue;
+		}
+
+        write(dingoo_dev_dsp, 
+            &sound_buffer[sound_read_index][sound_read_offset], SAMPLE_COUNT); 				// Play the sound buffer
+
+   		sound_read_offset += SAMPLE_SIZE; 
+
+		if(sound_read_offset >= BUFFER_SIZE) {
+			sound_buffer_ready[sound_read_index] = 0;
+			sound_read_index++;
+			sound_read_offset = 0;
+
+			if(sound_read_index >= BUFFER_COUNT) {
+				sound_read_index = 0;
+			}
+		}
+	} while(!dingoo_sound_thread_exit);							// Until the end of the sound thread
+	pthread_exit(0);
+}
+
+void dingoo_sound_thread_start(void)
+{
+#if PTHREAD_PRIORITY
+	unsigned long inifile;
+	int t_priority = 0;
+	char t_priorityc[8];
+
+	sched_param param;
+	
+#endif
+
+	sound_read_index   = 0;
+	sound_read_offset  = 0;
+	sound_write_index  = 0;
+	sound_write_offset = 0;
+
+	dingoo_sound_thread = 0;
+	dingoo_sound_thread_exit = 0;
+	dingoo_sound_set_stereo(dingoo_sound_stereo);
+	dingoo_sound_set_rate(dingoo_sound_rate);
+
+	dingoo_sound_thread_mute();
+
+#if PTHREAD_PRIORITY
+	inifile = open("./threadsound.cfg", O_RDONLY);
+	if (inifile >= 0)
+	{
+		unsigned int b = read(inifile, t_priorityc, 7);
+		if (b >= 1)
+			t_priorityc[b-1] = '\0';
+		t_priority = atoi(t_priorityc);
+		close(inifile);
+	}
+	printf ("Using pthread sound priority = %d\n", t_priority);
+
+	pthread_attr_init(&pattr);
+	pthread_attr_getschedparam (&pattr, &param);
+
+	/* set the priority; others are unchanged */
+	param.sched_priority = t_priority;/* -20 high to 19 low. 0 == default */
+
+	/* setting the new scheduling param */
+	pthread_attr_setschedparam (&pattr, &param);
+
+	pthread_create( &dingoo_sound_thread, &pattr, dingoo_sound_thread_play, NULL);
+#else
+	pthread_create( &dingoo_sound_thread, NULL, dingoo_sound_thread_play, NULL);
+#endif
+}
+
+void dingoo_sound_thread_stop(void)
+{
+	dingoo_sound_thread_exit=1;
+	dingoo_timer_delay(500);	/* wait 0.5 second */
+	dingoo_sound_thread=0;
+	dingoo_sound_thread_mute();
+#if PTHREAD_PRIORITY
+	pthread_attr_destroy(&pattr);
+#endif
+}
+
+void dingoo_sound_set_rate(int rate)
+{
+	ioctl(dingoo_dev_dsp, SNDCTL_DSP_SPEED,  &rate);
+}
+
+void dingoo_sound_set_stereo(int stereo)
+{
+  	ioctl(dingoo_dev_dsp, SNDCTL_DSP_STEREO, &stereo);
+}

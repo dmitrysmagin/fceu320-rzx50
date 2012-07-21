@@ -1,6 +1,5 @@
 BUILDTARGET = dingux
-
-MINIMAL_DRIVER = 1
+#BUILDTARGET = opendingux
 
 SRC = ../../../src/
 
@@ -187,7 +186,6 @@ GUI_OBJS = $(SRC)drivers/dingux-sdl/gui/gfceu320.o \
 	$(SRC)drivers/dingux-sdl/gui/font.o \
 	$(SRC)drivers/dingux-sdl/gui/bitmap.o
 
-MINIMAL_OBJS =
 DRIVER_OBJS = $(SRC)drivers/dingux-sdl/config.o $(SRC)drivers/dingux-sdl/input.o \
 	$(SRC)drivers/dingux-sdl/dingoo.o $(SRC)drivers/dingux-sdl/dingoo-joystick.o \
 	$(SRC)drivers/dingux-sdl/dingoo-throttle.o $(SRC)drivers/dingux-sdl/dingoo-sound.o \
@@ -197,14 +195,25 @@ DRIVER_OBJS = $(SRC)drivers/dingux-sdl/config.o $(SRC)drivers/dingux-sdl/input.o
 OBJS = $(CORE_OBJS) $(BOARDS_OBJS) $(INPUT_OBJS) $(MAPPERS_OBJS) $(UTILS_OBJS) \
 	$(COMMON_DRIVER_OBJS) $(DRIVER_OBJS)
 
+ifeq ($(BUILDTARGET), dingux)
 TOOLCHAIN=/dingux
 BINDIR=$(TOOLCHAIN)/bin
 CC = $(BINDIR)/mipsel-linux-uclibc-gcc
 CXX = $(BINDIR)/mipsel-linux-uclibc-g++
 LD = $(BINDIR)/mipsel-linux-uclibc-g++
 AS = $(BINDIR)/mipsel-linux-uclibc-as
+endif
 
-INCLUDEDIR=$(TOOLCHAIN)/mipsel-linux-uclibc/include
+ifeq ($(BUILDTARGET), opendingux)
+TOOLCHAIN=/opt/opendingux-toolchain/usr
+BINDIR=$(TOOLCHAIN)/bin
+CC = $(BINDIR)/mipsel-linux-gcc
+CXX = $(BINDIR)/mipsel-linux-g++
+LD = $(BINDIR)/mipsel-linux-g++
+AS = $(BINDIR)/mipsel-linux-as
+endif
+
+INCLUDEDIR=$(TOOLCHAIN)/include
 CFLAGS = -I$(INCLUDEDIR) -I$(SRC)
 CXXFLAGS = -I$(INCLUDEDIR)
 
@@ -235,16 +244,22 @@ CFLAGS += -DDINGUX \
 	  -I$(INCLUDEDIR)/SDL -D_GNU_SOURCE=1 -D_REENTRANT
 CXXFLAGS += $(CFLAGS)
 LDFLAGS  += $(CC_OPTS)
-LIBS = -lz -lm -lstdc++ -lgcov -L$(LIBDIR) -lSDL  -lpthread
+LIBS = -lz -lm -lstdc++ -lgcov -L$(LIBDIR) -lSDL -lpthread
 
+ifeq ($(BUILDTARGET), opendingux)
+TARGET = fceu320-od.dge
+endif
+
+ifeq ($(BUILDTARGET), dingux)
 TARGET = fceu320.dge
+endif
 
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	@echo Linking $@...
 	@echo $(LD) $(LDFLAGS) $(OBJS) -o $@
-	$(LD) $(LDFLAGS) $(OBJS) $(LIBS) -Wl -o $@
+	$(LD) $(LDFLAGS) $(OBJS) $(LIBS) -o $@
 
 %.o: %.c
 	@echo Compiling $<...

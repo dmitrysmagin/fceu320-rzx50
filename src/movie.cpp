@@ -35,7 +35,7 @@
 #include "drivers/videolog/nesvideos-piece.h"
 #endif
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 #include <windows.h>
 extern void AddRecentMovieFile(const char *filename);
 #endif
@@ -835,7 +835,7 @@ bool FCEUI_LoadMovie(const char *fname, bool _read_only, bool tasedit, int _paus
 		return true;	//adelikat: file did not fail to load, so return true (false is only for file not exist/unable to open errors
 	}
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	//Add to the recent movie menu
 	AddRecentMovieFile(fname);
 #endif
@@ -927,7 +927,7 @@ void FCEUI_SaveMovie(const char *fname, EMOVIE_FLAG flags, std::wstring author)
 	currMovieData = MovieData();
 	currMovieData.guid.newGuid();
 
-#ifdef DINGUX
+#if defined(DINGUX) && !defined(DINGUX_ON_WIN32)
     if(author != "") currMovieData.comments.push_back("author " + author);
 #else
 	if(author != L"") currMovieData.comments.push_back(L"author " + author);
@@ -1167,7 +1167,7 @@ bool FCEUMOV_ReadState(std::istream* is, uint32 size)
 		if(tempMovieData.guid != currMovieData.guid)
 		{
 			//mbg 8/18/08 - this code  can be used to turn the error message into an OK/CANCEL
-			#ifdef WIN32
+			#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 				std::string msg = "There is a mismatch between savestate's movie and current movie.\ncurrent: " + currMovieData.guid.toString() + "\nsavestate: " + tempMovieData.guid.toString() + "\n\nThis means that you have loaded a savestate belonging to a different movie than the one you are playing now.\n\nContinue loading this savestate anyway?";
 				extern HWND pwindow;
 				int result = MessageBox(pwindow,msg.c_str(),"Error loading savestate",MB_OKCANCEL);

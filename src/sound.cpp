@@ -148,7 +148,7 @@ static uint32 ChannelBC[5];
 int movieSyncHackOn = 0, resetDMCacc = 0, movieConvertOffset1,
 		movieConvertOffset2;
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 extern volatile int datacount, undefinedcount;
 extern int debug_loggingCD;
 extern unsigned char *cdloggerdata;
@@ -165,12 +165,12 @@ static void PrepDPCM() {
 	DMCAddress = 0x4000 + (DMCAddressLatch << 6);
 	DMCSize = (DMCSizeLatch << 4) + 1;
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	if(debug_loggingCD)LogDPCM(0x8000+DMCAddress, DMCSize);
 #endif
 }
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 void LogDPCM(int romaddress, int dpcmsize) {
 	int i = GetPRGAddress(romaddress);
 
@@ -1080,7 +1080,7 @@ void FCEUSND_Reset(void) {
 	if (movieSyncHackOn) {
 		if (resetDMCacc) {
 			// no value in movie save state
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 			// use editbox fields
 			DMCacc=movieConvertOffset1;
 			DMCBitCount=movieConvertOffset2;

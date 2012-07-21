@@ -639,7 +639,7 @@ void DebugCycle() {
  
 //This needs to be windows only or else the linux build system will fail since logging is declared in a 
 //windows source file
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	extern volatile int logging; //UGETAB: This is required to be an extern, because the info isn't set here
 	if(logging) FCEUD_TraceInstruction();
 #endif

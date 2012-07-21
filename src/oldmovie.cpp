@@ -589,7 +589,7 @@ EFCM_CONVERTRESULT convert_fcm(MovieData& md, std::string fname)
 
 	md.romFilename = readNullTerminatedAscii(fp);
 
-#ifdef DINGUX
+#if defined(DINGUX) && !defined(DINGUX_ON_WIN32)
     md.comments.push_back("author  " + mbstowcs(readNullTerminatedAscii(fp)));
 #else
 	md.comments.push_back(L"author  " + mbstowcs(readNullTerminatedAscii(fp)));

@@ -50,7 +50,7 @@
 #include "vsuni.h"
 #include "ines.h"
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 #include "drivers/win/pref.h"
 #endif
 
@@ -62,7 +62,7 @@
 #endif
 
 //TODO - we really need some kind of global platform-specific options api
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 #include "drivers/win/main.h"
 #include "drivers/win/cheat.h"
 #include "drivers/win/texthook.h"
@@ -71,7 +71,7 @@
 #include "drivers/win/memwatch.h"
 #include "drivers/win/tracer.h"
 #elif defined DINGUX
-#include "drivers/dingoo/dingoo.h"
+#include "drivers/dingux-sdl/dingoo.h"
 #else
 #include "drivers/sdl/sdl.h"
 #endif
@@ -99,7 +99,7 @@ FCEUGI::~FCEUGI() {
 static void FCEU_CloseGame(void) {
 	if (GameInfo) {
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 		// ################################## Start of SP CODE ###########################
 		extern char LoadedRomFName[2048];
 
@@ -356,7 +356,7 @@ int NSFLoad(const char *name, FCEUFILE *fp);
 
 FCEUGI *FCEUI_LoadGameVirtual(const char *name, int OverwriteVidMode) {
 	//mbg merge 7/17/07 - why is this here
-	//#ifdef WIN32
+	//#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	//	StopSound();
 	//#endif
 
@@ -432,7 +432,7 @@ FCEUGI *FCEUI_LoadGameVirtual(const char *name, int OverwriteVidMode) {
 
 	FCEU_fclose(fp);
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	// ################################## Start of SP CODE ###########################
 	extern char LoadedRomFName[2048];
 	extern int loadDebugDataFailed;
@@ -461,7 +461,7 @@ FCEUGI *FCEUI_LoadGameVirtual(const char *name, int OverwriteVidMode) {
 	if (GameInfo->type != GIT_NSF)
 		FCEU_LoadGameCheats(0);
 
-#if defined (WIN32) || defined (WIN64)
+#if (defined (WIN32) || defined (WIN64)) && !defined(DINGUX_ON_WIN32)
 	DoDebuggerRunCheck(); //Can't safely do it in loadPreferences
 #endif
 
@@ -613,7 +613,7 @@ void FCEUI_Emulate(uint8 **pXBuf, int32 **SoundBuf, int32 *SoundBufSize, int ski
 	CallRegisteredLuaFunctions(LUACALL_AFTEREMULATION);
 #endif
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	//These Windows only dialogs need to be updated only once per frame so they are included here
 	UpdateCheatList();
 	UpdateTextHooker();
@@ -639,7 +639,7 @@ void FCEUI_Emulate(uint8 **pXBuf, int32 **SoundBuf, int32 *SoundBufSize, int ski
 		//Lots of conditions here.  EmulationPaused&2 must be true.  In addition frameAdvanceLagSkip or lagFlag must be false
 		EmulationPaused = 1; // restore paused flag
 		JustFrameAdvanced = true;
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 		if(soundoptions & SO_MUTEFA) //mute the frame advance if the user requested it
 		*SoundBufSize=0; //keep sound muted
 #endif

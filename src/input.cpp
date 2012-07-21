@@ -40,7 +40,7 @@
 #include "fds.h"
 #include "driver.h"
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 #include "drivers/win/main.h"
 #include "drivers/win/memwatch.h"
 #include "drivers/win/cheat.h"
@@ -919,49 +919,49 @@ static void LagCounterToggle(void)
 
 static void LaunchMemoryWatch(void)
 {
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	CreateMemWatch();
 #endif
 }
 
 static void LaunchDebugger(void)
 {
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	DoDebug(0);
 #endif
 }
 
 static void LaunchPPU(void)
 {
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	DoPPUView();
 #endif
 }
 
 static void LaunchHex(void)
 {
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	DoMemView();
 #endif
 }
 
 static void LaunchTraceLogger(void)
 {
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	DoTracer();
 #endif
 }
 
 static void LaunchCodeDataLogger(void)
 {
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	DoCDLogger();
 #endif
 }
 
 static void LaunchCheats(void)
 {
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	extern HWND pwindow;
 	ConfigCheats(pwindow);
 #endif
@@ -969,7 +969,7 @@ static void LaunchCheats(void)
 
 static void LaunchRamWatch(void)
 {
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	extern void OpenRamWatch();	//adelikat: Blah blah hacky, I know
 	OpenRamWatch();
 #endif
@@ -977,7 +977,7 @@ static void LaunchRamWatch(void)
 
 static void LaunchRamSearch(void)
 {
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	extern void OpenRamSearch();
 	OpenRamSearch();
 #endif
@@ -992,7 +992,7 @@ static void FA_SkipLag(void)
 
 static void OpenRom(void)
 {
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	extern HWND hAppWnd;
 	LoadNewGamey(hAppWnd, 0);
 #endif
@@ -1000,7 +1000,7 @@ static void OpenRom(void)
 
 static void CloseRom(void)
 {
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	CloseGame();
 #endif
 }
@@ -1020,14 +1020,14 @@ static void UndoRedoSavestate(void)
 
 static void FCEUI_DoExit(void)
 {
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	DoFCEUExit();
 #endif
 }
 
 static void ToggleFullscreen(void)
 {
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	extern int SetVideoMode(int fs);		//adelikat: Yeah, I know, hacky
 	extern void UpdateCheckedMenuItems();
 	

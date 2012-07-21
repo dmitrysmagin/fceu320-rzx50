@@ -576,7 +576,7 @@ std::string mass_replace(const std::string &source, const std::string &victim, c
 	return answer;
 }
 
-#ifdef WIN32 // this code tends to crash on SDL.
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32) // this code tends to crash on SDL.
 //http://www.codeproject.com/KB/string/UtfConverter.aspx
 #include "ConvertUTF.h"
 namespace UtfConverter
@@ -749,7 +749,7 @@ std::wstring mbstowcs(std::string str) // UTF8->UTF32
 	try {
 		return UtfConverter::FromUtf8(str);
 	} catch(std::exception) {
-#ifdef DINGUX
+#if defined(DINGUX) && !defined(DINGUX_ON_WIN32)
 		return "(failed UTF-8 Conversion)";
 #else
 		return L"(failed UTF-8 conversion)";

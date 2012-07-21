@@ -30,7 +30,7 @@
 #include "utils/memory.h"
 #include "fceulua.h"
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 #include "drivers/win/common.h"
 #endif
 
@@ -40,7 +40,7 @@ extern "C"
 #include <lauxlib.h>
 #include <lualib.h>
 #include <lstate.h>
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	int iuplua_open(lua_State * L);
 	int iupcontrolslua_open(lua_State * L);
 #endif
@@ -62,7 +62,7 @@ extern "C"
  #endif
 #endif
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 extern void AddRecentLuaFile(const char *filename);
 #endif
 
@@ -101,7 +101,7 @@ static void(*info_print)(int uid, const char* str);
 static void(*info_onstart)(int uid);
 static void(*info_onstop)(int uid);
 static int info_uid;
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 extern HWND LuaConsoleHWnd;
 extern INT_PTR CALLBACK DlgLuaScriptDialog(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 extern void PrintToWindowConsole(int hDlgAsInt, const char* str);
@@ -1031,7 +1031,7 @@ void CallRegisteredLuaSaveFunctions(int savestateNumber, LuaSaveData& saveData)
 				// This is grounds for trashing the function
 				lua_pushnil(L);
 				lua_setfield(L, LUA_REGISTRYINDEX, luaCallIDStrings[LUACALL_BEFORESAVE]);
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 				MessageBox(hAppWnd, lua_tostring(L, -1), "Lua Error in SAVE function", MB_OK);
 #else
 				fprintf(stderr, "Lua error in registersave function: %s\n", lua_tostring(L, -1));
@@ -1075,7 +1075,7 @@ void CallRegisteredLuaLoadFunctions(int savestateNumber, const LuaSaveData& save
 				// This is grounds for trashing the function
 				lua_pushnil(L);
 				lua_setfield(L, LUA_REGISTRYINDEX, luaCallIDStrings[LUACALL_AFTERLOAD]);
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 				MessageBox(hAppWnd, lua_tostring(L, -1), "Lua Error in LOAD function", MB_OK);
 #else
 				fprintf(stderr, "Lua error in registerload function: %s\n", lua_tostring(L, -1));
@@ -1539,7 +1539,7 @@ void HandleCallbackError(lua_State* L)
 		lua_setfield(L, LUA_REGISTRYINDEX, guiCallbackTable);
 
 		// Error?
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 		MessageBox( hAppWnd, lua_tostring(L,-1), "Lua run error", MB_OK | MB_ICONSTOP);
 #else
 		fprintf(stderr, "Lua thread bombed out: %s\n", lua_tostring(L,-1));
@@ -1874,7 +1874,7 @@ static int memory_registerexec(lua_State *L)
 
 //adelikat: table pulled from GENS.  credz nitsuja!
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 const char* s_keyToName[256] =
 {
 	NULL,
@@ -1988,7 +1988,7 @@ const char* s_keyToName[256] =
 static int input_get(lua_State *L) {
 	lua_newtable(L);
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	// keyboard and mouse button status
 	{
 		extern int EnableBackgroundInput;
@@ -3659,7 +3659,7 @@ static int doPopup(lua_State *L, const char* deftype, const char* deficon) {
 	static const char * const titles [] = {"Notice", "Question", "Warning", "Error"};
 	const char* answer = "ok";
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	static const int etypes [] = {MB_OK, MB_YESNO, MB_YESNOCANCEL, MB_OKCANCEL, MB_ABORTRETRYIGNORE};
 	static const int eicons [] = {MB_ICONINFORMATION, MB_ICONQUESTION, MB_ICONWARNING, MB_ICONERROR};
 	//StopSound(); //mbg merge 7/27/08
@@ -4010,7 +4010,7 @@ bool luabitop_validate(lua_State *L) // originally named as luaopen_bit
   if (b != (UBits)1437217655L || BAD_SAR) {  /* Perform a simple self-test. */
     const char *msg = "compiled with incompatible luaconf.h";
 #ifdef LUA_NUMBER_DOUBLE
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
     if (b == (UBits)1610612736L)
       msg = "use D3DCREATE_FPU_PRESERVE with DirectX";
 #endif
@@ -4059,7 +4059,7 @@ static void FCEU_LuaHookFunction(lua_State *L, lua_Debug *dbg) {
 
 		int kill = 0;
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 		// Uh oh
                 //StopSound(); //mbg merge 7/23/08
 		int ret = MessageBox(hAppWnd, "The Lua script running has been running a long time. It may have gone crazy. Kill it?\n\n(No = don't check anymore either)", "Lua Script Gone Nuts?", MB_YESNO);
@@ -4111,7 +4111,7 @@ static int emu_exec_count(lua_State *L) {
 	return 1;
 }
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 static HANDLE readyEvent, goEvent;
 DWORD WINAPI emu_exec_time_proc(LPVOID lpParameter)
 {
@@ -4364,7 +4364,7 @@ void FCEU_LuaFrameBoundary() {
 		lua_setfield(L, LUA_REGISTRYINDEX, frameAdvanceThread);
 		
 		// Error?
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
                 //StopSound();//StopSound(); //mbg merge 7/23/08
 		MessageBox( hAppWnd, lua_tostring(thread,-1), "Lua run error", MB_OK | MB_ICONSTOP);
 #else
@@ -4407,7 +4407,7 @@ int FCEU_LoadLuaCode(const char *filename) {
 		
 		L = lua_open();
 		luaL_openlibs(L);
-		#ifdef WIN32
+		#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 		iuplua_open(L);
 		iupcontrolslua_open(L);
 		#endif
@@ -4456,7 +4456,7 @@ int FCEU_LoadLuaCode(const char *filename) {
 	int result = luaL_loadfile(L,filename);
 
 	if (result) {
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 		// Doing this here caused nasty problems; reverting to MessageBox-from-dialog behavior.
                 //StopSound();//StopSound(); //mbg merge 7/23/08
 		MessageBox(NULL, lua_tostring(L,-1), "Lua load error", MB_OK | MB_ICONSTOP);
@@ -4468,7 +4468,7 @@ int FCEU_LoadLuaCode(const char *filename) {
 		lua_settop(L,0);
 		return 0; // Oh shit.
 	}
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	AddRecentLuaFile(filename); //Add the filename to our recent lua menu
 #endif
 	
@@ -4494,7 +4494,7 @@ int FCEU_LoadLuaCode(const char *filename) {
 	// Set up our protection hook to be executed once every 10,000 bytecode instructions.
 	//lua_sethook(thread, FCEU_LuaHookFunction, LUA_MASKCOUNT, 10000);
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	info_print = PrintToWindowConsole;
 	info_onstart = WinLuaOnStart;
 	info_onstop = WinLuaOnStop;
@@ -4545,7 +4545,7 @@ void FCEU_LuaStop() {
 
 	//sometimes iup uninitializes com
 	//MBG TODO - test whether this is really necessary. i dont think it is
-	#ifdef WIN32
+	#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	CoInitialize(0);
 	#endif
 
@@ -4633,7 +4633,7 @@ void FCEU_LuaGui(uint8 *XBuf) {
 		numTries = 1000;
 		int ret = lua_pcall(L, 0, 0, 0);
 		if (ret != 0) {
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 			//StopSound();//StopSound(); //mbg merge 7/23/08
 			MessageBox(hAppWnd, lua_tostring(L, -1), "Lua Error in GUI function", MB_OK);
 #else

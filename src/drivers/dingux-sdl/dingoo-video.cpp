@@ -441,8 +441,8 @@ void BlitScreen(uint8 *XBuf) {
 			}
 		}
 	} else { // No fullscreen
-		//static int pinc = (320 - NWIDTH) >> 1;
-		static int pinc = (screen_x - NWIDTH) >> 1;
+		//int pinc = (320 - NWIDTH) >> 1;
+		int32 pinc = (screen_x - NWIDTH) >> 1;
 
 		if (s_eefx) { // DaBlur!!
 			register uint16 *dest = (uint16 *) screen->pixels;
@@ -451,7 +451,7 @@ void BlitScreen(uint8 *XBuf) {
 			// XXX soules - not entirely sure why this is being done yet
 			pBuf += (s_srendline * 256) + NOFFSET;
 			//dest += (s_srendline * 320) + pinc;
-			dest += (screen_x * s_srendline) + (screen_x - 256) / 2 + ((screen_y - 240) / 2) * screen_x;
+			dest += (screen_x * s_srendline) + pinc + ((screen_y - 240) / 2) * screen_x;
 
 			for (y = s_tlines; y; y--, pBuf += 256 - NWIDTH) {
 				for (x = NWIDTH >> 2; x; x--) {
@@ -480,7 +480,7 @@ void BlitScreen(uint8 *XBuf) {
 			// XXX soules - not entirely sure why this is being done yet
 			pBuf += (s_srendline * 256) + NOFFSET;
 			//dest += (s_srendline * 320) + pinc >> 1;
-			dest += (screen_x/2 * s_srendline) + (screen_x - 256) / 4 + ((screen_y - 240) / 4) * screen_x;
+			dest += (screen_x/2 * s_srendline) + pinc / 2 + ((screen_y - 240) / 4) * screen_x;
 
 			for (y = s_tlines; y; y--, pBuf += 256 - NWIDTH) {
 				for (x = NWIDTH >> 3; x; x--) {

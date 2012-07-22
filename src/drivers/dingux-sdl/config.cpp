@@ -113,7 +113,7 @@ Config * InitConfig() {
 
 	// sound options
 	config->addOption('s', "sound", "SDL.Sound", 1);
-	config->addOption("volume", "SDL.Sound.Volume", 255);
+	config->addOption("volume", "SDL.Sound.Volume", 256);
 	config->addOption("trianglevol", "SDL.Sound.TriangleVolume", 256);
 	config->addOption("square1vol", "SDL.Sound.Square1Volume", 256);
 	config->addOption("square2vol", "SDL.Sound.Square2Volume", 256);
@@ -133,7 +133,7 @@ Config * InitConfig() {
 	config->addOption('g', "gamegenie", "SDL.GameGenie", 0);
 	config->addOption("pal", "SDL.PAL", 0);
 	config->addOption("frameskip", "SDL.Frameskip", 0);
-	config->addOption("clipsides", "SDL.ClipSides", 1);
+	config->addOption("clipsides", "SDL.ClipSides", 0);
 	config->addOption("nospritelim", "SDL.DisableSpriteLimit", 1);
 
 	// color control

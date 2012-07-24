@@ -367,11 +367,11 @@ void BlitScreen(uint8 *XBuf) {
 	6 blocks of 5 scanlines (interpolated from 4 scanlines), 1 block of 4 scanlines (no interpolation)
 	line 0
 	line 1
-	interpolated line 1 + 2 (skipped each 7th block, (blocknum % 7) == 0 )
+	interpolated line 1 + 2 (skipped each 7th block, (blocknum % 6) == 0 )
 	line 2
 	line 3
 */
-	if(s_fullscreen == 2 && vm == 2) { // if 480x272 and fullscreen on
+	if(s_fullscreen == 2 && vm == 2 && !s_eefx) { // if 480x272, fullscreen on, blur off
 
 	#define AVERAGEHI(AB) ((((AB) & 0xF7DE0000) >> 1) + (((AB) & 0xF7DE) << 15))
 	#define AVERAGELO(CD) ((((CD) & 0xF7DE) >> 1) + (((CD) & 0xF7DE0000) >> 17))
@@ -390,41 +390,11 @@ void BlitScreen(uint8 *XBuf) {
 		*(dest + 2 + (OUTSCANLINE) * 480/2) = cd_d; \
 	}
 
-	#define RENDER3CHUNKS(INSCANLINE, OUTSCANLINE) \
+	#define RENDERICHUNK(OUTSCANLINE) \
 	{ \
-		register uint32 ab, cd, a_ab, b_c, cd_d; \
-		register uint32 a_ab1, b_c1, cd_d1; \
-		register uint32 a_ab2, b_c2, cd_d2; \
-		\
-		ab = palettetranslate[*(uint16 *)(pBuf + 0 + (INSCANLINE) * 256)]; \
-		cd = palettetranslate[*(uint16 *)(pBuf + 2 + (INSCANLINE) * 256)]; \
-		\
-		a_ab = (ab & 0xFFFF) + AVERAGEHI(ab); \
-		b_c = (ab >> 16) + ((cd & 0xFFFF) << 16); \
-		cd_d = (cd & 0xFFFF0000) + AVERAGELO(cd); \
-		\
-		ab = palettetranslate[*(uint16 *)(pBuf + 0 + ((INSCANLINE)+1) * 256)]; \
-		cd = palettetranslate[*(uint16 *)(pBuf + 2 + ((INSCANLINE)+1) * 256)]; \
-		\
-		a_ab1 = (ab & 0xFFFF) + AVERAGEHI(ab); \
-		b_c1 = (ab >> 16) + ((cd & 0xFFFF) << 16); \
-		cd_d1 = (cd & 0xFFFF0000) + AVERAGELO(cd); \
-		\
-		a_ab2 = AVERAGE(a_ab1, a_ab); \
-		b_c2 = AVERAGE(b_c1, b_c); \
-		cd_d2 = AVERAGE(cd_d1, cd_d); \
-		\
-		*(dest + 0 + (OUTSCANLINE) * 480/2) = a_ab; \
-		*(dest + 1 + (OUTSCANLINE) * 480/2) = b_c; \
-		*(dest + 2 + (OUTSCANLINE) * 480/2) = cd_d; \
-		\
-		*(dest + 0 + (OUTSCANLINE+1) * 480/2) = a_ab2; \
-		*(dest + 1 + (OUTSCANLINE+1) * 480/2) = b_c2; \
-		*(dest + 2 + (OUTSCANLINE+1) * 480/2) = cd_d2; \
-		\
-		*(dest + 0 + (OUTSCANLINE+2) * 480/2) = a_ab1; \
-		*(dest + 1 + (OUTSCANLINE+2) * 480/2) = b_c1; \
-		*(dest + 2 + (OUTSCANLINE+2) * 480/2) = cd_d1; \
+		*(dest + 0 + (OUTSCANLINE) * 480/2) = AVERAGE(*(dest + 0 + (OUTSCANLINE-1) * 480/2),*(dest + 0 + (OUTSCANLINE+1) * 480/2)); \
+		*(dest + 1 + (OUTSCANLINE) * 480/2) = AVERAGE(*(dest + 1 + (OUTSCANLINE-1) * 480/2),*(dest + 1 + (OUTSCANLINE+1) * 480/2)); \
+		*(dest + 2 + (OUTSCANLINE) * 480/2) = AVERAGE(*(dest + 2 + (OUTSCANLINE-1) * 480/2),*(dest + 2 + (OUTSCANLINE+1) * 480/2)); \
 	}
 
 		register uint32 *dest = (uint32 *) screen->pixels;
@@ -432,29 +402,20 @@ void BlitScreen(uint8 *XBuf) {
 		dest += (480 - 384) / 4;
 
 		for(y = 224/4; y; y--) { // 56 blocks of 4-line chunks
-			if(y % 6 == 0) { // here we render 4 lines to 4 lines
-				for(x = 256; x; x -= 4) {
-					__builtin_prefetch(dest + 4, 1);
-					RENDERCHUNK(0, 0);
-					RENDERCHUNK(1, 1);
-					RENDERCHUNK(2, 2);
-					RENDERCHUNK(3, 3);
-					dest += 3;
-					pBuf += 4;
-				}
-				dest += (480 - 384) / 2 + 480/2 * 3;
-			} else { // here we render 4 lines to 5 (one is interpolated)
-				for(x = 256; x; x -= 4) {
-					__builtin_prefetch(dest + 4, 1);
-					RENDERCHUNK(0, 0);
-					RENDER3CHUNKS(1, 1);
-					RENDERCHUNK(3, 4);
-					dest += 3;
-					pBuf += 4;
-				}
-				dest += (480 - 384) / 2 + 480/2 * 4;
+			uint32 mf = y % 6; // mf == 0 - render 4 lines, mf != 0 - render 4->5 lines
+
+			for(x = 256; x; x -= 4) {
+				__builtin_prefetch(dest + 4, 1);
+				RENDERCHUNK(0, 0); // 1st line
+				RENDERCHUNK(1, 1); // 2nd line
+				RENDERCHUNK(2, (mf == 0 ? 2 : 3)); // 3rd line
+				if(mf != 0) RENDERICHUNK(2); // 2nd+3rd interpolated line
+				RENDERCHUNK(3, (mf == 0 ? 3 : 4)); // 4th line
+				dest += 3;
+				pBuf += 4;
 			}
-			
+
+			dest += (480 - 384) / 2 + 480/2 * (mf == 0 ? 3 : 4); 
 			pBuf += 256 * 3; // cause we already rolled thru 256 pixel
 		}
 

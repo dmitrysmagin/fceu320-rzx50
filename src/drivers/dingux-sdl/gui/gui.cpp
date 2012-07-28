@@ -138,8 +138,8 @@ void load_preview() {
 	strcpy(sname, FCEU_MakeFName(FCEUMKF_STATE, g_slot, 0).c_str());
 	FILE *fp = fopen(sname, "rb");
 	if (fp) {
-		// TODO - check the offset ...
-		fseek(fp, 5497, SEEK_SET);
+		// TODO - check the offset ... HARD-CODED VALUE IS EVIL!
+		fseek(fp, 0x159A, SEEK_SET);
 		fread(g_preview, 1, 256 * 256 + 8, fp);
 		fclose(fp);
 		g_ispreview = 1;
@@ -178,7 +178,7 @@ void draw_shot_preview(unsigned short *dest, int x, int y) {
 	uint8 *PBuf = XBuf;
 	uint16 *dst = (uint16 *) dest;
 
-	PBuf += 256 * 8 + 16;
+	PBuf += 256 * 8;
 	dst += y * 320 + x;
 
 	for (y = 0; y < 76; y++) {
@@ -371,8 +371,10 @@ void FCEUGUI_Run() {
 			}
 		}
 
-		if (parsekey(DINGOO_A))
+		if (parsekey(DINGOO_A)) {
 			done = main_menu[index].command();
+			if(index == 3) load_preview();
+		}
 
 		if (index == 3 || index == 4) {
 			if (parsekey(DINGOO_RIGHT, 1)) {

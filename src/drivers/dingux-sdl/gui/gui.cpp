@@ -35,7 +35,7 @@ static char g_romname[32] = "";
 static char g_time[16] = "";
 static char g_battery[16] = "";
 static int g_dirty = 1;
-static int g_slot = 0;
+int g_slot = 0; // make it accessible from input.cpp
 static int g_romtype;
 static unsigned long g_key = 0, last_key;
 static int counter = 0;

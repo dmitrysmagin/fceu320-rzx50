@@ -65,7 +65,7 @@ static int s_inited;
 
 static int s_eefx;
 static int s_clipSides;
-static int s_fullscreen;
+int s_fullscreen;
 static int noframe;
 
 static int FDSTimer = 0;

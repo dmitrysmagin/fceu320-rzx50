@@ -152,6 +152,23 @@ static int _keyonly(int a)
     return(0);
 }
 
+// a hack to check DINGOO_R hotkey combo
+static int ispressed(int sdlk_code)
+{
+	Uint8 *keystate = SDL_GetKeyState(NULL);
+
+	if(keystate[sdlk_code]) return 1;
+
+	return 0;
+}
+
+// mega hack to reset once pressed key
+static int resetkey(int sdlk_code)
+{
+	Uint8 *keystate = SDL_GetKeyState(NULL);
+	keystate[sdlk_code] = 0;
+}
+
 static int g_fkbEnabled = 0;
 
 // this function loads the sdl hotkeys from the config file into the
@@ -267,16 +284,60 @@ static void KeyboardCommands() {
 		FCEUI_SetRenderPlanes(true, state);
 	}
 
-	// Enter GUI
-	if (_keyonly(SDLK_TAB)) { // maps to L SHIFT
+	// L shift - enter GUI
+	if (_keyonly(DINGOO_L)) { // maps to SDLK_TAB
 		SilenceSound(1);
 		FCEUGUI_Run();
 		SilenceSound(0);
 	}
 
-	// R trigger plus X to toggle full-screen
-	if (_keyonly(Hotkeys[HK_TOGGLE_INPUT_DISPLAY]))
-		ToggleFS();
+	// R shift + combokeys
+	if(ispressed(DINGOO_R)) {
+		extern int g_slot; // import from gui.cpp
+		if(_keyonly(DINGOO_A)) { // R + A  save state
+			FCEUI_SelectState(g_slot, 0);
+			FCEUI_SaveState(NULL);
+			resetkey(DINGOO_A);
+		}
+		if(_keyonly(DINGOO_B)) { // R + B  load state
+			FCEUI_SelectState(g_slot, 0);
+			FCEUI_LoadState(NULL);
+			resetkey(DINGOO_B);
+		}
+		if(_keyonly(DINGOO_X)) { // R + X  toggle fullscreen
+			extern int s_fullscreen; // from dingoo_video.cpp
+			s_fullscreen = (s_fullscreen + 1) % 3;
+			dingoo_clear_video();
+			resetkey(DINGOO_X);
+		}
+		if(_keyonly(DINGOO_Y)) { // R + Y  flip fds disk
+			if(gametype == GIT_FDS) FCEUI_FDSFlip();
+			resetkey(DINGOO_Y);
+		}
+		if(_keyonly(DINGOO_UP)) { // R + UP tooggle fps show
+			extern int showfps; // from dingoo.cpp
+			showfps ^= 1;
+			resetkey(DINGOO_UP);
+		}
+		if(_keyonly(DINGOO_DOWN)) {// R + DOWN activate subtitle display (??) is this really needed
+			resetkey(DINGOO_DOWN);
+		}
+		if(_keyonly(DINGOO_LEFT)) { // R + LEFT  insert vsuini coin
+			if (gametype == GIT_VSUNI) FCEUI_VSUniCoin();
+			resetkey(DINGOO_LEFT);
+		}
+		if(_keyonly(DINGOO_RIGHT)) { // R + RIGHT  frame advancing (??)
+			resetkey(DINGOO_RIGHT);
+		}
+		if(_keyonly(DINGOO_SELECT)) { // R + SELECT
+			FCEUI_SaveSnapshot();
+			resetkey(DINGOO_SELECT);
+		}
+		if(_keyonly(DINGOO_START)) { // R + START  pause emulation
+			FCEUI_ToggleEmulationPause();
+			resetkey(DINGOO_START);
+		}
+	}
 
 	/*
 	 // Toggle Movie auto-backup
@@ -294,21 +355,6 @@ static void KeyboardCommands() {
 	 }
 	 */
 
-	//NOT SUPPORTED
-	// Save a state from a file
-	/*if (dingoo_key & DINGOO_R) {
-		//FCEUD_SaveStateAs();
-		FCEUI_SelectState(9, 0);
-		FCEUI_SaveState(NULL);
-	}
-
-	// Load a state from a file
-	if (dingoo_key & DINGOO_L) {
-		//FCEUD_LoadStateFrom();
-		FCEUI_SelectState(9, 0);
-		FCEUI_LoadState(NULL);
-	}*/
-
 	// Famicom disk-system games
 	if (gametype == GIT_FDS) {
 		if (_keyonly(Hotkeys[HK_FDS_FLIP]))
@@ -318,9 +364,6 @@ static void KeyboardCommands() {
 		if (_keyonly(Hotkeys[HK_FDS_EJECT]))
 			FCEUI_FDSInsert();
 	}
-
-	if (_keyonly(Hotkeys[HK_SCREENSHOT]))
-		FCEUI_SaveSnapshot();
 
 	// if not NES Sound Format
 	if (gametype != GIT_NSF) {

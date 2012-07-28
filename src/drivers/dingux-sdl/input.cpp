@@ -307,6 +307,7 @@ static void KeyboardCommands() {
 		if(_keyonly(DINGOO_X)) { // R + X  toggle fullscreen
 			extern int s_fullscreen; // from dingoo_video.cpp
 			s_fullscreen = (s_fullscreen + 1) % 3;
+			g_config->setOption("SDL.Fullscreen", s_fullscreen);
 			dingoo_clear_video();
 			resetkey(DINGOO_X);
 		}
@@ -317,6 +318,7 @@ static void KeyboardCommands() {
 		if(_keyonly(DINGOO_UP)) { // R + UP tooggle fps show
 			extern int showfps; // from dingoo.cpp
 			showfps ^= 1;
+			g_config->setOption("SDL.ShowFPS", showfps);
 			resetkey(DINGOO_UP);
 		}
 		if(_keyonly(DINGOO_DOWN)) {// R + DOWN activate subtitle display (??) is this really needed

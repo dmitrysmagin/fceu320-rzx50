@@ -330,8 +330,6 @@ int RunMainSettings() {
 		SDL_Delay(16);
 
 		// Update real screen
-		//memcpy(screen->pixels, vbuffer, 320 * 240 * sizeof(unsigned short));
-		//SDL_Flip(screen);
 		FCEUGUI_Flip();
 	}
 

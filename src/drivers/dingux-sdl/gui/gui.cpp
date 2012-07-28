@@ -102,23 +102,6 @@ int update_time()
 {
 
 	return 1; // always set g_dirty
-#if 0
-	static clock_t c, clast = 0;
-	struct tm *ltime;
-	time_t t;
-
-	c = clock();
-
-	if ((c - clast) / CLOCKS_PER_SEC > 59 || !clast) {
-		clast = c;
-		time(&t);
-		ltime = localtime(&t);
-
-		sprintf(g_time, "%02d:%02d\n", ltime->tm_hour, ltime->tm_min);
-		return 1;
-	}
-	return 0;
-#endif
 }
 
 void update_battery() 
@@ -295,9 +278,6 @@ int FCEUGUI_Init(FCEUGI *gi)
 	if (InitFont() < 0)
 		return -2;
 
-	// Call this here?
-	//dingoo_flush_video();
-
 	if (gi) {
 		if (strlen(FileBase) > 28) {
 			strncpy(g_romname, FileBase, 24);
@@ -332,9 +312,6 @@ void FCEUGUI_Run() {
 	static int index = 0;
 	static int spy = 76;
 	int done = 0, y, i;
-
-	// Mute sound thread
-	//dingoo_sound_thread_mute();
 
 	load_preview();
 

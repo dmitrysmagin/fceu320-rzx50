@@ -43,10 +43,9 @@ static int counter = 0;
 void FCEUGUI_Flip()
 {
 	SDL_Rect dstrect;
-	extern uint32 screen_x, screen_y;
 
-	dstrect.x = (screen_x - 320) / 2;
-	dstrect.y = (screen_y - 240) / 2;
+	dstrect.x = (screen->w - 320) / 2;
+	dstrect.y = (screen->h - 240) / 2;
 
 	SDL_BlitSurface(gui_screen, 0, screen, &dstrect);
 	SDL_Flip(screen);

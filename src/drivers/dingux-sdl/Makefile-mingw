@@ -229,7 +229,7 @@ CFLAGS += -DDINGUX \
 	  -I$(INCLUDEDIR)/SDL -D_GNU_SOURCE=1 -D_REENTRANT
 CXXFLAGS += $(CFLAGS)
 LDFLAGS  += $(CC_OPTS)
-LIBS = -mconsole -L$(LIBDIR) -lSDL -lz
+LIBS = -mconsole -L$(LIBDIR) -static -lstdc++ -lmingw32 -Wl,-Bdynamic -lSDL -lz
 
 TARGET = fceu320.exe
 

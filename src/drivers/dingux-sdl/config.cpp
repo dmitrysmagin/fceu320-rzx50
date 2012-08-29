@@ -79,6 +79,10 @@ static void CreateDirs(const std::string &dir) {
  */
 static void GetBaseDirectory(std::string &dir)
 {
+#ifdef WIN32
+	dir = ".fceux";
+	mkdir(dir.c_str());
+#else
 	char *home = getenv("HOME");
 	if (home) {
 		dir = std::string(home) + "/.fceux";
@@ -98,6 +102,7 @@ static void GetBaseDirectory(std::string &dir)
 		dir = "";
 #endif
 	}
+#endif
 }
 
 Config * InitConfig() {

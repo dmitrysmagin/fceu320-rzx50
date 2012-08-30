@@ -139,6 +139,68 @@ void upscale_384x240(uint32 *dst, uint8 *src)
 }
 
 /*
+	Upscale 256x224 -> 384x272 (for 480x240)
+
+	Horizontal interpolation
+		384/256=1.5
+		4p -> 6p
+		2dw -> 3dw
+
+		for each line: 4 pixels => 6 pixels (*1.5) (64 blocks)
+		[ab][cd] => [a(ab)][bc][(cd)d]
+
+	Vertical upscale:
+		Bresenham algo with simple interpolation
+
+	Parameters:
+	uint32 *dst - pointer to 480x272x16bpp buffer
+	uint8 *src - pointer to 256x224x8bpp buffer
+	palette is taken from palettetranslate[]
+	pitch correction
+*/
+
+void upscale_384x272(uint32 *dst, uint8 *src)
+{
+	int midh = 272 * 3 / 4;
+	int Eh = 0;
+	int source = 0;
+	int dh = 0;
+	int y, x;
+
+	dst += (480 - 384) / 4;
+
+	for (y = 0; y < 272; y++)
+	{
+		source = dh * 256;
+
+		for (x = 0; x < 384/6; x++)
+		{
+			register uint32 ab, cd;
+
+			__builtin_prefetch(dst + 4, 1);
+			__builtin_prefetch(src + source + 4, 0);
+
+			ab = palettetranslate[*(uint16 *)(src + source)] & 0xF7DEF7DE;
+			cd = palettetranslate[*(uint16 *)(src + source + 2)] & 0xF7DEF7DE;
+
+			if(Eh >= midh) { // average + 256
+				ab = AVERAGE(ab, palettetranslate[*(uint16 *)(src + source + 256)]) & 0xF7DEF7DE; // to prevent overflow
+				cd = AVERAGE(cd, palettetranslate[*(uint16 *)(src + source + 256 + 2)]) & 0xF7DEF7DE; // to prevent overflow
+			}
+
+			*dst++ = (ab & 0xFFFF) + AVERAGEHI(ab);
+			*dst++ = (ab >> 16) + ((cd & 0xFFFF) << 16);
+			*dst++ = (cd & 0xFFFF0000) + AVERAGELO(cd);
+
+			source += 4;
+
+		}
+		dst += (480 - 384) / 2; 
+		Eh += 224; if(Eh >= 272) { Eh -= 272; dh++; }
+	}
+}
+#if 0
+/*
 	Upscale 256x224 -> 384*272 (for 480x272)
 
 	Horizontal interpolation
@@ -202,3 +264,4 @@ void upscale_384x272(uint32_t *dst, uint8_t *src)
 		src += 256 * 3; // cause we already rolled thru 256 pixel
 	}
 }
+#endif

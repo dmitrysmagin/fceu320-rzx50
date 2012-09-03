@@ -1,0 +1,294 @@
+02-nov-2009 - qeed - fixed mapper 226, 76-in-1 seems to work now, also super 42 also seems to work with this fix, but people with save states with this game should make a new one. Since the the save state format for this game was changed a little.
+31-oct-2009 - adelikat - win32 - Memwatch - Save Changes prompt - Selecting yes will do quicksave first, save as 2nd (instead of always defaulting to save as)
+19-oct-2009 - qeed   - Mapper 253 mostly implemented, known game [ES-1064] Qi Long Zhu (C) is mostly playable (some minor graphic glitches). Thanks to VirtualNESEX for reverse engineering this, gil for giving me the mapper src for implementation reference, and Dead_Body for figuring out this game had to use chr-ram 
+10-oct-2009 - qeed   - fixed dragon's lair the mapper 4 europe version in new PPU
+10-oct-2009 - zeromus - fixed Tecmo Super Bowl in new PPU
+08-oct-2009 - ugetab - win32 - fixed a debugger crash error, Unif/FDS filename issue, and enabled debugger bank display
+01-oct-2009 - gocha - win32 - movie play dialog displays movie time based on ~60.1 (~50.1 PAL) instead of 60 & 50
+26-sept-2009 - qeed - fixed action 52 game that was broken in fceux >2.0.3 
+16-sept-2009 - ugetab - win32 - Restored DPCM Logging when Code/Data Logger is active
+sept-2009 - FatRatKnight - Finally got in that "invert" value for joypad.set. This value simply inverts the player input. Actually, any string will invert it, since we have not used strings for anything else in joypad.set.
+15-sept-2009 - FatRatKnight - Reworked how input is taken from lua, and generally everything related to joypad.set and what it affects. Now setting stuff to false will: Prevent user control for exactly one frame, and allow more than one false button as a time. Yeah, bug fixes. Hopefully runs a little faster now.
+22-aug-2009 - adelikat - Win32 - Map Hotkeys Dialog - Fixed but where "X" and Alt+F4 would not close dialog
+22-aug-2009 - adelikat - Win32 - Added a Save Config File menu item
+12-aug-2009 - adelikat - Win32 - Added a menu item to toggle to New PPU
+10-aug-2009 - adelikat - fixed bug that caused new movies be created in /movie instead of /movies
+08-aug-2009 - qeed - mappers - fixed mapper irq count, dragon ball z 3
+should be playable again.
+07-aug-2009 - ugetab - win32 - imported NSF features from FCEU-XDSP-NSF
+05-aug-2009 - adelikat - win32 - fixed an erroneous assumption made in 2.1.1 that caused the recent roms menu to be grayed out even when there were recent roms (however, it uncovered an underlying bug in the recent menu saving that needs to be fixed at some point).
+
+---r1375 - FCEUX 2.1.1---
+---July 29, 2009---
+
+01-july-2009 - adelikat - win32 - texthooker - drag & drop for table files
+01-july-2009 - adelikat - win32 - drag & drop for cheat (.cht) files
+25-jun-2009 - qeed - sound/ppu - fixed the noise value, it seems that the noise logic was shifting the values to the left by 1 when reloading, but this doesnt work for PAL since one of the PAL reload value is odd, so fix the logic and used the old tables. Revert a stupid CPU ignore logic in PPU. Sorry about that. 
+25-jun-2009 - adelikat - Win32 - CD Logger - Drag and Drop for .cdl files
+24-jun-2009 - qeed - sound/ppu - reverted to old noise table value since this seems to get correct sound for double 
+dragon 2. Also added experimental $2004 reading support to play micro machines with (little) shakes, and fixed some 
+timing in the new PPU.
+24-jun-2009 - adelikat - win32 - memory watch - option to bind to main window, if checked it gives GENS dialog style control, where there is no extra task bar item, and it minimizes when FCEUX is minimized
+24-jun-2009 - adelikat - win32 - palette commandline options
+24-jun-2009 - adelikat - win32 - Sound Dialog - cleanup, when sound is off, all controls are grayed out
+24-jun-2009 - adelikat - win32 - Hex Editor - Drag & Drop for .tbl files
+24-jun-2009 - adelikat - win32 - Drag & Drop for .fcm, it converts and then loads the converted movie automatically
+24-jun-2009 - adelikat - win32 - Drag & Drop support for palette files
+23-jun-2009 - adelikat - win32 - Drag & Drop support for savestates
+22-jun-2009 - qeed - Revert IRQ inhibit fix, since this seems to break Dragon
+					 Warrior 4, added palette reading cases for the new PPU.
+21-jun-2009 - adelikat - win32 - memwatch - save menu item is grayed if file hasn't changed
+20-jun-2009 - adelikat - win32 - memwatch - fixed a regression I made in 2.0.1 that broke the Save As menu item
+17-jun-2009 - qeed - Sound core fix, updated with the correct values for the noise and DMC table, 
+                     and also fixed the IRQ inhibit behavior for register $4017. Also fixed the CPU 
+                     unofficial opcode ATX, ORing with correct constant $FF instead of $EE, as tested 
+                     by blargg's. These fixes passes the IRQ flags test from blargg, and also one more 
+                     opcode test from blargg's cpu.nes test.
+16-jun-2009 - adelikat - sound core fix - square 1 & square 2 volume controls no longer backwards
+11-jun-2009 - zeromus - sound core fix, length counters for APU now correct variables
+11-jun-2009 - adelikat - Win32 - Hex Editor - changed ROM values again dsiplay as red, saved in the config as RomFreezeColor
+06-jun-2009 - rheiny - Fixed reported issue 2746924 (md5_asciistr() doesn't produce correct string)
+23-may-2009 - adelikat - win32 - hex editor - freeze/unfreeze ram addresses now causes the colors to update immediately, but only with groups of addresses highlighted at once (single ones still don't yet update)
+23-may-2009 - adelikat - win32 - context menu - Save Movie As... menu item (for when a movie is loaded in read+write mode)
+23-may-2009 - adelikat - win32 - added opton to remove a recent item to the roms, lua, and movie recent menus
+23-may-2009 - adelikat - win32 - Added a remove recent item function and hooked it up to memwatch recent menu, now if a bad recent item is clicked, the user has a choice to remove it from the list
+23-may-2009 - adelikat - win32 - Load Last Movie context menu item added
+23-may-2009 - adelikat - win32 - Recent Movie Menu added
+22-may-2009 - adelikat - win32 - "Disable screen saver" gui option now also diables the monitor powersave
+22-may-2009 - adelikat - win32 - Debugger - Step type functions now update other dialogs such as ppu, nametable, code/data, trace logger, etc.
+22-may-2009 - adelikat - win32 - Hex Editor - Save Rom As... menu option enabled and implemented
+22-may-2009 - adelikat - win32 - Window caption shows the name of the ROM loaded
+22-may-2009 - adelikat - win32 - Hex Editor - allowed the user to customize the color scheme by use of RGB values stored in the .cfg file
+21-may-2009 - adelikat - win32 - reverted fixedFontHeight to 13 instead of 14.  Gave the option of adjusting the height by modifying RowHeightBorder in the .cfg file
+21-may-2009 - adelikat - win32 - made fullscreen toggle (Alt+Enter) remappable
+15-may-2009 - shinydoofy - sdl - added --subtitles
+10-may-2009 - shinydoofy - sdl - fixed Four Score movie playback
+02-may-2009 - adelikat - win32 - stop movie at frame x feature - fixed off by 1 error
+23-apr-2009 - shinydoofy - sdl - added --ripsubs for converting fm2 movie subtitles to an srt file
+15-apr-2009 - shinydoofy - sdl - Lua is optional again, fixed the real issue
+14-apr-2009 - punkrockguy - sdl - LUA is NO longer optional, so the SConscripts have been updated to reflect that change.  This fixes the mysterious non-working input issue.
+12-apr-2009 - shinydoofy - sdl - implemented saving/loading a savestate from a specific file on Alt+S/L
+11-apr-2009 - shinydoofy - sdl - implemented starting an FM2 movie on Alt+R
+11-apr-2009 - adelikat - made default save slot 0 instead of 1, Win32 - remember last slot used
+11-apr-2009 - shinydoofy - sdl - added --pauseframe to pause movie playback on frame x
+11-apr-2009 - shinydoofy - sdl - dropped UTFConverter.c from SDL build and added hotkey Q for toggling read-only/read+write movie playback
+
+--version 2.1.0a released----
+04-apr-2009 - shinydoofy - fixed fcm->fm2 code once again (this time for good, hopefully). Thanks to Bisqwit!
+04-apr-2009 - shinydoofy - Reverted UTF8<->UTF32 code changes to fix up the win32 build for now
+
+---version 2.1.0 released---
+29-mar-2009 - adelikat - Win32 - reverted acmlm's /dll folder change
+28-mar-2009 - shinydoofy - sdl - added hotkey Del to toggle mute avi capturing
+28-mar-2009 - shinydoofy - sdl - fix fm2 playback and fcm->fm2 conversion crash at the cost of ugly 0x00 bytes behind the author's comment line
+28-mar-2009 - adelikat - Lua - added FCEU.poweron() and FCEU.softreset()
+27-mar-2009 - shinydoofy - sdl - added --no-config
+23-mar-2009 - adelikat - Win32 - blocked "hotkey explosion" by rshift on some laptops
+22-mar-2009 - shinydoofy - sdl - added hotkey I and --inputdisplay {0|1|2|4} for toggling input display.
+22-mar-2009 - shinydoofy - sdl - added commandline options for sound channels' volumes
+22-mar-2009 - shinydoofy - sdl - updated window title
+19-mar-2009 - adelikat - Win32 - make Video - windowed mode - disable hardware accel the default setting.  Made high quality sound the default setting.
+16-mar-2009 - adelikat - Win32 - GUI Dialog - added an option to disable the context menu
+15-mar-2009 - adelikat - Lua - added movie.rerecordcount(), movie.length(), movie.getname(), movie.playbeginning(), FCEU.getreadonly(), FCEU.setreadonly()
+14-mar-2009 - adelikat - Lua - added movie.active() - returns a bool value based on whether a movie is currently loaded
+14-mar-2009 - adelikat - Fixed Joypad.set, it uses 3 values instead of 2 now.  True will take control of a button and make it on, False will take control and make it off, and Nil will not take control (allowing the user to press the button)
+14-mar-2009 - adelikat - Fix major crash issue where NROM game savestates were writing erroneous information if a non NROM game was loaded prior
+13-mar-2009 - adelikat - Closing game / Opening new game resets the frame counter
+13-mar-2009 - adelikat - Win32 - Debugger - Scanlines and PPU Pixels are displayed even in vblank (lines 240-261)
+12-mar-2009 - shinydoofy - sdl - fixed compilation error and reactivated the mouse pointer in the SDL window
+12-mar-2009 - adelikat - Win32 - Trace Logger - fixed bug where user can't scroll the log window while it is auto-updating
+11-mar-2009 - adelikat - Win32 - Trace Logger - changed message about F2 pause (left over from FCEUXDSP) to display the current hotkey mapping
+11-mar-2009 - adelikat - Added frame counter to savestates
+08-mar-2009 - adelikat - Lua - added input.get() function
+08-mar-2009 - adelikat - Lua - memory.readbyte will recognize frozen addresses
+08-mar-2009 - adelikat - Lua - added FCEU.lagged() function
+08-mar-2009 - adelikat - Lua - added zapper.read() function
+07-mar-2009 - adelikat - Lua - added FCEU.lagcount() function
+04-mar-2009 - adelikat - win32 - Fix bug so that Escape can now be assigned as a hotkey
+03-mar-2009 - adelikat - win32 - Fix Directory Overrides so to allow users to have no override.  Also fixes directory override reset bug
+02-mar-2009 - adelikat - win32 - Drag & Drop for Memwatch dialog (.txt files)
+01-mar-2009 - adelikat - win32 - Drag & Drop Lua files
+25-feb-2009 - adelikat - win32 - Memwatch - added cancel to save changes? message box
+22-feb-2009 - adelikat - win32 - Lua - made speedmode("turbo") turn on turbo (which employs frameskipping) rather than max speed
+22-feb-2009 - adelikat - Increased lua gui.text height (and DrawTextTransWH() height)
+21-feb-2009 - adelikat - win32 - Lua - Added -lua commandline argment, loads a lua script on startup
+21-feb-2009 - adelikat - win32 - Debugger - Added pixel display after scanline display - Thanks to DWEdit for this patch
+21-feb-2009 - adelikat - win32 - Debugger - Added Run Line, Run 128 Lines buttons - Thanks to DWEdit for this patch
+21-feb-2009 - adelikat - win32 - Message Log - remembers X,Y position
+19-feb-2009 - adelikat - win32 - Memory Watch - fixed recent file menu - no longer crashes when attempting to load a non existent recent file
+07-feb-2009 - adelikat - win32 - Fix bug in screenshot numbering that caused numbering to not reset when changing ROMs
+06-feb-2009 - adelikat - win32 - Hex editor - remembers window size
+06-feb-2009 - adelikat - Win32 - sound config dialog - added sliders for individual sound channel volume control
+06-feb-2009 - zeromus - Force processor affinity, fixes throttling problem on AMD dualcore machines
+06-feb-2009 - adelikat - Sound channels now have individual volume control
+01-jan-2009 - adelikat - Win32 - Timing - "disable throttling when sound is off" now only affects FCEUX when sound is off
+26-dec-2008 - adelikat - Metadata - remember window position
+24-dec-2008 - adelikat - auto-save fixes, prevent loading an auto-save from previous session.  Win32 - added flags for enabling auto-save menu item.
+24-dec-2008 - adelikat - added undo/redo savestate hotkey.  Win32 - made undo/redo default key mapping Ctrl+Z
+24-dec-2008 - adelikat - win32 - added Last ROM used context menu item when no game loaded
+24-dec-2008 - shinydoofy - sdl - added option to mute FCEUX for avi capturing, check the docs for more detail
+23-dec-2008 - adelikat - Win32 - Undo/redo loadstate and Undo/redo savestate context menu items added
+23-dec-2008 - adelikat - undo/redo loadstate and undo/redo savestate implemented
+22-dec-2008 - adelikat - backupSavestate system added.
+22-dec-2008 - shinydoofy - sdl - added Shift+M for toggling automatic movie backups for SDL
+22-dec-2008 - adelikat - Movie auto-backup feature implemented
+22-dec-2008 - adelikat - win32 - moved movie related menu items to a movie options dialog box
+22-dec-2008 - adelikat - Win32 - context menu item "create backup" for backing up movie files
+21-dec-2008 - adelikat - Win32 - Name Table Viewer - Refresh value default to 15, Refresh value stored in config file
+21-dec-2008 - adelikat - Win32 - PPU Viewer - Refresh value default to 15, Refresh value stored in config file
+19-dec-2008 - adelikat - Loadbackup function added, Win32 - Undo Loadstate context menu item
+19-dec-2008 - adelikat - Backup savestate is made before loading a state
+18-dec-2008 - adelikat - win32 - turbo bypasses sound better if muteturbo is checked
+18-dec-2008 - shinydoofy - sdl - fixed compiling errors for SDL due to r1037
+18-dec-2008 - adelikat - win32 - fullscreen mode fixed (both enters and returns to fullscreen just fine)
+16-dec-2008 - adelikat - win32 - debugger - added "Restore original window size" button
+16-dec-2008 - adelikat - win32 - debugger - fixed SF2073113 - Debugger now has a minimum valid size
+15-dec-2008 - adelikat - win32 - cheats - number of active cheats listed, freezing ram addresses in hex editor automatically updates cheats dialog
+15-dec-2008 - adelikat - win32 - hexeditor - added minimize & maximize buttons
+14-dec-2008 - adelikat - win32 - memwatch - frozen addresses will display as blue
+14-dec-2008 - adelikat - win32 - hexeditor - prevent the user from freezing more than 256 addresses at once
+14-dec-2008 - adelikat - win32 - memwatch - collapsable to 1 column
+08-dec-2008 - adelikat - win32 - stop lua menu item gray if no lua script is running
+08-dec-2008 - adelikat - win32 - fix bug where no sound + mute turbo caused chirps when toggling
+08-dec-2008 - adelikat - win32 - sound dialog - disabling sound disabled sound options
+08-dec-2008 - adelikat - win32 - opening a rom runs closerom first, fixes bug where new sav file was not getting loaded
+07-dec-2008 - adelikat - win32 - turbo now employs frame skip
+30-nov-2008 - punkrockguy - commit 1000
+30-nov-2008 - punkrockguy - fixed gcc compile error
+30-nov-2008 - punkrockguy - moved around some hotkeys to be consistent with docs
+30-nov-2008 - punkrockguy - major update to sdl documentation
+24-nov-2008 - qfox - win32 - fixed two position checks for memwatch and debugger that could cause these windows to "disappear" (moved far out of reach).
+24-nov-2008 - adelikat - win32 - right click context menus installed
+24-nov-2008 - adelikat - win32 - added lots of mappable hotkey items as Menu items
+23-nov-2008 - adelikat - Win32 - fixed some errors in my AVI directory override code
+23-nov-2008 - shinydoofy - movie subs now have a toggle button in the SDL build (F10 by default)
+23-nov-2008 - adelikat - movie subtitle system installed
+22-nov-2008 - adelikat - Win32 - added help menu item to TASEdit and Hex Editor, Minor TASEdit clean up
+22-nov-2008 - adelikat - Win32 - fixed so that turbo works with VBlank sync settings
+21-nov-2008 - qfox - Lua - added joypad.write and joypad.get for naming consistency. Added plane display toggle for lua: FCEU.fceu_setrenderplanes(sprites, background) which accepts two boolean args and toggles the drawing of those planes from Lua. Changed movie.framecount() to always return a number, even when no movie is playing. Should return the same number as in view; the number of frames since last reset, if no movie is playing.
+17-nov-2008 - adelikat - added Open Cheats hotkey (currently a windows only function)
+16-nov-2008 - adelikat - Win32 - menu items that are hotkey mappable show the current hotkey mapping
+15-nov-2008 - adelikat - Win32 - memwatch - implemented RamChange() - monitors the behavior of ram addresses
+15-nov-2008 - adelikat - Win32 - re-enabled sound buffer time
+15-nov-2008 - adelikat - Clip Left and Right sides taken into account when drawing on screen (record/play/pause, lag & frame counters, messages, etc)
+15-nov-2008 - adelikat - win32 - Implemented Drap & Drop for movie files
+14-nov-2008 - adelikat - win32 Hex Editor - Dump Rom & Dump PPU to file Dialog - uses ROM to build default filename
+14-nov-2008 - adelikat - Win32 Memwatch - Save as dialog - uses ROM name to build default memwatch filename if there is no last used memwatch filename
+14-nov-2008 - adelikat - Win32 Text Hooker fixes - Init error checking reinstated, save .tht file no longer crashes, Dialog updates as ROM plays, Remembers window position, fix bug where canceling save as produces an error message, Save As produces default filename based on loaded ROM
+14-nov-2008 - adelikat - fixed but when aspect correction and special scaling 3x are set, video was getting resized incorrectly
+14-nov-2008 - adelikat - fixed a bug introduced in previous commit, frame display toggle now works when no movie is present
+12-nov-2008 - adelikat - allowed frame counter to display even with no movie present
+11-nov-2008 - punkrockguy - sdl - savestate slots now mappable [2175167]
+10-nov-2008 - adelikat - win32 - removed accel keys from main window
+10-nov-2008 - adelikat - Win32 - added Open & Close ROM mappable hotkeys, removed accel functions
+10-nov-2008 - punkrockguy - improved the sdl sound code; drasticaly improves quality of sound.
+09-nov-2008 - adelikat - minor memory watch menu clean up, removed Ctrl+W hotkey for close (and placed Alt+F4 on the menu name)
+08-nov-2008 - zeromus - big endian wasnt compiling. fix issues.
+02-nov-2008 - shinydoofy - added --fcmconvert for SDL
+02-nov-2008 - zeromus - emulua - add rom.readbyte and rom.readbytesigned
+
+
+---version 2.0.3 released---
+
+02-nov-2008 - zeromus - fix fcm conversion, recording, and playback of reset and power commands
+25-oct-2008 - shinydoofy - added support for AVI creation for SDL, see documentation/Videolog.txt for more
+19-oct-2008 - shinydoofy - toggle lag frame counter for SDL, default hotkey F8
+19-oct-2008 - shinydoofy - toggle skipping of lag frames for SDL, default hotkey F6
+19-oct-2008 - shinydoofy - [ 2179829 ] user ability to toggle "bind savestates to movie" added for SDL, default hotkey F2
+19-oct-2008 - adelikat - win32 - added a toggle for binding savestates to movies
+18-oct-2008 - adelikat - win32 - added -cfg (config file) command line argument
+08-oct-2008 - zeromus - SF [ 2073113 ] Child windows inside debugging window get invalid sizes
+08-oct-2008 - zeromus - SF [ 2153843 ] Lua ignores second joypad.set()
+24-sep-2008 - punkrockguy318 - made the input config window more usable
+24-sep-2008 - punkrockguy318 - --inputcfg can now be used without a filename
+24-sep-2008 - punkrockguy318 - [ 2085437 ] should fix issues with missing author field crashing fceux
+24-sep-2008 - punkrockguy318 - [ 2047057 ] added uninstall script for gfceux
+24-sep-2008 - punkrockguy318 - [ 2062823 ] fixed ppc build errors and added LSB_FIRST option to build scripts
+24-sep-2008 - punkrockguy318 - [ 2057006 ] --newppu option added to sdl, disabled by default
+24-sep-2008 - punkrockguy318 - [ 2057008 ] lua is now optional, thanks shinydoofy for a patch.  also fixed some build issues.
+22-sep-2008 - punkrockguy318 - [ 2008437 ] fixed an issue where flawed movie would crash fceux on every startup
+21-aug-2008 - punkrockguy318 - sdl - fixed issue where windowed mode would always be set to 32 bpp
+18-aug-2008 - zeromus - windows - SF [ 2058942 ] Load state as... does not use the savestate override dir (fixed; now, it does)
+18-aug-2008 - zeromus - windows - permit user optionally to proceed through the movie savestate mismatch error condition, in case he knows what he is doing.
+18-aug-2008 - zeromus - fix a bug in the savestate recovery code which prevent aborted savestate loads from recovering emulator state correctly.
+18-aug-2008 - zeromus - windows - bind a menu option for display framecounter
+17-aug-2008 - zeromus - windows - fix problem where replay dialog couldnt work when the process current directory had changed to something other than emulator base directory
+17-aug-2008 - zeromus - windows - autoload the only useful rom or movie from an archive, in cases where there is only one
+17-aug-2008 - zeromus - gracefully handle non-convertible broken utf-8 text without crashing
+17-aug-2008 - zeromus - windows - don't read every archive file when scanning for replay dialog. scan them, and only look for *.fm2
+17-aug-2008 - zeromus - debugger - fix issue where keyboard keys get stuck when switching between debugger window and main window
+15-aug-2008 - adelikat - fixed an oversight on my part.  Sound config dialog will now look to see if Mute Turbo should be checked
+
+---version 2.0.2 released---
+
+14-aug-2008 - punkrockguy318 - SDL: prevent frame advance from crashing emulator
+14-aug-2008 - punkrockguy318 - SDL build scripts now look for lua5.1 and lua (distributions package lua differently)
+14-aug-2008 - zeromus - restore savestate error recovery functionality. This should have the side effect of guaranteeing that ( SF [ 2040761 ] Wrong savestate bug - crashes FCEUX) is resolved.
+14-aug-2008 - zeromus - SF [ 2047001 ] Low speeds crash FCEUX
+14-aug-2008 - zeromus - SF [ 2050371 ] FCM>FM2 converter should release file handle
+13-aug-2008 - zeromus - restore ungzipping (and unzipping in sdl) capability which was lost when archive support was added
+13-aug-2008 - zeromus - add FORBID breakpoints - regions which block breakpoints from happening if they contain the PC
+13-aug-2008 - punkrockguy318 - SDL: fixed --input(1-4) options.  input1 and 2 are regular inputs, input3 and 4 are famicom expansion inputs
+12-aug-2008 - zeromus - fix SDL configfile woes. configfile now goes to ~/.fceux/fceux.cfg
+12-aug-2008 - zeromus - SF [ 2047986 ] palflag 1 in .fm2 files crashes fceux
+12-aug-2008 - adelikat - movie replay dialog displays fractions of a second
+12-aug-2008 - punkrockguy318 - SDL: fixed segfault when opening .fcm files
+12-aug-2008 - punkrockguy318 - SDL: Saner sound defaults for less choppy sound
+12-aug-2008 - punkrockguy318 - SF [ 2047050 ] SDL: "--special" option fixed for special video scaling filters
+12-aug-2008 - zeromus - SF [ 2046984 ] Player 3 inputs when not used
+12-aug-2008 - zeromus - print a special message when trying to open an FCM reminding user to convert. (finishes SF [ 2011832 ] Opening non movie file crashes FCEUX)
+12-aug-2008 - zeromus - SF [ 2046985 ] SRAM not wiped on power cycle (during movies)
+11-aug-2008 - zeromus - restore IPS patching capability which was lost when archive support was added
+11-aug-2008 - zeromus - SF [ 2011550 ] Buffer overflow (change vsprintf to vsnprintf)
+11-aug-2008 - zeromus - SF [ 2047004 ] Moviefilenames without extension don't automatically get fm2
+10-aug-2008 - zeromus - upgrade to cah4e3's latest mapper 163&164 code to fix a crash in a game
+10-aug-2008 - zeromus - remove cnrom chr rom size limit for homebrew roms
+10-aug-2008 - punkrockguy318 - SDL: cleaned up the SConsruct
+10-aug-2008 - punkrockguy318 - SDL: fixed issue where fceu would lock up when file dialogs were opened during fullscreen
+10-aug-2008 - punkrockguy318 - SDL: fixed bug where fceux would close when file dialogs were closed
+10-aug-2008 - punkrockguy318 - SDL: File open dialog is now used to movie playback
+10-aug-2008 - punkrockguy318 - SDL: File open wrapper now takes a titlebar argument
+10-aug-2008 - punkrockguy318 - SDL: Cleanup of usage
+10-aug-2008 - punkrockguy318 - SDL: rename options --no8lim -> --nospritelim and --color -> --ntsccolor
+10-aug-2008 - punkrockguy318 - SDL: Screenshots now always prepend the game name.
+10-aug-2008 - punkrockguy318 - SDL: Changed default A/B from numpad 2 and 3 to j and k.
+10-aug-2008 - punkrockguy318 - SDL: Enable frameskip by default
+10-aug-2008 - punkrockguy318 - SDL: Fixed a bug that would crash fceux if the emulation speed was overincreased
+10-aug-2008 - punkrockguy318 - SDL: New default hotkeys to more closely match win32 defaults
+10-aug-2008 - punkrockguy318 - SDL: Added lua script loading hotkey (f3).  Non win32 SDL requires zenity for this to function.
+10-aug-2008 - punkrockguy318 - SDL: Build script cleanup; also added option for DEBUG builds.
+10-aug-2008 - zeromus - SF [ 2030405 ] Avi recording: no sound b0rks format
+10-aug-2008 - zeromus - SF [ 2037878 ] Convert .fcm doesn't do special characters
+09-aug-2008 - zeromus - SF [ 2040463 ] Add an "author" text field in the record movie dialog
+09-aug-2008 - zeromus - re-enable support for old-format savestates.
+09-aug-2008 - zeromus - SF [ 2041944 ] Savestates remember Lua painting
+09-aug-2008 - zeromus - support loading movies from archives
+08-aug-2008 - adelikat - added input display to the FCEUX main menu
+08-aug-2008 - adelikat - fixed the (null) in the default lua directory listing
+08-aug-2008 - adelikat - added shift+L as default hotkey for reload lua script
+08-aug-2008 - adelikat - removed accel ctrl+x (prevented cut from working in accel dialogs)
+08-aug-2008 - zeromus - fiddle with nametable viewer to display correct NT,CHR,ATTR data in more cases (specifically, including some exotic mmc5 cases).
+08-aug-2008 - zeromus - fix a new bug in windows build which caused fourscore emulation to fail in some cases
+07-aug-2008 - zeromus - add an option to pick a constant color to draw in place of BG when BG rendering is disabled (look for gNoBGFillColor in config; 255 means to use palette[0])
+07-aug-2008 - adelikat - added a mute turbo option in sound config
+07-aug-2008 - adelikat - new toggle - frame adv. - lag skip (menu item + hotkey mapping + saved in config)
+07-aug-2008 - adelikat - put in -32000 protection on all dialogs that remember x,y
+06-aug-2008 - adelikat - change config filename from fceu98.cfg to fceux.cfg
+06-aug-2008 - zeromus - add lagcounter and lagflag to savestate
+06-aug-2008 - zeromus - SF [ 2040448 ] View Slots bug - does not include new savestate naming
+06-aug-2008 - zeromus - restore the debugger snap functionality
+06-aug-2008 - zeromus - add memory.readbyterange to emulua
+06-aug-2008 - zeromus - auto-fill .fcs extension in save state as dialog
+06-aug-2008 - zeromus - mmc5 - 64KB WRAM games now work correctly
+06-aug-2008 - zeromus - mmc5 - use of chr A regs for BG in sprite 8x8 mode is fixed
+06-aug-2008 - zeromus - debugger - debugger window is now resizeable
+
+---version 2.0.1 released---
+
+04-aug-2008 - reorganize display toggle options in the menu
+04-aug-2008 - adelikat - autofire fix
+04-aug-2008 - zeromus - homebrew mmc5 games now have 64KB of exwram instead of only 8KB
+04-aug-2008 - zeromus - fix crash related to player2 in lua scripts
+03-aug-2008 - qfox - fixed player2 in lua scripts
+
+---version 2.0.0 released---

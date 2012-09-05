@@ -16,7 +16,7 @@ extern uint32 palettetranslate[65536 * 4];
 		4dw -> 5dw
 
 		coarse interpolation:
-		[ab][cd][ef][gh] -> [a(ab)][(bc)(cd)][de][(ef)(fg)][(gh)h]
+		[ab][cd][ef][gh] -> [ab][(bc)c][de][f(fg)][gh]
 
 		fine interpolation
 		[ab][cd][ef][gh] -> [a(0.25a+0.75b)][(0.5b+0.5c)(0.75c+0.25d)][de][(0.25e+0.75f)(0.5f+0.5g)][(0.75g+0.25h)h]
@@ -63,11 +63,11 @@ void upscale_320x240(uint32 *dst, uint8 *src)
 				gh = AVERAGE(gh, palettetranslate[*(uint16 *)(src + source + 256 + 6)]) & 0xF7DEF7DE; // to prevent overflow
 			}
 
-			*dst++ = (ab & 0xFFFF) + AVERAGEHI(ab);
-			*dst++  = ((ab >> 17) + ((cd & 0xFFFF) >> 1)) + AVERAGEHI(cd);
+			*dst++ = ab;
+			*dst++  = ((ab >> 17) + ((cd & 0xFFFF) >> 1)) + (cd << 16);
 			*dst++  = (cd >> 16) + (ef << 16);
-			*dst++  = AVERAGELO(ef) + (((ef & 0xFFFF0000) >> 1) + ((gh & 0xFFFF) << 15));
-			*dst++  = AVERAGELO(gh) + (gh & 0xFFFF0000);
+			*dst++  = (ef >> 16) + (((ef & 0xFFFF0000) >> 1) + ((gh & 0xFFFF) << 15));
+			*dst++  = gh;
 
 			source += 8;
 

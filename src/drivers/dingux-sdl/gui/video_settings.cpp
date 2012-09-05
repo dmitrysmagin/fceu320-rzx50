@@ -7,7 +7,7 @@ extern Config *g_config;
 // Fullscreen mode
 static char *scale_tag[] = {
 		"Original",
-		"280x240",
+		"Aspect",
 		"Fullscreen"
 };
 

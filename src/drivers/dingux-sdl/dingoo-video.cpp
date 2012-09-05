@@ -324,32 +324,37 @@ void BlitScreen(uint8 *XBuf) {
 
 	if(s_fullscreen == 2) { // fullscreen
 		switch(screen->w) {
-			case 480: upscale_384x272((uint32 *)screen->pixels, (uint8 *)XBuf + 256 * 8); break;
+			case 480: upscale_480x272((uint32 *)screen->pixels, (uint8 *)XBuf + 256 * 8); break;
 			case 400: upscale_384x240((uint32 *)screen->pixels, (uint8 *)XBuf + 256 * 8); break;
 			case 320: upscale_320x240((uint32 *)screen->pixels, (uint8 *)XBuf + 256 * 8); break;
 		}
 	} else if(s_fullscreen == 1) { // aspect fullscreen
-		pBuf += (s_srendline * 256) + 8;
-		register uint16 *dest = (uint16 *) screen->pixels;
-		//dest += (320 * s_srendline) + 20;
-		dest += (screen->w * s_srendline) + (screen->w - 280) / 2 + ((screen->h - 240) / 2) * screen->w;
+		switch(screen->w) {
+			case 480: upscale_384x272((uint32 *)screen->pixels, (uint8 *)XBuf + 256 * 8); break;
+			case 400:
+			case 320:
+				pBuf += (s_srendline * 256) + 8;
+				register uint16 *dest = (uint16 *) screen->pixels;
+				//dest += (320 * s_srendline) + 20;
+				dest += (screen->w * s_srendline) + (screen->w - 280) / 2 + ((screen->h - 240) / 2) * screen->w;
 
-		// semi fullscreen no blur
-		for (y = s_tlines; y; y--) {
-			for (x = 240; x; x -= 6) {
-				__builtin_prefetch(dest + 2, 1);
-				*dest++ = s_psdl[*pBuf];
-				*dest++ = s_psdl[*(pBuf + 1)];
-				*dest++ = s_psdl[*(pBuf + 2)];
-				*dest++ = s_psdl[*(pBuf + 3)];
-				*dest++ = s_psdl[*(pBuf + 3)];
-				*dest++ = s_psdl[*(pBuf + 4)];
-				*dest++ = s_psdl[*(pBuf + 5)];
-				pBuf += 6;
-			}
-			pBuf += 16;
-			//dest += 40;
-			dest += screen->w - 280;
+				// semi fullscreen no blur
+				for (y = s_tlines; y; y--) {
+					for (x = 240; x; x -= 6) {
+						__builtin_prefetch(dest + 2, 1);
+						*dest++ = s_psdl[*pBuf];
+						*dest++ = s_psdl[*(pBuf + 1)];
+						*dest++ = s_psdl[*(pBuf + 2)];
+						*dest++ = s_psdl[*(pBuf + 3)];
+						*dest++ = s_psdl[*(pBuf + 3)];
+						*dest++ = s_psdl[*(pBuf + 4)];
+						*dest++ = s_psdl[*(pBuf + 5)];
+						pBuf += 6;
+					}
+					pBuf += 16;
+					//dest += 40;
+					dest += screen->w - 280;
+				}
 		}
 	} else { // native res
 		//int pinc = (320 - NWIDTH) >> 1;

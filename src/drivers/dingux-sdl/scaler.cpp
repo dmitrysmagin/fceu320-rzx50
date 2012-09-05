@@ -199,69 +199,98 @@ void upscale_384x272(uint32 *dst, uint8 *src)
 		Eh += 224; if(Eh >= 272) { Eh -= 272; dh++; }
 	}
 }
-#if 0
+
 /*
-	Upscale 256x224 -> 384*272 (for 480x272)
+    Upscale 256x224 -> 480x272
 
-	Horizontal interpolation
-		384/256=1.5
-		4p -> 6p
-		2dw -> 3dw
+    Horizontal interpolation
+        480/256=1.875
+        16p -> 30p
+        8dw -> 15dw
 
-		for each line: 4 pixels => 6 pixels (*1.5) (64 blocks)
-		[ab][cd] => [a(ab)][bc][(cd)d]
+        For each line 16 pixels => 30 pixels (*1.875) (32 blocks)
+        Coarse:
+            [ab][cd][ef][gh][ij][kl][mn][op]
+                =>
+            [aa][bb][cc][d(de)][ef][fg][gh][hi][ij][jk][kl][(lm)m][nn][oo][pp]
+        Fine:
+            ab` = a, (0.875a + 0.125b)
+            cd` = b, (0.75b  + 0.25c)
+            ef` = c, (0.625c + 0.375d)
+            gh` = d, (0.5d   + 0.5e)
+            ij` = e, (0.375e + 0.625f)
+            kl` = f, (0.25f  + 0.75g)
+            mn` = g, (0.125g + 0.875h)
+            op` = h, i
+            qr` = (0.875i + 0.125j), j
+            st` = (0.75j  + 0.25k),  k
+            uv` = (0.625k + 0.375l), l
+            wx` = (0.5l   + 0.5m),   m
+            yz` = (0.375m + 0.625n), n
+            12` = (0.25n  + 0.75o),  o
+            34` = (0.125o + 0.875p), p
 
-
-	Vertical upscale
-		272 = 48 * 5 + 8 * 4 = 8*(6*5 + 1*4) (56 blocks)
-		6 blocks of 5 scanlines (interpolated from 4 scanlines), 1 block of 4 scanlines (no interpolation)
-		line 0
-		line 1
-		interpolated line 1 + 2 (skipped each 7th block, (blocknum % 6) == 0 )
-		line 2
-		line 3
+    Vertical upscale:
+        Bresenham algo with simple interpolation
 */
-void upscale_384x272(uint32_t *dst, uint8_t *src)
+
+void upscale_480x272(uint32 *dst, uint8 *src)
 {
-	#define RENDERCHUNK(INSCANLINE, OUTSCANLINE) \
-	{ \
-		register uint32 ab, cd, a_ab, b_c, cd_d; \
-		ab = palettetranslate[*(uint16 *)(src + 0 + (INSCANLINE) * 256)] & 0xF7DEF7DE; \
-		cd = palettetranslate[*(uint16 *)(src + 2 + (INSCANLINE) * 256)] & 0xF7DEF7DE; \
-		a_ab = (ab & 0xFFFF) + AVERAGEHI(ab); \
-		b_c = (ab >> 16) + ((cd & 0xFFFF) << 16); \
-		cd_d = (cd & 0xFFFF0000) + AVERAGELO(cd); \
-		*(dst + 0 + (OUTSCANLINE) * 480/2) = a_ab; \
-		*(dst + 1 + (OUTSCANLINE) * 480/2) = b_c; \
-		*(dst + 2 + (OUTSCANLINE) * 480/2) = cd_d; \
-	}
+    int midh = 272 / 2;
+    int Eh = 0;
+    int source = 0;
+    int dh = 0;
+    int y, x;
 
-	#define RENDERICHUNK(OUTSCANLINE) \
-	{ \
-		*(dst + 0 + (OUTSCANLINE) * 480/2) = AVERAGE(*(dst + 0 + (OUTSCANLINE-1) * 480/2),*(dst + 0 + (OUTSCANLINE+1) * 480/2)); \
-		*(dst + 1 + (OUTSCANLINE) * 480/2) = AVERAGE(*(dst + 1 + (OUTSCANLINE-1) * 480/2),*(dst + 1 + (OUTSCANLINE+1) * 480/2)); \
-		*(dst + 2 + (OUTSCANLINE) * 480/2) = AVERAGE(*(dst + 2 + (OUTSCANLINE-1) * 480/2),*(dst + 2 + (OUTSCANLINE+1) * 480/2)); \
-	}
-	uint32 x, y;
+    for (y = 0; y < 272; y++)
+    {
+        source = dh * 256;
 
-	dst += (480 - 384) / 4;
+        for (x = 0; x < 480/30; x++)
+        {
+            register uint32 ab, cd, ef, gh, ij, kl, mn, op;
 
-	for(y = 224/4; y; y--) { // 56 blocks of 4-line chunks
-		uint32 mf = y % 6; // mf == 0 - render 4 lines, mf != 0 - render 4->5 lines
+            __builtin_prefetch(dst + 4, 1);
+            __builtin_prefetch(src + source + 4, 0);
 
-		for(x = 256; x; x -= 4) {
-			__builtin_prefetch(dst + 4, 1);
-			RENDERCHUNK(0, 0); // 1st line
-			RENDERCHUNK(1, 1); // 2nd line
-			RENDERCHUNK(2, (mf == 0 ? 2 : 3)); // 3rd line
-			if(mf != 0) RENDERICHUNK(2); // 2nd+3rd interpolated line
-			RENDERCHUNK(3, (mf == 0 ? 3 : 4)); // 4th line
-			dst += 3;
-			src += 4;
-		}
+            ab = palettetranslate[*(uint16 *)(src + source)] & 0xF7DEF7DE;
+            cd = palettetranslate[*(uint16 *)(src + source + 2)] & 0xF7DEF7DE;
+            ef = palettetranslate[*(uint16 *)(src + source + 4)] & 0xF7DEF7DE;
+            gh = palettetranslate[*(uint16 *)(src + source + 6)] & 0xF7DEF7DE;
+            ij = palettetranslate[*(uint16 *)(src + source + 8)] & 0xF7DEF7DE;
+            kl = palettetranslate[*(uint16 *)(src + source + 10)] & 0xF7DEF7DE;
+            mn = palettetranslate[*(uint16 *)(src + source + 12)] & 0xF7DEF7DE;
+            op = palettetranslate[*(uint16 *)(src + source + 14)] & 0xF7DEF7DE;
 
-		dst += (480 - 384) / 2 + 480/2 * (mf == 0 ? 3 : 4); 
-		src += 256 * 3; // cause we already rolled thru 256 pixel
-	}
+            if(Eh >= midh) {
+                ab = AVERAGE(ab, palettetranslate[*(uint16 *)(src + source + 256)]) & 0xF7DEF7DE;
+                cd = AVERAGE(cd, palettetranslate[*(uint16 *)(src + source + 256 + 2)]) & 0xF7DEF7DE;
+                ef = AVERAGE(ef, palettetranslate[*(uint16 *)(src + source + 256 + 4)]) & 0xF7DEF7DE;
+                gh = AVERAGE(gh, palettetranslate[*(uint16 *)(src + source + 256 + 6)]) & 0xF7DEF7DE;
+                ij = AVERAGE(ij, palettetranslate[*(uint16 *)(src + source + 256 + 8)]) & 0xF7DEF7DE;
+                kl = AVERAGE(kl, palettetranslate[*(uint16 *)(src + source + 256 + 10)]) & 0xF7DEF7DE;
+                mn = AVERAGE(mn, palettetranslate[*(uint16 *)(src + source + 256 + 12)]) & 0xF7DEF7DE;
+                op = AVERAGE(op, palettetranslate[*(uint16 *)(src + source + 256 + 14)]) & 0xF7DEF7DE;
+            }
+
+            *dst++ = (ab & 0xFFFF) + (ab << 16);            // [aa]
+            *dst++ = (ab >> 16) + (ab & 0xFFFF0000);        // [bb]
+            *dst++ = (cd & 0xFFFF) + (cd << 16);            // [cc]
+            *dst++ = (cd >> 16) + (((cd & 0xF7DE0000) >> 1) + ((ef & 0xF7DE) << 15)); // [d(de)]
+            *dst++ = ef;                                    // [ef]
+            *dst++ = (ef >> 16) + (gh << 16);               // [fg]
+            *dst++ = gh;                                    // [gh]
+            *dst++ = (gh >> 16) + (ij << 16);               // [hi]
+            *dst++ = ij;                                    // [ij]
+            *dst++ = (ij >> 16) + (kl << 16);               // [jk]
+            *dst++ = kl;                                    // [kl]
+            *dst++ = (((kl & 0xF7DE0000) >> 17) + ((mn & 0xF7DE) >> 1)) + (mn << 16); // [(lm)m]
+            *dst++ = (mn >> 16) + (mn & 0xFFFF0000);        // [nn]
+            *dst++ = (op & 0xFFFF) + (op << 16);            // [oo]
+            *dst++ = (op >> 16) + (op & 0xFFFF0000);        // [pp]
+
+            source += 16;
+        }
+        Eh += 224; if(Eh >= 272) { Eh -= 272; dh++; }
+    }
 }
-#endif

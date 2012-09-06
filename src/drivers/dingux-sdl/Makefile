@@ -222,14 +222,14 @@ LDFLAGS = -L$(LIBDIR)
 
 W_OPTS	= -Wall -Wno-write-strings -Wno-sign-compare
 
-F_OPTS = -falign-functions -falign-loops -falign-labels -falign-jumps \
+F_OPTS = -funroll-loops -falign-functions -falign-loops -falign-labels -falign-jumps \
 	-ffast-math -fsingle-precision-constant -funsafe-math-optimizations \
 	-fomit-frame-pointer -fno-builtin -fno-common \
 	-fstrict-aliasing  -fexpensive-optimizations \
 	-finline -finline-functions -fpeel-loops
 
 #CC_OPTS	= -O3 -mips32 -mtune=mips32r2 -mno-mips16 -msoft-float -mno-shared --fno-commonmbranch-likely -pipe -G0 $(F_OPTS)
-CC_OPTS	= -O3 -mips32 -msoft-float -G0 $(F_OPTS)
+CC_OPTS	= -O3 -march=mips32 -mtune=r4600 -msoft-float -mno-shared -pipe -G0 $(F_OPTS)
 
 CFLAGS += $(CC_OPTS)
 CFLAGS += -DDINGUX \

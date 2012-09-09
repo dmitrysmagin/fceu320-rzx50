@@ -2,7 +2,7 @@ BUILDTARGET = dingux
 
 MINIMAL_DRIVER = 1
 
-SRC = ../../../src/
+SRC = src/
 
 CORE_OBJS = \
 	$(SRC)cart.o $(SRC)cheat.o $(SRC)config.o $(SRC)movie.o $(SRC)oldmovie.o \
@@ -237,8 +237,8 @@ all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	@echo Linking $@...
-	@echo $(LD) $(LDFLAGS) $(OBJS) -o $@
-	$(LD) $(LDFLAGS) $(OBJS) $(LIBS) -Wl -o $@
+	@echo $(LD) $(LDFLAGS) $(OBJS) -o bin/$@
+	$(LD) $(LDFLAGS) $(OBJS) $(LIBS) -Wl -o bin/$@
 
 %.o: %.c
 	@echo Compiling $<...
@@ -257,4 +257,4 @@ $(TARGET): $(OBJS)
 	$(CXX) $(CDEFS) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJS) bin/$(TARGET)

@@ -1,227 +1,225 @@
 BUILDTARGET = dingux
 
-MINIMAL_DRIVER = 1
+SRC = src/
 
 CORE_OBJS = \
-	src/cart.o src/cheat.o src/config.o src/movie.o src/oldmovie.o \
-	src/drawing.o src/fceu.o src/fds.o src/file.o src/conddebug.o \
-	src/filter.o src/ines.o src/input.o src/debug.o src/wave.o \
-	src/nsf.o src/palette.o src/ppu.o src/sound.o src/state.o src/unif.o \
- 	src/video.o src/vsuni.o src/x6502.o src/netplay.o
+	$(SRC)cart.o $(SRC)cheat.o $(SRC)config.o $(SRC)movie.o $(SRC)oldmovie.o \
+	$(SRC)drawing.o $(SRC)fceu.o $(SRC)fds.o $(SRC)file.o $(SRC)conddebug.o \
+	$(SRC)filter.o $(SRC)ines.o $(SRC)input.o $(SRC)debug.o $(SRC)wave.o \
+	$(SRC)nsf.o $(SRC)palette.o $(SRC)ppu.o $(SRC)sound.o $(SRC)state.o $(SRC)unif.o \
+ 	$(SRC)video.o $(SRC)vsuni.o $(SRC)x6502.o $(SRC)netplay.o
     
 BOARDS_OBJS = \
-    src/boards/01-222.o \
-    src/boards/103.o \
-    src/boards/106.o \
-    src/boards/108.o \
-    src/boards/112.o \
-    src/boards/117.o \
-    src/boards/120.o \
-    src/boards/121.o \
-    src/boards/15.o \
-    src/boards/164.o \
-    src/boards/175.o \
-    src/boards/176.o \
-    src/boards/177.o \
-    src/boards/178.o \
-    src/boards/179.o \
-    src/boards/183.o \
-    src/boards/185.o \
-    src/boards/186.o \
-    src/boards/187.o \
-    src/boards/189.o \
-    src/boards/199.o \
-    src/boards/208.o \
-    src/boards/222.o \
-    src/boards/23.o \
-    src/boards/235.o \
-    src/boards/253.o \
-    src/boards/3d-block.o \
-    src/boards/411120-c.o \
-    src/boards/43.o \
-    src/boards/57.o \
-    src/boards/603-5052.o \
-    src/boards/68.o \
-    src/boards/8157.o \
-    src/boards/8237.o \
-    src/boards/830118C.o \
-    src/boards/88.o \
-    src/boards/90.o \
-    src/boards/95.o \
-    src/boards/a9711.o \
-    src/boards/a9746.o \
-    src/boards/addrlatch.o \
-    src/boards/ax5705.o \
-    src/boards/bandai.o \
-    src/boards/bmc13in1jy110.o \
-    src/boards/bmc42in1r.o \
-    src/boards/bmc64in1nr.o \
-    src/boards/bmc70in1.o \
-    src/boards/bonza.o \
-    src/boards/bs-5.o \
-    src/boards/copyfami_mmc3.o \
-    src/boards/dance.o \
-    src/boards/datalatch.o \
-    src/boards/deirom.o \
-    src/boards/dream.o \
-    src/boards/__dummy_mapper.o \
-    src/boards/edu2000.o \
-    src/boards/fk23c.o \
-    src/boards/ghostbusters63in1.o \
-    src/boards/gs-2004.o \
-    src/boards/gs-2013.o \
-    src/boards/h2288.o \
-    src/boards/karaoke.o \
-    src/boards/kof97.o \
-    src/boards/konami-qtai.o \
-    src/boards/ks7032.o \
-    src/boards/malee.o \
-    src/boards/mmc1.o \
-    src/boards/mmc3.o \
-    src/boards/mmc5.o \
-    src/boards/n-c22m.o \
-    src/boards/n106.o \
-    src/boards/n625092.o \
-    src/boards/novel.o \
-    src/boards/sachen.o \
-    src/boards/sc-127.o \
-    src/boards/sheroes.o \
-    src/boards/sl1632.o \
-    src/boards/smb2j.o \
-    src/boards/subor.o \
-    src/boards/super24.o \
-    src/boards/supervision.o \
-    src/boards/t-227-1.o \
-    src/boards/t-262.o \
-    src/boards/tengen.o \
-    src/boards/tf-1201.o
+    $(SRC)boards/01-222.o \
+    $(SRC)boards/103.o \
+    $(SRC)boards/106.o \
+    $(SRC)boards/108.o \
+    $(SRC)boards/112.o \
+    $(SRC)boards/117.o \
+    $(SRC)boards/120.o \
+    $(SRC)boards/121.o \
+    $(SRC)boards/15.o \
+    $(SRC)boards/164.o \
+    $(SRC)boards/175.o \
+    $(SRC)boards/176.o \
+    $(SRC)boards/177.o \
+    $(SRC)boards/178.o \
+    $(SRC)boards/179.o \
+    $(SRC)boards/183.o \
+    $(SRC)boards/185.o \
+    $(SRC)boards/186.o \
+    $(SRC)boards/187.o \
+    $(SRC)boards/189.o \
+    $(SRC)boards/199.o \
+    $(SRC)boards/208.o \
+    $(SRC)boards/222.o \
+    $(SRC)boards/23.o \
+    $(SRC)boards/235.o \
+    $(SRC)boards/253.o \
+    $(SRC)boards/3d-block.o \
+    $(SRC)boards/411120-c.o \
+    $(SRC)boards/43.o \
+    $(SRC)boards/57.o \
+    $(SRC)boards/603-5052.o \
+    $(SRC)boards/68.o \
+    $(SRC)boards/8157.o \
+    $(SRC)boards/8237.o \
+    $(SRC)boards/830118C.o \
+    $(SRC)boards/88.o \
+    $(SRC)boards/90.o \
+    $(SRC)boards/95.o \
+    $(SRC)boards/a9711.o \
+    $(SRC)boards/a9746.o \
+    $(SRC)boards/addrlatch.o \
+    $(SRC)boards/ax5705.o \
+    $(SRC)boards/bandai.o \
+    $(SRC)boards/bmc13in1jy110.o \
+    $(SRC)boards/bmc42in1r.o \
+    $(SRC)boards/bmc64in1nr.o \
+    $(SRC)boards/bmc70in1.o \
+    $(SRC)boards/bonza.o \
+    $(SRC)boards/bs-5.o \
+    $(SRC)boards/copyfami_mmc3.o \
+    $(SRC)boards/dance.o \
+    $(SRC)boards/datalatch.o \
+    $(SRC)boards/deirom.o \
+    $(SRC)boards/dream.o \
+    $(SRC)boards/__dummy_mapper.o \
+    $(SRC)boards/edu2000.o \
+    $(SRC)boards/fk23c.o \
+    $(SRC)boards/ghostbusters63in1.o \
+    $(SRC)boards/gs-2004.o \
+    $(SRC)boards/gs-2013.o \
+    $(SRC)boards/h2288.o \
+    $(SRC)boards/karaoke.o \
+    $(SRC)boards/kof97.o \
+    $(SRC)boards/konami-qtai.o \
+    $(SRC)boards/ks7032.o \
+    $(SRC)boards/malee.o \
+    $(SRC)boards/mmc1.o \
+    $(SRC)boards/mmc3.o \
+    $(SRC)boards/mmc5.o \
+    $(SRC)boards/n-c22m.o \
+    $(SRC)boards/n106.o \
+    $(SRC)boards/n625092.o \
+    $(SRC)boards/novel.o \
+    $(SRC)boards/sachen.o \
+    $(SRC)boards/sc-127.o \
+    $(SRC)boards/sheroes.o \
+    $(SRC)boards/sl1632.o \
+    $(SRC)boards/smb2j.o \
+    $(SRC)boards/subor.o \
+    $(SRC)boards/super24.o \
+    $(SRC)boards/supervision.o \
+    $(SRC)boards/t-227-1.o \
+    $(SRC)boards/t-262.o \
+    $(SRC)boards/tengen.o \
+    $(SRC)boards/tf-1201.o
 
-INPUT_OBJS = src/input/arkanoid.o src/input/bworld.o src/input/cursor.o \
-	src/input/fkb.o src/input/ftrainer.o src/input/hypershot.o src/input/mahjong.o \
-	src/input/mouse.o src/input/oekakids.o src/input/powerpad.o src/input/quiz.o \
-	src/input/shadow.o src/input/suborkb.o src/input/toprider.o src/input/zapper.o
+INPUT_OBJS = $(SRC)input/arkanoid.o $(SRC)input/bworld.o $(SRC)input/cursor.o \
+	$(SRC)input/fkb.o $(SRC)input/ftrainer.o $(SRC)input/hypershot.o $(SRC)input/mahjong.o \
+	$(SRC)input/mouse.o $(SRC)input/oekakids.o $(SRC)input/powerpad.o $(SRC)input/quiz.o \
+	$(SRC)input/shadow.o $(SRC)input/suborkb.o $(SRC)input/toprider.o $(SRC)input/zapper.o
 
 MAPPERS_OBJS = \
-	src/mappers/151.o \
-	src/mappers/16.o \
-	src/mappers/17.o \
-	src/mappers/18.o \
-	src/mappers/193.o \
-	src/mappers/201.o \
-	src/mappers/202.o \
-	src/mappers/203.o \
-	src/mappers/204.o \
-	src/mappers/212.o \
-	src/mappers/213.o \
-	src/mappers/214.o \
-	src/mappers/215.o \
-	src/mappers/217.o \
-	src/mappers/21.o \
-	src/mappers/225.o \
-	src/mappers/227.o \
-	src/mappers/228.o \
-	src/mappers/229.o \
-	src/mappers/22.o \
-	src/mappers/230.o \
-	src/mappers/231.o \
-	src/mappers/232.o \
-	src/mappers/234.o \
-	src/mappers/241.o \
-	src/mappers/242.o \
-	src/mappers/244.o \
-	src/mappers/246.o \
-	src/mappers/24and26.o \
-	src/mappers/255.o \
-	src/mappers/25.o \
-	src/mappers/27.o \
-	src/mappers/32.o \
-	src/mappers/33.o \
-	src/mappers/40.o \
-	src/mappers/41.o \
-	src/mappers/42.o \
-	src/mappers/46.o \
-	src/mappers/50.o \
-	src/mappers/51.o \
-	src/mappers/59.o \
-	src/mappers/60.o \
-	src/mappers/61.o \
-	src/mappers/62.o \
-	src/mappers/65.o \
-	src/mappers/67.o \
-	src/mappers/69.o \
-	src/mappers/6.o \
-	src/mappers/71.o \
-	src/mappers/72.o \
-	src/mappers/73.o \
-	src/mappers/75.o \
-	src/mappers/76.o \
-	src/mappers/77.o \
-	src/mappers/79.o \
-	src/mappers/80.o \
-	src/mappers/82.o \
-	src/mappers/83.o \
-	src/mappers/85.o \
-	src/mappers/86.o \
-	src/mappers/89.o \
-	src/mappers/8.o \
-	src/mappers/91.o \
-	src/mappers/92.o \
-	src/mappers/97.o \
-	src/mappers/99.o \
-	src/mappers/emu2413.o \
-	src/mappers/mmc2and4.o \
-	src/mappers/simple.o
+	$(SRC)mappers/151.o \
+	$(SRC)mappers/16.o \
+	$(SRC)mappers/17.o \
+	$(SRC)mappers/18.o \
+	$(SRC)mappers/193.o \
+	$(SRC)mappers/201.o \
+	$(SRC)mappers/202.o \
+	$(SRC)mappers/203.o \
+	$(SRC)mappers/204.o \
+	$(SRC)mappers/212.o \
+	$(SRC)mappers/213.o \
+	$(SRC)mappers/214.o \
+	$(SRC)mappers/215.o \
+	$(SRC)mappers/217.o \
+	$(SRC)mappers/21.o \
+	$(SRC)mappers/225.o \
+	$(SRC)mappers/227.o \
+	$(SRC)mappers/228.o \
+	$(SRC)mappers/229.o \
+	$(SRC)mappers/22.o \
+	$(SRC)mappers/230.o \
+	$(SRC)mappers/231.o \
+	$(SRC)mappers/232.o \
+	$(SRC)mappers/234.o \
+	$(SRC)mappers/241.o \
+	$(SRC)mappers/242.o \
+	$(SRC)mappers/244.o \
+	$(SRC)mappers/246.o \
+	$(SRC)mappers/24and26.o \
+	$(SRC)mappers/255.o \
+	$(SRC)mappers/25.o \
+	$(SRC)mappers/27.o \
+	$(SRC)mappers/32.o \
+	$(SRC)mappers/33.o \
+	$(SRC)mappers/40.o \
+	$(SRC)mappers/41.o \
+	$(SRC)mappers/42.o \
+	$(SRC)mappers/46.o \
+	$(SRC)mappers/50.o \
+	$(SRC)mappers/51.o \
+	$(SRC)mappers/59.o \
+	$(SRC)mappers/60.o \
+	$(SRC)mappers/61.o \
+	$(SRC)mappers/62.o \
+	$(SRC)mappers/65.o \
+	$(SRC)mappers/67.o \
+	$(SRC)mappers/69.o \
+	$(SRC)mappers/6.o \
+	$(SRC)mappers/71.o \
+	$(SRC)mappers/72.o \
+	$(SRC)mappers/73.o \
+	$(SRC)mappers/75.o \
+	$(SRC)mappers/76.o \
+	$(SRC)mappers/77.o \
+	$(SRC)mappers/79.o \
+	$(SRC)mappers/80.o \
+	$(SRC)mappers/82.o \
+	$(SRC)mappers/83.o \
+	$(SRC)mappers/85.o \
+	$(SRC)mappers/86.o \
+	$(SRC)mappers/89.o \
+	$(SRC)mappers/8.o \
+	$(SRC)mappers/91.o \
+	$(SRC)mappers/92.o \
+	$(SRC)mappers/97.o \
+	$(SRC)mappers/99.o \
+	$(SRC)mappers/emu2413.o \
+	$(SRC)mappers/mmc2and4.o \
+	$(SRC)mappers/simple.o
 
-UTILS_OBJS = src/utils/crc32.o src/utils/endian.o src/utils/general.o \
-	src/utils/guid.o src/utils/md5.o src/utils/memory.o src/utils/unzip.o \
-	src/utils/xstring.o src/utils/font_zsnes.o
+UTILS_OBJS = $(SRC)utils/crc32.o $(SRC)utils/endian.o $(SRC)utils/general.o \
+	$(SRC)utils/guid.o $(SRC)utils/md5.o $(SRC)utils/memory.o $(SRC)utils/unzip.o \
+	$(SRC)utils/xstring.o $(SRC)utils/font_zsnes.o
 	
-COMMON_DRIVER_OBJS = src/drivers/common/args.o src/drivers/common/cheat.o \
-	src/drivers/common/config.o src/drivers/common/configSys.o
+COMMON_DRIVER_OBJS = $(SRC)drivers/common/args.o $(SRC)drivers/common/cheat.o \
+	$(SRC)drivers/common/config.o $(SRC)drivers/common/configSys.o
 
-GUI_OBJS = src/drivers/dingoo/gui/gfceu320.o \
-	src/drivers/dingoo/gui/gui.o \
-	src/drivers/dingoo/gui/file_list.o \
-	src/drivers/dingoo/gui/font.o \
-	src/drivers/dingoo/gui/bitmap.o
+GUI_OBJS = $(SRC)drivers/dingux-sdl/gui/gfceu320.o \
+	$(SRC)drivers/dingux-sdl/gui/gui.o \
+	$(SRC)drivers/dingux-sdl/gui/file_list.o \
+	$(SRC)drivers/dingux-sdl/gui/font.o \
+	$(SRC)drivers/dingux-sdl/gui/bitmap.o
 
-MINIMAL_OBJS = src/drivers/dingoo/minimal/minimal.o
-DRIVER_OBJS = src/drivers/dingoo/config.o src/drivers/dingoo/input.o \
-	src/drivers/dingoo/dingoo.o src/drivers/dingoo/dingoo-joystick.o \
-	src/drivers/dingoo/dingoo-throttle.o src/drivers/dingoo/dingoo-sound.o \
-	src/drivers/dingoo/dingoo-video.o src/drivers/dingoo/dummy-netplay.o \
-	$(MINIMAL_OBJS) $(GUI_OBJS)
+DRIVER_OBJS = $(SRC)drivers/dingux-sdl/config.o $(SRC)drivers/dingux-sdl/input.o \
+	$(SRC)drivers/dingux-sdl/dingoo.o $(SRC)drivers/dingux-sdl/dingoo-joystick.o \
+	$(SRC)drivers/dingux-sdl/dingoo-throttle.o $(SRC)drivers/dingux-sdl/dingoo-sound.o \
+	$(SRC)drivers/dingux-sdl/dingoo-video.o $(SRC)drivers/dingux-sdl/dummy-netplay.o \
+	$(SRC)drivers/dingux-sdl/scaler.o $(MINIMAL_OBJS) $(GUI_OBJS)
 
 OBJS = $(CORE_OBJS) $(BOARDS_OBJS) $(INPUT_OBJS) $(MAPPERS_OBJS) $(UTILS_OBJS) \
 	$(COMMON_DRIVER_OBJS) $(DRIVER_OBJS)
 
-TOOLCHAIN=/opt/opendingux-toolchain
-BINDIR=$(TOOLCHAIN)/usr/bin
-CC = $(BINDIR)/mipsel-linux-gcc
-CXX = $(BINDIR)/mipsel-linux-g++
-LD = $(BINDIR)/mipsel-linux-g++
-AS = $(BINDIR)/mipsel-linux-as
+TOOLCHAIN=
+BINDIR=
+CC = mipsel-linux-gcc
+CXX = mipsel-linux-g++
+LD = mipsel-linux-g++
+AS = mipsel-linux-as
 
-INCLUDEDIR=$(TOOLCHAIN)/usr/include
-CFLAGS = -I$(INCLUDEDIR)
+INCLUDEDIR=$(TOOLCHAIN)/include
+CFLAGS = -I$(INCLUDEDIR) -I$(SRC)
 CXXFLAGS = -I$(INCLUDEDIR)
 
-LIBDIR=$(TOOLCHAIN)/usr/lib
-LDFLAGS = -L$(LIBDIR)
+LIBDIR=$(TOOLCHAIN)/lib
+LDFLAGS = -L$(LIBDIR) -s
 
 W_OPTS	= -Wall -Wno-write-strings -Wno-sign-compare
 
-F_OPTS = -falign-functions -falign-loops -falign-labels -falign-jumps \
+F_OPTS = -funroll-loops -falign-functions -falign-loops -falign-labels -falign-jumps \
 	-ffast-math -fsingle-precision-constant -funsafe-math-optimizations \
 	-fomit-frame-pointer -fno-builtin -fno-common \
 	-fstrict-aliasing  -fexpensive-optimizations \
 	-finline -finline-functions -fpeel-loops
-#-mbranch-likely  ? REVIST ?
-#CC_OPTS	= -O3 -mips32 -mtune=mips32r2 -mno-mips16 -msoft-float -mno-shared -mbranch-likely -pipe -G0 $(F_OPTS)
-CC_OPTS	= -O3 -mips32 -mtune=mips32r2 -mno-mips16 -msoft-float -mno-shared -mbranch-likely -pipe -G0 $(F_OPTS)
+
+CC_OPTS	= -O3 -march=mips32 -mtune=r4600 -msoft-float -mno-shared -pipe -G0 $(F_OPTS)
 
 CFLAGS += $(CC_OPTS)
-CFLAGS += -DDINGUX -DA320_HARDWARE -I./src \
+CFLAGS += -DDINGUX \
 	  -DLSB_FIRST \
 	  -DPSS_STYLE=1 \
 	  -DHAVE_ASPRINTF \
@@ -233,16 +231,16 @@ CFLAGS += -DDINGUX -DA320_HARDWARE -I./src \
 	  -I$(INCLUDEDIR)/SDL -D_GNU_SOURCE=1 -D_REENTRANT
 CXXFLAGS += $(CFLAGS)
 LDFLAGS  += $(CC_OPTS)
-LIBS = -lz -lm -lstdc++ -lgcov -lao -L$(LIBDIR) -lSDL  -lpthread
+LIBS = -lz -lm -lstdc++ -lgcov -L$(LIBDIR) -lSDL -lpthread
 
-TARGET = fceu320.od 
+TARGET = fceu320.dge
 
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	@echo Linking $@...
-	@echo $(LD) $(LDFLAGS) $(OBJS) -o $@
-	$(LD) $(LDFLAGS) $(OBJS) $(LIBS) -Wl -o $@
+	@echo $(LD) $(LDFLAGS) $(OBJS) -o bin/$@
+	$(LD) $(LDFLAGS) $(OBJS) $(LIBS) -o bin/$@
 
 %.o: %.c
 	@echo Compiling $<...
@@ -261,4 +259,4 @@ $(TARGET): $(OBJS)
 	$(CXX) $(CDEFS) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJS) bin/$(TARGET)

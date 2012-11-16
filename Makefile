@@ -205,18 +205,17 @@ INCLUDEDIR=$(TOOLCHAIN)/include
 CFLAGS = -I$(INCLUDEDIR) -I$(SRC)
 CXXFLAGS = -I$(INCLUDEDIR)
 
-LIBDIR=$(TOOLCHAIN)/lib
-LDFLAGS = -L$(LIBDIR) -s
+LDFLAGS = -s
 
-W_OPTS	= -Wall -Wno-write-strings -Wno-sign-compare
+W_OPTS	= -Wno-write-strings -Wno-sign-compare
 
-F_OPTS = -funroll-loops -falign-functions -falign-loops -falign-labels -falign-jumps \
+F_OPTS = -falign-functions -falign-loops -falign-labels -falign-jumps \
 	-ffast-math -fsingle-precision-constant -funsafe-math-optimizations \
 	-fomit-frame-pointer -fno-builtin -fno-common \
 	-fstrict-aliasing  -fexpensive-optimizations \
 	-finline -finline-functions -fpeel-loops
 
-CC_OPTS	= -O3 -march=mips32 -mtune=r4600 -msoft-float -mno-shared -pipe -G0 $(F_OPTS)
+CC_OPTS	= -O3 -march=mips32 -mtune=r4600 -mno-shared -pipe -G0 $(F_OPTS) $(W_OPTS)
 
 CFLAGS += $(CC_OPTS)
 CFLAGS += -DDINGUX \
@@ -231,7 +230,7 @@ CFLAGS += -DDINGUX \
 	  -I$(INCLUDEDIR)/SDL -D_GNU_SOURCE=1 -D_REENTRANT
 CXXFLAGS += $(CFLAGS)
 LDFLAGS  += $(CC_OPTS)
-LIBS = -lz -lm -lstdc++ -lgcov -L$(LIBDIR) -lSDL -lpthread
+LIBS = -lz -lm -lstdc++ -lgcov -lSDL -lpthread
 
 TARGET = fceu320.dge
 

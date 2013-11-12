@@ -197,21 +197,21 @@ DRIVER_OBJS = $(SRC)drivers/dingux-sdl/config.o $(SRC)drivers/dingux-sdl/input.o
 OBJS = $(CORE_OBJS) $(BOARDS_OBJS) $(INPUT_OBJS) $(MAPPERS_OBJS) $(UTILS_OBJS) \
 	$(COMMON_DRIVER_OBJS) $(DRIVER_OBJS)
 
-TOOLCHAIN=#/cygdrive/d/progs/mingw
-BINDIR=$(TOOLCHAIN)/bin
-CC = $(BINDIR)/gcc
-CXX = $(BINDIR)/g++
-LD = $(BINDIR)/g++
-AS = $(BINDIR)/as
+TOOLCHAIN=
+BINDIR=
+CC = gcc
+CXX = g++
+LD = g++
+AS = as
 
-INCLUDEDIR=$(TOOLCHAIN)/cygdrive/d/progs/mingw/include
-CFLAGS = -I$(INCLUDEDIR) -I$(SRC)
-CXXFLAGS = -I$(INCLUDEDIR)
+INCLUDEDIR=
+CFLAGS = -I$(SRC)
+CXXFLAGS =
 
-LIBDIR=$(TOOLCHAIN)/cygdrive/d/progs/mingw/lib
-LDFLAGS = -L$(LIBDIR)
+LIBDIR=
+LDFLAGS =
 
-W_OPTS	= -Wall
+W_OPTS	= -Wall -Wwrite-strings
 
 F_OPTS = -DDINGUX_ON_WIN32
 CC_OPTS	= -O2 $(F_OPTS)
@@ -226,10 +226,10 @@ CFLAGS += -DDINGUX \
 	  -DFRACTIONAL_FRAMESKIP \
 	  -D_REENTRANT \
 	  -DSHOWFPS \
-	  -I$(INCLUDEDIR)/SDL -D_GNU_SOURCE=1 -D_REENTRANT
+	  -D_GNU_SOURCE=1 -D_REENTRANT
 CXXFLAGS += $(CFLAGS)
-LDFLAGS  += $(CC_OPTS)
-LIBS = -mconsole -L$(LIBDIR) -static -lstdc++ -lmingw32 -Wl,-Bdynamic -lSDL -lz
+LDFLAGS  += $(CC_OPTS) -static-libgcc -static-libstdc++
+LIBS = -mconsole -L$(LIBDIR) -lmingw32 -lSDL -lz
 
 TARGET = fceu320.exe
 
@@ -238,7 +238,7 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	@echo Linking $@...
 	@echo $(LD) $(LDFLAGS) $(OBJS) -o bin/$@
-	$(LD) $(LDFLAGS) $(OBJS) $(LIBS) -Wl -o bin/$@
+	$(LD) $(LDFLAGS) $(OBJS) $(LIBS) -o bin/$@
 
 %.o: %.c
 	@echo Compiling $<...

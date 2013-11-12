@@ -1,10 +1,8 @@
 /// \file
 /// \brief Handles emulation speed throttling using the DINGOO timing functions.
 
-#include <SDL/SDL.h>
-#ifndef DINGUX_ON_WIN32
 #include <sys/time.h>
-#endif
+#include <SDL/SDL.h>
 
 #include "dingoo.h"
 #include "throttle.h"
@@ -22,23 +20,15 @@ bool MaxSpeed = false;
 
 uint64 get_ticks_us()
 {
-#ifndef DINGUX_ON_WIN32
   struct timeval current_time;
   gettimeofday(&current_time, NULL);
 
   return (uint64)current_time.tv_sec * 1000000 + current_time.tv_usec;
-#else
-  return (uint64)(SDL_GetTicks() * 1000);
-#endif
 }
 
 void delay_us(uint64 us_count)
 {
-#ifndef DINGUX_ON_WIN32
     usleep(us_count);
-#else
-    SDL_Delay(us_count / 1000); // for dingux
-#endif
 }
 
 /* LOGMUL = exp(log(2) / 3)
@@ -84,7 +74,7 @@ int SpeedThrottle()
     
     if(!InFrame) {
         InFrame = 1;
-        Nexttime = Lasttime + desired_frametime_us;
+        Nexttime = Lasttime + 16667; //desired_frametime_us;
     }
     
     cur_time  = get_ticks_us();
@@ -94,8 +84,8 @@ int SpeedThrottle()
     else
         time_left = Nexttime - cur_time;
     
-    if(time_left > 60000) {
-        time_left = 60000;
+    if(time_left > 50000) {
+        time_left = 50000;
         /* In order to keep input responsive, don't wait too long at once */
         /* 50 ms wait gives us a 20 Hz responsetime which is nice. */
     } else InFrame = 0;

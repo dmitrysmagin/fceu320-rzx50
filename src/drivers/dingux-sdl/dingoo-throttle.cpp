@@ -28,7 +28,18 @@ uint64 get_ticks_us()
 
 void delay_us(uint64 us_count)
 {
+#if 1 // busy wait
+    uint64 start;
+    uint64 current;
+
+    start = get_ticks_us();
+
+    do {
+        current = get_ticks_us();
+    } while((uint64)(current - start) < us_count);
+#else // normal wait, not reliable enough
     usleep(us_count);
+#endif
 }
 
 /* LOGMUL = exp(log(2) / 3)
@@ -74,7 +85,7 @@ int SpeedThrottle()
     
     if(!InFrame) {
         InFrame = 1;
-        Nexttime = Lasttime + 16667; //desired_frametime_us;
+        Nexttime = Lasttime + desired_frametime_us;
     }
     
     cur_time  = get_ticks_us();

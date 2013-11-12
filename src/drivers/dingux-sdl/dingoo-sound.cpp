@@ -40,11 +40,9 @@ static volatile unsigned int s_BufferIn;
 static int s_mute = 0;
 
 SDL_AudioSpec spec;
-SDL_mutex *sound_mutex;
-SDL_cond *sound_cv;
 
 /**
- * Callback from Slaanesh's minimal library to get and play audio data.
+ * Callback to get and play audio data.
  */
 static void fillaudio(void *udata, uint8 *stream, int len) // len == spec.samples * 4
 {
@@ -54,8 +52,6 @@ static void fillaudio(void *udata, uint8 *stream, int len) // len == spec.sample
     // debug code
     //printf("s_BufferIn: %i s_BufferWrite = %i s_BufferRead = %i s_BufferSize = %i\n",
     //    s_BufferIn, s_BufferWrite, s_BufferRead, s_BufferSize);
-
-    SDL_LockMutex(sound_mutex);
 
     while (len) {
         int32 sample = 0;
@@ -72,9 +68,6 @@ static void fillaudio(void *udata, uint8 *stream, int len) // len == spec.sample
         tmps++;
         len--; 
     }
-
-    SDL_CondSignal(sound_cv);
-    SDL_UnlockMutex(sound_mutex);
 }
 
 /**
@@ -119,15 +112,13 @@ int InitSound()
     spec.freq = soundrate;
     spec.format = AUDIO_S16;
     spec.channels = 2;
-    spec.samples = 256;
+    spec.samples = 512;
     spec.callback = fillaudio;
     spec.userdata = 0;
 
-    s_BufferSize = 4 * soundrate / 60; // 2 times bigger than sdl buffer //soundbufsize * soundrate / 1000;
-    s_BufferSize -= s_BufferSize % spec.samples;
+    while(spec.samples < (soundrate / 60) * 1) spec.samples += 256;
 
-    // For safety, set a bare minimum:
-    if (s_BufferSize < spec.samples * 2) s_BufferSize = spec.samples * 2;
+    s_BufferSize = spec.samples * 4 * 8;
 
     s_Buffer = (int16 *) malloc(sizeof(int16) * s_BufferSize);
     if (!s_Buffer) return 0;
@@ -142,8 +133,6 @@ int InitSound()
         return(0);
     }
 
-    sound_mutex = SDL_CreateMutex();
-    sound_cv = SDL_CreateCond();
     SDL_PauseAudio(0);
 
     FCEUI_SetSoundVolume(soundvolume);
@@ -180,12 +169,11 @@ void WriteSound(int32 *buf, int Count)
 {
     //extern int EmulationPaused;
 
-    SDL_LockMutex(sound_mutex);
+    SDL_LockAudio();
 
     /*if (EmulationPaused == 0)*/ { // for some reason EmulationPaused is always 1, ignore it
         while(Count) {
-            while(s_BufferIn == s_BufferSize)
-                SDL_CondWait(sound_cv, sound_mutex); //SDL_Delay(1);  // not done playing
+            if(s_BufferIn == s_BufferSize) goto _exit;
 
             s_Buffer[s_BufferWrite] = *buf;
             Count--;
@@ -196,9 +184,8 @@ void WriteSound(int32 *buf, int Count)
             buf++;
         }
     }
-
-    SDL_CondSignal(sound_cv);
-    SDL_UnlockMutex(sound_mutex);
+_exit:
+    SDL_UnlockAudio();
 }
 
 /**
@@ -213,7 +200,6 @@ void SilenceSound(int n)
  * Shut down the audio subsystem.
  */
 int KillSound(void) {
-    SDL_CondSignal(sound_cv);
     FCEUI_Sound(0);
     SDL_CloseAudio();
     SDL_QuitSubSystem(SDL_INIT_AUDIO);

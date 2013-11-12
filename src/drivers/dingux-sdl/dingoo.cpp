@@ -437,7 +437,7 @@ static void DriverKill() {
 void FCEUD_Update(uint8 *XBuf, int32 *Buffer, int Count)
 {
 #if 1
-	if(!Count)
+	//if(!Count)
 		if ((!NoWaiting) || fpsthrottle) SpeedThrottle();
 
 	if (XBuf && (inited & 4)) BlitScreen(XBuf);

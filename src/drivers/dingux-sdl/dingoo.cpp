@@ -255,93 +255,54 @@ int CloseGame() {
 
 void FCEUD_Update(uint8 *XBuf, int32 *Buffer, int Count);
 
+struct timeval start;
+
+unsigned int GetTicks (void)
+{
+	unsigned int ticks;
+	struct timeval now;
+
+	gettimeofday(&now, NULL);
+	ticks=(now.tv_sec-start.tv_sec)*1000000 + now.tv_usec-start.tv_usec;
+	return ticks;
+}
+
 static void DoFun(int fskip) {
 	uint8 *gfx;
 	int32 *sound;
 	int32 ssize;
-	static int skip = 0, fskipc = 0, fpsc = 0;
-	static int opause = 0;
-
-#ifdef FRAMESKIP
-	extern int currfps;
-	extern int frameskip;
 	extern uint8 PAL;
-	int numframes;
-	if (PAL)
-		numframes = 50;
-	else
-		numframes = 60;
+	int done = 0, timer = 0, ticks = 0, tick = 0, fps = 0;
+	unsigned int frame_limit = 60, frametime = 16667;
 
-	if (fpsc > numframes + 1) {
-		fpsc = 0;
-		/*8uts("fpsc ");
-		 printf("%d",fpsc);
-		 puts("");*/
-		//puts("frameskip ");
-		//printf("%d",frameskip);
-		if (currfps > (numframes + 1)) {
-			if (frameskip >= 1)
-				frameskip--;
-			//puts("bolee 60 ");
+	frame_limit = (PAL ? 50 : 60);
+	frametime = (PAL ? 20000 : 16667);
+
+	gettimeofday(&start, NULL);
+
+	while (GameInfo) {
+		int now, i;
+
+		timer = GetTicks() / frametime;
+		now = timer;
+		ticks = now - done;
+
+		if(ticks < 1) continue;
+		if(ticks > 10) ticks = 10;
+
+		for (i = 0; i < ticks - 1; i++) {
+			FCEUI_Emulate(&gfx, &sound, &ssize, 1);
+			FCEUD_Update(NULL, sound, ssize);
 		}
 
-		if (currfps < (numframes - 1)) {
-			if (frameskip < 30)
-				frameskip++;
-			//puts("menee 60 ");
+		if(ticks >= 1) {
+			FCEUI_Emulate(&gfx, &sound, &ssize, 0);
+			FCEUD_Update(gfx, sound, ssize);
 		}
 
-	} else
-		fpsc++;
-
-#ifdef FRACTIONAL_FRAMESKIP
-	/*if (skip < fskip || !fskip) { 
-	 skip++;
-	 fskipc = 0;
-	 } else {
-	 skip = 0;
-	 fskipc = 1;
-	 }
-	 #else
-	 fskipc = (fskipc + 1) % (fskip + 1); */
-
-	int ci;
-	int fpsu;
-	if (skip > numframes)
-		skip = 0;
-	fpsu = floor(((float) numframes / (float) frameskip) + 0.5);
-	for (ci = 1; ci <= frameskip; ci++) {
-		if (fpsu * ci == skip) {
-			fskipc = 1;
-			break;
-		} else
-			fskipc = 0;
-	}
-	skip++;
-
-#endif // FRACTIONAL_FRAMESKIP
-#endif // FRAMESKIP
-	if (NoWaiting) {
-		gfx = 0;
+		done = now;
 	}
 
-	/*puts("skip");
-	 printf("%d",skip);
-	 puts("fskipc");
-	 printf("%d",fskipc);
-	 puts("fskip");
-	 printf("%d",fskip);
-	 puts("");*/
-
-	FCEUI_Emulate(&gfx, &sound, &ssize, fskipc);
-	FCEUD_Update(gfx, sound, ssize);
-
-	// for some reason FCEUI_EmulationPaused() is always 1, ignore it
-	// otherwise there will be no sound
-	/*if (opause != FCEUI_EmulationPaused()) {
-		opause = FCEUI_EmulationPaused();
-		SilenceSound(opause);
-	}*/
 }
 
 /**
@@ -436,84 +397,11 @@ static void DriverKill() {
  */
 void FCEUD_Update(uint8 *XBuf, int32 *Buffer, int Count)
 {
-#if 1
-	//if(!Count)
-		if ((!NoWaiting) || fpsthrottle) SpeedThrottle();
-
 	if (XBuf && (inited & 4)) BlitScreen(XBuf);
 
 	if (Count) WriteSound(Buffer, Count);
 
 	FCEUD_UpdateInput();
-#else
-	extern int FCEUDnetplay;
-	int ocount = Count;
-
-	// apply frame scaling to Count
-	Count = (int)(Count / g_fpsScale);
-	if(Count) {
-		int32 can=GetWriteSound();
-		static int uflow=0;
-		int32 tmpcan;
-
-		// don't underflow when scaling fps
-		if(can >= GetMaxSound() && g_fpsScale==1.0) uflow=1;	/* Go into massive underflow mode. */
-
-		if(can > Count) can=Count; else uflow=0;
-
-		WriteSound(Buffer,can);
-
-		//if(uflow) puts("Underflow");
-		tmpcan = GetWriteSound();
-		// don't underflow when scaling fps
-		if(g_fpsScale>1.0 || ((tmpcan < Count*0.90) && !uflow)) {
-			if(XBuf && (inited&4) && !(NoWaiting & 2))
-				BlitScreen(XBuf);
-			Buffer+=can;
-			Count-=can;
-			if(Count) {
-				if(NoWaiting) {
-					can=GetWriteSound();
-					if(Count>can) Count=can;
-					#ifdef CREATE_AVI
-					if (!mutecapture)
-					#endif
-					  WriteSound(Buffer,Count);
-				} else {
-					while(Count>0) {
-						#ifdef CREATE_AVI
-						if (!mutecapture)
-						#endif
-						  WriteSound(Buffer,(Count<ocount) ? Count : ocount);
-						Count -= ocount;
-					}
-				}
-			}
-		} //else puts("Skipped");
-		else if(!NoWaiting && FCEUDnetplay && (uflow || tmpcan >= (Count * 1.8))) {
-			if(Count > tmpcan) Count=tmpcan;
-			while(tmpcan > 0) {
-				//printf("Overwrite: %d\n", (Count <= tmpcan)?Count : tmpcan);
-				#ifdef CREATE_AVI
-				if (!mutecapture)
-				#endif
-				  WriteSound(Buffer, (Count <= tmpcan)?Count : tmpcan);
-				tmpcan -= Count;
-			}
-		}
-
-	} else {
-		if(!NoWaiting && (!(eoptions&EO_NOTHROTTLE) || FCEUI_EmulationPaused()))
-		while (SpeedThrottle())
-		{
-			FCEUD_UpdateInput();
-		}
-		if(XBuf && (inited&4)) {
-			BlitScreen(XBuf);
-		}
-	}
-	FCEUD_UpdateInput();
-#endif
 }
 
 /**
@@ -927,8 +815,7 @@ int main(int argc, char *argv[]) {
 	g_config->getOption("SDL.Frameskip", &frameskip);
 
 	// loop playing the game
-	while (GameInfo)
-		DoFun(frameskip);
+	DoFun(frameskip);
 
 	CloseGame();
 

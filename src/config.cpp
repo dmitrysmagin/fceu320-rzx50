@@ -35,8 +35,8 @@ FCEU XD SP - Sebastian Porst\n\
 FCEU MM - CaH4e3\n\
 FCEU TAS - blip & nitsuja\n\
 FCEU TAS+ - Luke Gustafson\n\
-\n\
-"__TIME__" "__DATE__"\n";
+\n"
+__TIME__ " " __DATE__ "\n";
 
 	if(aboutString) return aboutString;
 

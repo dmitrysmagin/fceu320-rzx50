@@ -736,6 +736,11 @@ static int boopcount = 0;
 
 void ShowFPS(void)
 { 
+#ifdef DINGUX
+	extern int showfps; // in dingoo.cpp
+	if (showfps)
+#endif
+	{
 	uint64 da = FCEUD_GetTime() - boop[boopcount];
 	char fpsmsg[16];
 	int booplimit = PAL?50:60;
@@ -745,5 +750,6 @@ void ShowFPS(void)
 	DrawTextTrans(ClipSidesOffset+XBuf + (256-8-8*8) + (FSettings.FirstSLine+4)*256,256,(uint8 *)fpsmsg,4);
 	// It's not averaging FPS over exactly 1 second, but it's close enough.
 	boopcount = (boopcount + 1) % booplimit;
+	}
 }
 #endif

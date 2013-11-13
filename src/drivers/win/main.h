@@ -41,12 +41,15 @@ extern int genie;
 
 // Flag that indicates whether PAL Emulation is enabled or not.
 extern int pal_emulation;
+extern int pal_setting_specified;
 extern int status_icon;
 extern int frame_display;
+extern int rerecord_display;
 extern int input_display;
 extern int allowUDLR;
 extern int pauseAfterPlayback;
 extern int closeFinishedMovie;
+extern int suggestReadOnlyReplay;
 extern int EnableBackgroundInput;
 extern int AFon;
 extern int AFoff;
@@ -102,6 +105,7 @@ extern int srendlinep;
 extern int erendlinep;
 
 extern int ntsccol, ntsctint, ntschue;
+extern bool force_grayscale;
 
 //mbg merge 7/17/06 did these have to be unsigned?
 //static int srendline, erendline;

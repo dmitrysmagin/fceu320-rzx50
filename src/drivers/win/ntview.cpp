@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 /*
@@ -536,7 +536,8 @@ BOOL CALLBACK NTViewCallB(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return FALSE;
 }
 
-void DoNTView() {
+void DoNTView()
+{
 	if (!GameInfo) {
 		FCEUD_PrintError("You must have a game loaded before you can use the Name Table Viewer.");
 		return;
@@ -546,12 +547,16 @@ void DoNTView() {
 		return;
 	}
 
-	if (!hNTView) {
+	if (!hNTView)
+	{
 		hNTView = CreateDialog(fceu_hInstance,"NTVIEW",NULL,NTViewCallB);
 		new(cache) NTCache[4]; //reinitialize NTCache
 	}
-	if (hNTView) {
-		SetWindowPos(hNTView,HWND_TOP,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_NOOWNERZORDER);
+	if (hNTView)
+	{
+		//SetWindowPos(hNTView,HWND_TOP,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_NOOWNERZORDER);
+		ShowWindow(hNTView, SW_SHOWNORMAL);
+		SetForegroundWindow(hNTView);
 		FCEUD_UpdateNTView(-1,true);
 		NTViewDoBlit(1);
 	}

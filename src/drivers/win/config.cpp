@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 /****************************************************************/
@@ -38,6 +38,7 @@
 #include "movieoptions.h"
 #include "ramwatch.h"
 #include "debugger.h"
+#include "taseditor/taseditor_config.h"
 
 #include "../../state.h"	//adelikat: For bool backupSavestates
 
@@ -59,14 +60,22 @@ extern int PPUViewRefresh;
 extern int NTViewRefresh;
 extern uint8 gNoBGFillColor;
 extern bool rightClickEnabled;
+extern bool fullscreenByDoubleclick;
 extern int CurrentState;
 extern bool pauseWhileActive; //adelikat: Cheats dialog
-extern bool AVIdisableMovieMessages;
+extern bool enableHUDrecording;
+extern bool disableMovieMessages;
 extern bool replaceP2StartWithMicrophone;
 extern bool SingleInstanceOnly;
+extern bool Show_FPS;
 extern bool oldInputDisplay;
 extern bool fullSaveStateLoads;
 extern int frameSkipAmt;
+
+extern TASEDITOR_CONFIG taseditor_config;
+extern char* recent_projects[];
+// Hacky fix for taseditor_config.last_author
+char* taseditor_config_last_author;
 
 //window positions and sizes:
 extern int ChtPosX,ChtPosY;
@@ -80,10 +89,11 @@ extern int PPUViewPosX,PPUViewPosY;
 extern int MainWindow_wndx, MainWindow_wndy;
 extern int MemWatch_wndx, MemWatch_wndy;
 extern int Monitor_wndx, Monitor_wndy;
+extern int logging_options;
+extern int log_lines_option;
 extern int Tracer_wndx, Tracer_wndy;
 extern int CDLogger_wndx, CDLogger_wndy;
 extern int GGConv_wndx, GGConv_wndy;
-extern int TasEdit_wndx, TasEdit_wndy;
 extern int MetaPosX,MetaPosY;
 extern int MLogPosX,MLogPosY;
 
@@ -142,8 +152,20 @@ static CFGSTRUCT fceuconfig[] = {
 	ACS(ramWatchRecent[3]),
 	ACS(ramWatchRecent[4]),
 
+	ACS(recent_projects[0]),
+	ACS(recent_projects[1]),
+	ACS(recent_projects[2]),
+	ACS(recent_projects[3]),
+	ACS(recent_projects[4]),
+	ACS(recent_projects[5]),
+	ACS(recent_projects[6]),
+	ACS(recent_projects[7]),
+	ACS(recent_projects[8]),
+	ACS(recent_projects[9]),
+
 	AC(gNoBGFillColor),
 	AC(ntsccol),AC(ntsctint),AC(ntschue),
+	AC(force_grayscale),
 
 	NAC("palyo",pal_emulation),
 	NAC("genie",genie),
@@ -221,6 +243,7 @@ static CFGSTRUCT fceuconfig[] = {
 	AC(autoHoldKey),
 	AC(autoHoldClearKey),
 	AC(frame_display),
+	AC(rerecord_display),
 	AC(input_display),
 	ACS(MemWatchDir),
 	AC(EnableBackgroundInput),
@@ -235,6 +258,7 @@ static CFGSTRUCT fceuconfig[] = {
 	AC(debuggerAutoload),
 	AC(allowUDLR),
 	AC(debuggerSaveLoadDEBFiles),
+	AC(debuggerDisplayROMoffsets),
 	AC(fullSaveStateLoads),
 	AC(frameSkipAmt),
 
@@ -261,14 +285,14 @@ static CFGSTRUCT fceuconfig[] = {
 	AC(MemWatch_wndy),
 	AC(Monitor_wndx),
 	AC(Monitor_wndy),
+	AC(logging_options),
+	AC(log_lines_option),
 	AC(Tracer_wndx),
 	AC(Tracer_wndy),
 	AC(CDLogger_wndx),
 	AC(CDLogger_wndy),
 	AC(GGConv_wndx),
 	AC(GGConv_wndy),
-	AC(TasEdit_wndx),
-	AC(TasEdit_wndy),
 	AC(TextHookerPosX),
 	AC(TextHookerPosY),
 	AC(MetaPosX),
@@ -278,10 +302,65 @@ static CFGSTRUCT fceuconfig[] = {
 
 	AC(pauseAfterPlayback),
 	AC(closeFinishedMovie),
+	AC(suggestReadOnlyReplay),
 	AC(AFon),
 	AC(AFoff),
 	AC(AutoFireOffset),
 	AC(DesynchAutoFire),
+	AC(taseditor_config.wndx),
+	AC(taseditor_config.wndy),
+	AC(taseditor_config.wndwidth),
+	AC(taseditor_config.wndheight),
+	AC(taseditor_config.saved_wndx),
+	AC(taseditor_config.saved_wndy),
+	AC(taseditor_config.saved_wndwidth),
+	AC(taseditor_config.saved_wndheight),
+	AC(taseditor_config.wndmaximized),
+	AC(taseditor_config.findnote_wndx),
+	AC(taseditor_config.findnote_wndy),
+	AC(taseditor_config.follow_playback),
+	AC(taseditor_config.turbo_seek),
+	AC(taseditor_config.show_branch_screenshots),
+	AC(taseditor_config.show_branch_descr),
+	AC(taseditor_config.bind_markers),
+	AC(taseditor_config.empty_marker_notes),
+	AC(taseditor_config.combine_consecutive),
+	AC(taseditor_config.use_1p_rec),
+	AC(taseditor_config.columnset_by_keys),
+	AC(taseditor_config.branch_full_movie),
+	AC(taseditor_config.old_branching_controls),
+	AC(taseditor_config.view_branches_tree),
+	AC(taseditor_config.branch_scr_hud),
+	AC(taseditor_config.restore_position),
+	AC(taseditor_config.adjust_input_due_to_lag),
+	AC(taseditor_config.superimpose),
+	AC(taseditor_config.enable_auto_function),
+	AC(taseditor_config.enable_hot_changes),
+	AC(taseditor_config.greenzone_capacity),
+	AC(taseditor_config.undo_levels),
+	AC(taseditor_config.autosave_period),
+	AC(taseditor_config.jump_to_undo),
+	AC(taseditor_config.follow_note_context),
+	AC(taseditor_config.last_export_type),
+	AC(taseditor_config.last_export_subtitles),
+	AC(taseditor_config.savecompact_binary),
+	AC(taseditor_config.savecompact_markers),
+	AC(taseditor_config.savecompact_bookmarks),
+	AC(taseditor_config.savecompact_greenzone),
+	AC(taseditor_config.savecompact_history),
+	AC(taseditor_config.savecompact_piano_roll),
+	AC(taseditor_config.savecompact_selection),
+	AC(taseditor_config.findnote_matchcase),
+	AC(taseditor_config.findnote_search_up),
+	AC(taseditor_config.draw_input),
+	AC(taseditor_config.enable_greenzoning),
+	AC(taseditor_config.silent_autosave),
+	AC(taseditor_config.autopause_at_finish),
+	AC(taseditor_config.tooltips),
+	AC(taseditor_config.current_pattern),
+	AC(taseditor_config.pattern_skips_lag),
+	AC(taseditor_config.pattern_recording),
+	ACS(taseditor_config_last_author),
 	AC(lagCounterDisplay),
 	AC(oldInputDisplay),
 	AC(movieSubtitles),
@@ -292,6 +371,7 @@ static CFGSTRUCT fceuconfig[] = {
 	AC(PPUViewRefresh),
 	AC(NTViewRefresh),
 	AC(rightClickEnabled),
+	AC(fullscreenByDoubleclick),
 	AC(CurrentState),
 	AC(HexRowHeightBorder),
 	AC(HexBackColorR),
@@ -316,9 +396,11 @@ static CFGSTRUCT fceuconfig[] = {
 	AC(backupSavestates),
 	AC(compressSavestates),
 	AC(pauseWhileActive),
-	AC(AVIdisableMovieMessages),
+	AC(enableHUDrecording),
+	AC(disableMovieMessages),
 	AC(replaceP2StartWithMicrophone),
 	AC(SingleInstanceOnly),
+	AC(Show_FPS),
 
 	ENDCFGSTRUCT
 };
@@ -330,6 +412,8 @@ void SaveConfig(const char *filename)
 	{
 		ramWatchRecent[x] = rw_recent_files[x];
 	}
+	// Hacky fix for taseditor_config.last_author
+	taseditor_config_last_author = taseditor_config.last_author;
 	//-----------------------------------
 
 	SaveFCEUConfig(filename,fceuconfig);
@@ -357,6 +441,11 @@ void LoadConfig(const char *filename)
 			rw_recent_files[x][0] = 0;
 		}
 	}
+	// Hacky fix for taseditor_config.last_author
+	if (taseditor_config_last_author)
+		strncpy(taseditor_config.last_author, taseditor_config_last_author, AUTHOR_MAX_LEN-1);
+	else
+		taseditor_config.last_author[0] = 0;
 	//-----------------------------------
 }
 

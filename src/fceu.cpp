@@ -15,7 +15,7 @@
 *
 * You should have received a copy of the GNU General Public License
 * along with this program; if not, write to the Free Software
-* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include <string>
@@ -52,6 +52,11 @@
 
 #if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 #include "drivers/win/pref.h"
+
+extern void ResetDebugStatisticsCounters();
+extern void SetMainWindowText();
+
+extern bool TaseditorIsRecording();
 #endif
 
 #include <fstream>
@@ -89,7 +94,7 @@ FCEUGI::FCEUGI()
 : filename(0)
 , archiveFilename(0)
 {
-	printf("%08x",opsize);
+	//printf("%08x",opsize); // WTF?!
 }
 
 FCEUGI::~FCEUGI()
@@ -104,16 +109,16 @@ bool CheckFileExists(const char* filename)
 	if (!filename) return false;
 	fstream test;
 	test.open(filename,fstream::in);
-		
+
 	if (test.fail())
 	{
 		test.close();
-		return false; 
+		return false;
 	}
 	else
 	{
 		test.close();
-		return true; 
+		return true;
 	}
 }
 
@@ -130,6 +135,9 @@ void FCEU_TogglePPU(void)
 		FCEU_DispMessage("Old PPU loaded", 0);
 		FCEUI_printf("Old PPU loaded");
 	}
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	SetMainWindowText();
+#endif
 }
 
 static void FCEU_CloseGame(void)
@@ -177,8 +185,8 @@ static void FCEU_CloseGame(void)
 		CloseGenie();
 
 		delete GameInfo;
-		GameInfo = 0;
-				
+		GameInfo = NULL;
+
 		currFrameCounter = 0;
 
 		//Reset flags for Undo/Redo/Auto Savestating //adelikat: TODO: maybe this stuff would be cleaner as a struct or class
@@ -196,7 +204,7 @@ static void FCEU_CloseGame(void)
 uint64 timestampbase;
 
 
-FCEUGI *GameInfo = 0;
+FCEUGI *GameInfo = NULL;
 
 void (*GameInterface)(GI h);
 void (*GameStateRestore)(int version);
@@ -215,7 +223,7 @@ bool frameAdvanceRequested=false;
 int frameAdvanceDelay;
 
 //indicates that the emulation core just frame advanced (consumed the frame advance state and paused)
-bool JustFrameAdvanced=false;
+bool JustFrameAdvanced = false;
 
 static int *AutosaveStatus; //is it safe to load Auto-savestate
 static int AutosaveIndex = 0; //which Auto-savestate we're on
@@ -395,7 +403,7 @@ int NSFLoad(const char *name, FCEUFILE *fp);
 
 //char lastLoadedGameName [2048] = {0,}; // hack for movie WRAM clearing on record from poweron
 
-
+//name should be UTF-8, hopefully, or else there may be trouble
 FCEUGI *FCEUI_LoadGameVirtual(const char *name, int OverwriteVidMode)
 {
 	//mbg merge 7/17/07 - why is this here
@@ -411,22 +419,21 @@ FCEUGI *FCEUI_LoadGameVirtual(const char *name, int OverwriteVidMode)
 
 	const char* romextensions[] = {"nes","fds",0};
 	fp=FCEU_fopen(name,0,"rb",0,-1,romextensions);
-	if(!fp)
-	{
-		return 0;
-	}
-
-	GetFileBase(fp->filename.c_str());
 
 	if(!fp) {
 		FCEU_PrintError("Error opening \"%s\"!",name);
 		return 0;
 	}
+
+	GetFileBase(fp->filename.c_str());
 	//---------
 
 	//file opened ok. start loading.
 
 	ResetGameLoaded();
+
+	//reset parameters so theyre cleared just in case a format's loader doesnt know to do the clearing
+	MasterRomInfoParams = TMasterRomInfoParams();
 
 	if (!AutosaveStatus)
 		AutosaveStatus = (int*)FCEU_dmalloc(sizeof(int)*AutosaveQty);
@@ -481,9 +488,7 @@ endlseq:
 		extern int loadDebugDataFailed;
 
 		if ((loadDebugDataFailed = loadPreferences(LoadedRomFName)))
-		{
-			FCEUD_PrintError("Couldn't load debugging data");
-		}
+			FCEU_printf("Couldn't load debugging data.\n");
 
 // ################################## End of SP CODE ###########################
 #endif
@@ -507,6 +512,8 @@ endlseq:
 #if (defined (WIN32) || defined (WIN64)) && !defined(DINGUX_ON_WIN32)
 	DoDebuggerDataReload(); // Reloads data without reopening window
 #endif
+
+	ResetScreenshotsCounter();
 
 	return GameInfo;
 }
@@ -602,7 +609,7 @@ void SetAutoFireOffset(int offset)
 void AutoFire(void)
 {
 	static int counter = 0;
-	if (justLagged == false) 
+	if (justLagged == false)
 		counter = (counter + 1) % (8*7*5*3);
 	//If recording a movie, use the frame # for the autofire so the offset
 	//doesn't get screwed up when loading.
@@ -678,7 +685,6 @@ void FCEUI_Emulate(uint8 **pXBuf, int32 **SoundBuf, int32 *SoundBufSize, int ski
 	UpdateTextHooker();
 	Update_RAM_Search(); // Update_RAM_Watch() is also called.
 	RamChange();
-	UpdateLogWindow();
 	//FCEUI_AviVideoUpdate(XBuf);
 	extern int KillFCEUXonFrame;
 	if (KillFCEUXonFrame && (FCEUMOV_GetFrame() >= KillFCEUXonFrame))
@@ -712,8 +718,6 @@ void FCEUI_Emulate(uint8 **pXBuf, int32 **SoundBuf, int32 *SoundBufSize, int ski
 
 	}
 
-	currMovieData.TryDumpIncremental();
-
 	if (lagFlag)
 	{
 		lagCounter++;
@@ -745,6 +749,8 @@ void ResetNES(void)
 	// clear back baffer
 	extern uint8 *XBackBuf;
 	memset(XBackBuf,0,256*256);
+
+	FCEU_DispMessage("Reset", 0);
 }
 
 void FCEU_MemoryRand(uint8 *ptr, uint32 size)
@@ -764,14 +770,15 @@ void hand(X6502 *X, int type, unsigned int A)
 
 }
 
-int suppressAddPowerCommand=0; // hack... yeah, I know...
+//int suppressAddPowerCommand=0; // hack... yeah, I know...
 void PowerNES(void)
 {
 	//void MapperInit();
 	//MapperInit();
 
-	if(!suppressAddPowerCommand)
+	//if(!suppressAddPowerCommand)
 		FCEUMOV_AddCommand(FCEUNPCMD_POWER);
+
 	if(!GameInfo) return;
 
 	FCEU_CheatResetRAM();
@@ -779,8 +786,14 @@ void PowerNES(void)
 
 	GeniePower();
 
-	FCEU_MemoryRand(RAM,0x800);
+	//dont do this, it breaks some games: Cybernoid; Minna no Taabou no Nakayoshi Daisakusen; and maybe mechanized attack
 	//memset(RAM,0xFF,0x800);
+	//this fixes the above, but breaks Huang Di, which expects $100 to be non-zero or else it believes it has debug cheats enabled, giving you moon jump and other great but likely unwanted things
+	//FCEU_MemoryRand(RAM,0x800);
+	//this should work better, based on observational evidence. fixes all of the above:
+	//for(int i=0;i<0x800;i++) if(i&1) RAM[i] = 0xAA; else RAM[i] = 0x55;
+	//but we're leaving this for now until we collect some more data
+	FCEU_MemoryRand(RAM,0x800);
 
 	SetReadHandler(0x0000,0xFFFF,ANull);
 	SetWriteHandler(0x0000,0xFFFF,BNull);
@@ -805,15 +818,22 @@ void PowerNES(void)
 	if(disableBatteryLoading)
 		GameInterface(GI_RESETSAVE);
 
-
-	timestampbase=0;
-	LagCounterReset();
-
+	timestampbase = 0;
 	X6502_Power();
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	ResetDebugStatisticsCounters();
+#endif
 	FCEU_PowerCheats();
+	LagCounterReset();
 	// clear back baffer
 	extern uint8 *XBackBuf;
 	memset(XBackBuf,0,256*256);
+
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	Update_RAM_Search(); // Update_RAM_Watch() is also called.
+#endif
+
+	FCEU_DispMessage("Power on", 0);
 }
 
 void FCEU_ResetVidSys(void)
@@ -980,7 +1000,7 @@ void UpdateAutosave(void)
 
 void FCEUI_Autosave(void)
 {
-	if(!EnableAutosave || !AutoSS || FCEUMOV_Mode(MOVIEMODE_TASEDIT))
+	if(!EnableAutosave || !AutoSS)
 		return;
 
 	if(AutosaveStatus[AutosaveIndex] == 1)
@@ -1016,7 +1036,7 @@ bool FCEU_IsValidUI(EFCEUI ui)
 	{
 	case FCEUI_OPENGAME:
 	case FCEUI_CLOSEGAME:
-		if(FCEUMOV_Mode(MOVIEMODE_TASEDIT)) return false;
+		if(FCEUMOV_Mode(MOVIEMODE_TASEDITOR)) return false;
 		break;
 	case FCEUI_RECORDMOVIE:
 	case FCEUI_PLAYMOVIE:
@@ -1028,28 +1048,31 @@ bool FCEU_IsValidUI(EFCEUI ui)
 	case FCEUI_PREVIOUSSAVESTATE:
 	case FCEUI_VIEWSLOTS:
 		if(!GameInfo) return false;
-		if(FCEUMOV_Mode(MOVIEMODE_TASEDIT)) return false;
+		if(FCEUMOV_Mode(MOVIEMODE_TASEDITOR)) return false;
 		break;
 
 	case FCEUI_STOPMOVIE:
-	case FCEUI_PLAYFROMBEGINNING:
 		return (FCEUMOV_Mode(MOVIEMODE_PLAY|MOVIEMODE_RECORD|MOVIEMODE_FINISHED));
+
+	case FCEUI_PLAYFROMBEGINNING:
+		return (FCEUMOV_Mode(MOVIEMODE_PLAY|MOVIEMODE_RECORD|MOVIEMODE_TASEDITOR|MOVIEMODE_FINISHED));
 
 	case FCEUI_STOPAVI:
 		return FCEUI_AviIsRecording();
 
-	case FCEUI_TASEDIT:
+	case FCEUI_TASEDITOR:
 		if(!GameInfo) return false;
 		break;
 
 	case FCEUI_RESET:
-		if(!GameInfo) return false;
-		if(FCEUMOV_Mode(MOVIEMODE_FINISHED|MOVIEMODE_TASEDIT|MOVIEMODE_PLAY)) return false;
-		break;
-
 	case FCEUI_POWER:
+	case FCEUI_EJECT_DISK:
+	case FCEUI_SWITCH_DISK:
 		if(!GameInfo) return false;
 		if(FCEUMOV_Mode(MOVIEMODE_RECORD)) return true;
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+		if(FCEUMOV_Mode(MOVIEMODE_TASEDITOR) && TaseditorIsRecording()) return true;
+#endif
 		if(!FCEUMOV_Mode(MOVIEMODE_INACTIVE)) return false;
 		break;
 

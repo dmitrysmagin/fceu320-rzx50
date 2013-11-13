@@ -15,10 +15,13 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
  
- #include <windows.h>
+#include <windows.h>
+
+#define NL_MAX_NAME_LEN 30
+#define NL_MAX_MULTILINE_COMMENT_LEN 1000
 
 //mbg merge 7/17/06 made struct sane c++
 struct Name 
@@ -30,19 +33,20 @@ struct Name
 };
 
 extern char symbDebugEnabled;
-extern unsigned int bookmarks;
-extern unsigned short* bookmarkData;
+extern std::vector<unsigned int> bookmarks_addr;
+extern std::vector<std::string> bookmarks_name;
 extern int debuggerWasActive;
 
 int checkCondition(const char* buffer, int num);
 void loadNameFiles();
-void decorateAddress(unsigned int addr, char* str, const char* chr, UINT);
+void decorateAddress(unsigned int addr, char** str_name, char** str_comment);
 void replaceNames(Name* list, char* str);
 void AddDebuggerBookmark(HWND hwnd);
-void AddDebuggerBookmark2(HWND hwnd, char* buffer);
+void AddDebuggerBookmark2(HWND hwnd, unsigned int addr);
 void DeleteDebuggerBookmark(HWND hwnd);
-void ClearDebuggerBookmarkListbox(HWND hwnd);
+void NameDebuggerBookmark(HWND hwnd);
+void DeleteAllDebuggerBookmarks();
+void FillDebuggerBookmarkListbox(HWND hwnd);
 
 void GoToDebuggerBookmark(HWND hwnd);
-void dumpBookmarks(HWND hwmd);
 int isHex(char c);

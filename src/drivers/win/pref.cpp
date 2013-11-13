@@ -15,18 +15,23 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
  
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include "debuggersp.h"
-#include "memviewsp.h"
 #include "common.h"
 #include "debugger.h"
+#include "debuggersp.h"
+#include "memviewsp.h"
 #include "../../debug.h"
+
+extern bool break_on_cycles;
+extern unsigned long int break_cycles_limit;
+extern bool break_on_instructions;
+extern unsigned long int break_instructions_limit;
 
 extern char symbDebugEnabled;
 
@@ -39,14 +44,24 @@ extern char symbDebugEnabled;
 int storeDebuggerPreferences(FILE* f)
 {
 	int i;
+	unsigned int size, len;
+	uint8 tmp;
 
 	// Flag that says whether symbolic debugging should be enabled
 	if (fwrite(&symbDebugEnabled, 1, 1, f) != 1) return 1;
 
-	// Write the number of active CPU bookmarks
-	if (fwrite(&bookmarks, sizeof(unsigned int), 1, f) != 1) return 1;
-	// Write the addresses of those bookmarks
-	if (fwrite(bookmarkData, sizeof(unsigned short), bookmarks, f) != bookmarks) return 1;
+	// Write the number of CPU bookmarks
+	size = bookmarks_addr.size();
+	bookmarks_name.resize(size);
+	if (fwrite(&size, sizeof(unsigned int), 1, f) != 1) return 1;
+	// Write the data of those bookmarks
+	for (i = 0; i < (int)size; ++i)
+	{
+		if (fwrite(&bookmarks_addr[i], sizeof(unsigned int), 1, f) != 1) return 1;
+		len = bookmarks_name[i].size();
+		if (fwrite(&len, sizeof(unsigned int), 1, f) != 1) return 1;
+		if (fwrite(bookmarks_name[i].c_str(), 1, len, f) != len) return 1;
+	}
 
 	// Write all breakpoints
 	for (i=0;i<65;i++)
@@ -81,6 +96,26 @@ int storeDebuggerPreferences(FILE* f)
 			if (fwrite(watchpoint[i].desc, 1, len, f) != len) return 1;
 		}
 	}
+
+	// write "Break on Bad Opcode" flag
+	if (FCEUI_Debugger().badopbreak)
+		tmp = 1;
+	else
+		tmp = 0;
+	if (fwrite(&tmp, 1, 1, f) != 1) return 1;
+	// write "Break when exceed" data
+	if (break_on_cycles)
+		tmp = 1;
+	else
+		tmp = 0;
+	if (fwrite(&tmp, 1, 1, f) != 1) return 1;
+	if (fwrite(&break_cycles_limit, sizeof(break_cycles_limit), 1, f) != 1) return 1;
+	if (break_on_instructions)
+		tmp = 1;
+	else
+		tmp = 0;
+	if (fwrite(&tmp, 1, 1, f) != 1) return 1;
+	if (fwrite(&break_instructions_limit, sizeof(break_instructions_limit), 1, f) != 1) return 1;
 	
 	return 0;
 }
@@ -178,18 +213,11 @@ int storePreferences(char* romname)
 
 void DoDebuggerDataReload()
 {
-	if (debuggerSaveLoadDEBFiles == false) {
+	if (debuggerSaveLoadDEBFiles == false)
 		return;
-	}
 	
 	extern HWND hDebug;
 	LoadGameDebuggerData(hDebug);
-	
-//	if (wasinDebugger){
-//		DebuggerExit();
-//		DoDebug(0);
-//	}
-
 }
 
 int myNumWPs = 0;
@@ -203,24 +231,29 @@ int loadDebugDataFailed = 0;
 **/	
 int loadDebuggerPreferences(FILE* f)
 {
-	unsigned int i;
+	unsigned int i, size, len;
+	uint8 tmp;
 
 	// Read flag that says if symbolic debugging is enabled
 	if (fread(&symbDebugEnabled, sizeof(symbDebugEnabled), 1, f) != 1) return 1;
 	
 	// Read the number of CPU bookmarks
-	if (fread(&bookmarks, sizeof(bookmarks), 1, f) != 1) return 1;
-	
-	bookmarkData = (unsigned short*)malloc(bookmarks * sizeof(unsigned short));
-	
-	// Read the offsets of the bookmarks
-	for (i=0;i<bookmarks;i++)
+	if (fread(&size, sizeof(unsigned int), 1, f) != 1) return 1;
+	bookmarks_addr.resize(size);
+	bookmarks_name.resize(size);
+	// Read the data of those bookmarks
+	char buffer[256];
+	for (i = 0; i < (int)size; ++i)
 	{
-		if (fread(&bookmarkData[i], sizeof(bookmarkData[i]), 1, f) != 1) return 1;
+		if (fread(&bookmarks_addr[i], sizeof(unsigned int), 1, f) != 1) return 1;
+		if (fread(&len, sizeof(unsigned int), 1, f) != 1) return 1;
+		if (len >= 256) return 1;
+		if (fread(&buffer, 1, len, f) != len) return 1;
+		buffer[len] = 0;
+		bookmarks_name[i] = buffer;
 	}
-	
+
 	myNumWPs = 0;
-	
 	// Ugetab:
 	// This took far too long to figure out...
 	// Nullifying the data is better than using free(), because
@@ -248,7 +281,7 @@ int loadDebuggerPreferences(FILE* f)
 		// Read the flags of the BP
 		if (fread(&flags, sizeof(flags), 1, f) != 1) return 1;
 		
-		// Read the length of the BP description
+		// Read the length of the BP condition
 		if (fread(&len, sizeof(len), 1, f) != 1) return 1;
 		
 		// Delete eventual older conditions
@@ -261,7 +294,6 @@ int loadDebuggerPreferences(FILE* f)
 		{
 			// Read the breakpoint condition
 			if (fread(watchpoint[myNumWPs].condText, 1, len, f) != len) return 1;
-			
 			// TODO: Check return value
 			checkCondition(watchpoint[myNumWPs].condText, myNumWPs);
 		}
@@ -294,8 +326,18 @@ int loadDebuggerPreferences(FILE* f)
 
 			myNumWPs++;
 		}
-		
 	}
+
+	// Read "Break on Bad Opcode" flag
+	if (fread(&tmp, 1, 1, f) != 1) return 1;
+	FCEUI_Debugger().badopbreak = (tmp != 0);
+	// Read "Break when exceed" data
+	if (fread(&tmp, 1, 1, f) != 1) return 1;
+	break_on_cycles = (tmp != 0);
+	if (fread(&break_cycles_limit, sizeof(break_cycles_limit), 1, f) != 1) return 1;
+	if (fread(&tmp, 1, 1, f) != 1) return 1;
+	break_on_instructions = (tmp != 0);
+	if (fread(&break_instructions_limit, sizeof(break_instructions_limit), 1, f) != 1) return 1;
 
 	return 0;
 }
@@ -312,7 +354,8 @@ int loadHexPreferences(FILE* f)
 	int i;
 
 	// Read number of bookmarks
-	fread(&nextBookmark, sizeof(nextBookmark), 1, f);
+	if (fread(&nextBookmark, sizeof(nextBookmark), 1, f) != 1) return 1;
+	if (nextBookmark >= 64) return 1;
 
 	for (i=0;i<nextBookmark;i++)
 	{
@@ -354,10 +397,22 @@ int loadPreferences(char* romname)
 	f = fopen(filename, "rb");
 	free(filename);
 	
-	result = f ? loadDebuggerPreferences(f) || loadHexPreferences(f) : 0;
-
-	if (f) {
+	if (f)
+	{
+		result = loadDebuggerPreferences(f) || loadHexPreferences(f);
+		if (result)
+		{
+			// there was error when loading the .deb, reset the data to default
+			DeleteAllDebuggerBookmarks();
+			myNumWPs = 0;
+			break_on_instructions = break_on_cycles = FCEUI_Debugger().badopbreak = false;
+			break_instructions_limit = break_cycles_limit = 0;
+			nextBookmark = 0;
+		}
 		fclose(f);
+	} else
+	{
+		result = 0;
 	}
 
 	// This prevents information from traveling between debugger interations.

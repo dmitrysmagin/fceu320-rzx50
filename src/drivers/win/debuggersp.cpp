@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 #include "common.h"
@@ -37,8 +37,13 @@ Name* ramBankNames = 0;
 int lastBank = -1;
 int loadedBank = -1;
 extern char LoadedRomFName[2048];
+char NLfilename[2048];
 char symbDebugEnabled = 0;
 int debuggerWasActive = 0;
+char temp_chr[40] = {0};
+
+extern BOOL CALLBACK nameBookmarkCallB(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+extern char bookmarkDescription[];
 
 /**
 * Tests whether a char is a valid hexadecimal character.
@@ -196,10 +201,10 @@ int parseLine(char* line, Name* n)
 
 	*pos = 0;
 	
-	// The only requirement for a name of an address is that it's not of size 0
-	
 	if (*line)
 	{
+		if (strlen(line) > NL_MAX_NAME_LEN)
+			line[NL_MAX_NAME_LEN] = 0;
 		n->name = (char*)malloc(strlen(line) + 1);
 		strcpy(n->name, line);
 	}
@@ -216,6 +221,8 @@ int parseLine(char* line, Name* n)
 
 	if (*line > 0x0D)
 	{
+		if (strlen(line) > NL_MAX_MULTILINE_COMMENT_LEN)
+			line[NL_MAX_MULTILINE_COMMENT_LEN] = 0;
 		n->comment = (char*)malloc(strlen(line) + 1);
 		strcpy(n->comment, line);
 	}
@@ -536,129 +543,97 @@ Name* searchNode(Name* node, const char* offs)
 void loadNameFiles()
 {
 	int cb;
-	char* fn = (char*)malloc(strlen(LoadedRomFName) + 20);
 
 	if (ramBankNames)
 		free(ramBankNames);
 		
 	// The NL file for the RAM addresses has the name nesrom.nes.ram.nl
-	strcpy(fn, LoadedRomFName);
-	strcat(fn, ".ram.nl");
+	strcpy(NLfilename, LoadedRomFName);
+	strcat(NLfilename, ".ram.nl");
 
 	// Load the address descriptions for the RAM addresses
-	ramBankNames = parseNameFile(fn);
+	ramBankNames = parseNameFile(NLfilename);
 			
-	free(fn);
-
 	// Find out which bank is loaded at 0xC000
 	cb = getBank(0xC000);
-	
 	if (cb == -1) // No bank was loaded at that offset
 	{
 		free(lastBankNames);
 		lastBankNames = 0;
-	}
-	else if (cb != lastBank)
+	} else if (cb != lastBank)
 	{
-		char* fn = (char*)malloc(strlen(LoadedRomFName) + 12);
-
 		// If the bank changed since loading the NL files the last time it's necessary
 		// to load the address descriptions of the new bank.
-		
 		lastBank = cb;
 
 		// Get the name of the NL file
-		sprintf(fn, "%s.%X.nl", LoadedRomFName, lastBank);
+		sprintf(NLfilename, "%s.%X.nl", LoadedRomFName, lastBank);
 
 		if (lastBankNames)
 			freeList(lastBankNames);
 
 		// Load new address definitions
-		lastBankNames = parseNameFile(fn);
-				
-		free(fn);
+		lastBankNames = parseNameFile(NLfilename);
 	}
 	
 	// Find out which bank is loaded at 0x8000
 	cb = getBank(0x8000);
-	
 	if (cb == -1) // No bank is loaded at that offset
 	{
 		free(loadedBankNames);
 		loadedBankNames = 0;
-	}
-	else if (cb != loadedBank)
+	} else if (cb != loadedBank)
 	{
-		char* fn = (char*)malloc(strlen(LoadedRomFName) + 12);
-
 		// If the bank changed since loading the NL files the last time it's necessary
 		// to load the address descriptions of the new bank.
 		
 		loadedBank = cb;
 		
 		// Get the name of the NL file
-		sprintf(fn, "%s.%X.nl", LoadedRomFName, loadedBank);
+		sprintf(NLfilename, "%s.%X.nl", LoadedRomFName, loadedBank);
 		
 		if (loadedBankNames)
 			freeList(loadedBankNames);
 			
 		// Load new address definitions
-		loadedBankNames = parseNameFile(fn);
-				
-		free(fn);
+		loadedBankNames = parseNameFile(NLfilename);
 	}
 }
 
 /**
-* Adds label and comment to an offset in the disassembly output string
+* Returns pointers to name and comment to an offset in the disassembly output string
 * 
-* @param addr Address of the currently processed line
-* @param str Disassembly output string
-* @param chr Address in string format
-* @param decorate Flag that indicates whether label and comment should actually be added
 **/
-void decorateAddress(unsigned int addr, char* str, const char* chr, UINT decorate)
+void decorateAddress(unsigned int addr, char** str_name, char** str_comment)
 {
-	if (decorate)
+	Name* n;
+	sprintf(temp_chr, "$%04X", addr);
+
+	if (addr < 0x8000)
 	{
-		Name* n;
-		
-		if (addr < 0x8000)
-		{
-			// Search address definition node for a RAM address
-			n = searchNode(ramBankNames, chr);
-		}
-		else
-		{
-			// Search address definition node for a ROM address
-			n = addr >= 0xC000 ? searchNode(lastBankNames, chr) : searchNode(loadedBankNames, chr);
-		}
-		
-		// If a node was found there's a name or comment to add do so
-		if (n && (n->name || n->comment))
-		{
-			// Add name
-			if (n->name && *n->name)
-			{
-				strcat(str, "Name: ");
-				strcat(str, n->name);
-				strcat(str,"\r\n");
-			}
-			
-			// Add comment
-			if (n->comment && *n->comment)
-			{
-				strcat(str, "Comment: ");
-				strcat(str, n->comment);
-				strcat(str, "\r\n");
-			}
-		}
+		// Search address definition node for a RAM address
+		n = searchNode(ramBankNames, temp_chr);
+	} else
+	{
+		// Search address definition node for a ROM address
+		n = addr >= 0xC000 ? searchNode(lastBankNames, temp_chr) : searchNode(loadedBankNames, temp_chr);
 	}
-	
-	// Add address
-	strcat(str, chr);
-	strcat(str, ":");
+		
+	if (n)
+	{
+		// Return pointer to name
+		if (n->name && *n->name)
+			*str_name = n->name;
+			
+		// Return pointer to comment
+		if (n->comment && *n->comment)
+			*str_comment = n->comment;
+	}
 }
+
+// bookmarks
+std::vector<unsigned int> bookmarks_addr;
+std::vector<std::string> bookmarks_name;
 
 /**
 * Returns the bookmark address of a CPU bookmark identified by its index.
@@ -667,40 +642,12 @@ void decorateAddress(unsigned int addr, char* str, const char* chr, UINT decorat
 * @param hwnd HWND of the debugger window
 * @param index Index of the bookmark
 **/
-unsigned int getBookmarkAddress(HWND hwnd, unsigned int index)
+unsigned int getBookmarkAddress(unsigned int index)
 {
-	int n;
-	char buffer[5] = {0};
-	
-	SendDlgItemMessage(hwnd, LIST_DEBUGGER_BOOKMARKS, LB_GETTEXT, index, (LPARAM)buffer);
-	
-	sscanf(buffer, "%x", &n);
-	
-	return n;
-}
-
-unsigned int bookmarks;
-unsigned short* bookmarkData = 0;
-
-/**
-* Stores all CPU bookmarks in a simple array to be able to store
-* them between debugging sessions.
-*
-* @param hwnd HWND of the debugger window.
-**/
-void dumpBookmarks(HWND hwnd)
-{
-	unsigned int i;
-	if (bookmarkData)
-		free(bookmarkData);
-		
-	bookmarks = SendDlgItemMessage(hwnd, LIST_DEBUGGER_BOOKMARKS, LB_GETCOUNT, 0, 0);
-	bookmarkData = (unsigned short*)malloc(bookmarks * sizeof(unsigned short));
-	
-	for (i=0;i<bookmarks;i++)
-	{
-		bookmarkData[i] = getBookmarkAddress(hwnd, i);
-	}
+	if (index < bookmarks_addr.size())
+		return bookmarks_addr[index];
+	else
+		return 0;
 }
 
 /**
@@ -709,17 +656,16 @@ void dumpBookmarks(HWND hwnd)
 * @param hwnd HWMD of the debugger window
 * @param buffer Text of the debugger bookmark
 **/
-void AddDebuggerBookmark2(HWND hwnd, char* buffer)
+void AddDebuggerBookmark2(HWND hwnd, unsigned int addr)
 {
-	if (!buffer)
-	{
-		MessageBox(0, "Error: Invalid parameter \"buffer\" in function AddDebuggerBookmark2", "Error", MB_OK | MB_ICONERROR);
-		return;
-	}
-	
+	int index = bookmarks_addr.size();
+	bookmarks_addr.push_back(addr);
+	bookmarks_name.push_back("");
+	char buffer[256];
+	sprintf(buffer, "%04X %s", bookmarks_addr[index], bookmarks_name[index].c_str());
 	SendDlgItemMessage(hwnd, LIST_DEBUGGER_BOOKMARKS, LB_ADDSTRING, 0, (LPARAM)buffer);
-	
-	dumpBookmarks(hwnd);
+	// select this item
+	SendDlgItemMessage(hwnd, LIST_DEBUGGER_BOOKMARKS, LB_SETCURSEL, index, 0);
 }
 
 /**
@@ -730,22 +676,18 @@ void AddDebuggerBookmark2(HWND hwnd, char* buffer)
 **/
 void AddDebuggerBookmark(HWND hwnd)
 {
-	int result;
 	unsigned int n;
 	char buffer[5] = {0};
 	
 	GetDlgItemText(hwnd, IDC_DEBUGGER_BOOKMARK, buffer, 5);
-		
-	result = sscanf(buffer, "%x", &n);
-	
+	n = offsetStringToInt(BT_C, buffer);
 	// Make sure the offset is valid
-	if (result != 1 || n > 0xFFFF)
+	if (n == -1 || n > 0xFFFF)
 	{
 		MessageBox(hwnd, "Invalid offset", "Error", MB_OK | MB_ICONERROR);
 		return;
 	}
-	
-	AddDebuggerBookmark2(hwnd, buffer);
+	AddDebuggerBookmark2(hwnd, n);
 }
 
 /**
@@ -756,34 +698,87 @@ void AddDebuggerBookmark(HWND hwnd)
 void DeleteDebuggerBookmark(HWND hwnd)
 {
 	// Get the selected bookmark
-	int selectedItem = SendDlgItemMessage(hwnd, LIST_DEBUGGER_BOOKMARKS, LB_GETCURSEL, 0, 0);
+	unsigned int selectedItem = SendDlgItemMessage(hwnd, LIST_DEBUGGER_BOOKMARKS, LB_GETCURSEL, 0, 0);
 	
 	if (selectedItem == LB_ERR)
 	{
 		MessageBox(hwnd, "Please select a bookmark from the list", "Error", MB_OK | MB_ICONERROR);
 		return;
-	}
-	else
+	} else
 	{
-		// Remove the selected bookmark
-		
+		// Erase the selected bookmark
+		bookmarks_addr.erase(bookmarks_addr.begin() + selectedItem);
+		bookmarks_name.erase(bookmarks_name.begin() + selectedItem);
 		SendDlgItemMessage(hwnd, LIST_DEBUGGER_BOOKMARKS, LB_DELETESTRING, selectedItem, 0);
-		dumpBookmarks(hwnd);
+		// Select next item
+		if (selectedItem >= (bookmarks_addr.size() - 1))
+			// select last item
+			SendDlgItemMessage(hwnd, LIST_DEBUGGER_BOOKMARKS, LB_SETCURSEL, bookmarks_addr.size() - 1, 0);
+		else
+			SendDlgItemMessage(hwnd, LIST_DEBUGGER_BOOKMARKS, LB_SETCURSEL, selectedItem, 0);
+
 	}
 }
 
-/**
-* Removes all debugger bookmarks
-* 
-* @param hwnd HWND of the debugger window
-**/
-void ClearDebuggerBookmarkListbox(HWND hwnd)
+void NameDebuggerBookmark(HWND hwnd)
+{
+	// Get the selected bookmark
+	int selectedItem = SendDlgItemMessage(hwnd, LIST_DEBUGGER_BOOKMARKS, LB_GETCURSEL, 0, 0);
+	if (selectedItem == LB_ERR || selectedItem >= (int)bookmarks_name.size())
+	{
+		MessageBox(hwnd, "Please select a bookmark from the list", "Error", MB_OK | MB_ICONERROR);
+		return;
+	} else
+	{
+		if (bookmarks_name[selectedItem].size())
+		{
+			strcpy(bookmarkDescription, bookmarks_name[selectedItem].c_str());
+		} else
+		{
+			bookmarkDescription[0] = 0;
+			// try to find the same address in bookmarks
+			for (int i = bookmarks_addr.size() - 1; i>= 0; i--)
+			{
+				if (i != selectedItem && bookmarks_addr[i] == bookmarks_addr[selectedItem] && bookmarks_name[i].size())
+				{
+					strcpy(bookmarkDescription, bookmarks_name[i].c_str());
+					break;
+				}
+			}
+		}
+		// Show the bookmark name dialog
+		if (DialogBox(fceu_hInstance, "NAMEBOOKMARKDLG", hwnd, nameBookmarkCallB))
+		{
+			// Rename the selected bookmark
+			bookmarks_name[selectedItem] = bookmarkDescription;
+			SendDlgItemMessage(hwnd, LIST_DEBUGGER_BOOKMARKS, LB_DELETESTRING, selectedItem, 0);
+			char buffer[256];
+			sprintf(buffer, "%04X %s", bookmarks_addr[selectedItem], bookmarks_name[selectedItem].c_str());
+			SendDlgItemMessage(hwnd, LIST_DEBUGGER_BOOKMARKS, LB_INSERTSTRING, selectedItem, (LPARAM)buffer);
+			// Reselect the item (selection disappeared when it was deleted)
+			SendDlgItemMessage(hwnd, LIST_DEBUGGER_BOOKMARKS, LB_SETCURSEL, selectedItem, 0);
+		}
+	}
+}
+
+void DeleteAllDebuggerBookmarks()
+{
+	bookmarks_addr.resize(0);
+	bookmarks_name.resize(0);
+}
+
+void FillDebuggerBookmarkListbox(HWND hwnd)
 {		
 	SendDlgItemMessage(hwnd, LIST_DEBUGGER_BOOKMARKS, LB_RESETCONTENT, 0, 0);
-	//dumpBookmarks(hwnd);
+	char buffer[256];
+	for (unsigned int i = 0; i < bookmarks_addr.size(); ++i)
+	{
+		sprintf(buffer, "%04X %s", bookmarks_addr[i], bookmarks_name[i].c_str());
+		SendDlgItemMessage(hwnd, LIST_DEBUGGER_BOOKMARKS, LB_ADDSTRING, 0, (LPARAM)buffer);
+	}
 }
 
-void Disassemble(HWND hWnd, int id, int scrollid, unsigned int addr);
+extern void Disassemble(HWND hWnd, int id, int scrollid, unsigned int addr);
 
 /**
 * Shows the code at the bookmark address in the disassembly window
@@ -792,13 +787,9 @@ void Disassemble(HWND hWnd, int id, int scrollid, unsigned int addr);
 **/
 void GoToDebuggerBookmark(HWND hwnd)
 {
-	unsigned int n;
 	int selectedItem = SendDlgItemMessage(hwnd, LIST_DEBUGGER_BOOKMARKS, LB_GETCURSEL, 0, 0);
-	
 	// If no bookmark is selected just return
 	if (selectedItem == LB_ERR) return;
-	
-	n = getBookmarkAddress(hwnd, selectedItem);
-	
+	unsigned int n = getBookmarkAddress(selectedItem);
 	Disassemble(hwnd, IDC_DEBUGGER_DISASSEMBLY, IDC_DEBUGGER_DISASSEMBLY_VSCR, n);
 }

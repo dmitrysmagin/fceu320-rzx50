@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 #include <algorithm>
@@ -43,15 +43,28 @@ using namespace std;
 //#define LOG_SKIP_UNMAPPED 4
 //#define LOG_ADD_PERIODS 8
 
+// ################################## Start of SP CODE ###########################
+
+#include "debuggersp.h"
+
+extern Name* lastBankNames;
+extern Name* loadedBankNames;
+extern Name* ramBankNames;
+extern int lastBank;
+extern int loadedBank;
+extern int myNumWPs;
+
+// ################################## End of SP CODE ###########################
+
 //int logaxy = 1, logopdata = 1; //deleteme
-int logging_options = -1;
+int logging_options = LOG_REGISTERS | LOG_PROCESSOR_STATUS | LOG_TO_THE_LEFT | LOG_MESSAGES | LOG_BREAKPOINTS | LOG_CODE_TABBING;
 int log_update_window = 0;
 //int tracer_open=0;
 volatile int logtofile = 0, logging = 0;
 HWND hTracer;
-HFONT hlogFont, hlogNewFont;
-int log_optn_intlst[LOG_OPTION_SIZE]  = {10000,8000,6000,4000,2000,1000,700,400,200,100};
-char *log_optn_strlst[LOG_OPTION_SIZE] = {"10000","8000","6000","4000","2000","1000","700","400","200","100"};
+int log_optn_intlst[LOG_OPTION_SIZE]  = {3000000, 1000000, 300000, 100000, 30000, 10000, 3000, 1000, 300, 100};
+char *log_optn_strlst[LOG_OPTION_SIZE] = {"3 000 000", "1 000 000", "300 000", "100 000", "30 000", "10 000", "3000", "1000", "300", "100"};
+int log_lines_option = 5;	// 10000 lines by default
 char *logfilename = 0;
 int oldcodecount, olddatacount;
 
@@ -60,89 +73,96 @@ char **tracelogbuf;
 int tracelogbufsize, tracelogbufpos;
 int tracelogbufusedsize;
 
+char str_axystate[LOG_AXYSTATE_MAX_LEN] = {0}, str_procstatus[LOG_PROCSTATUS_MAX_LEN] = {0};
+char str_tabs[LOG_TABS_MASK+1] = {0}, str_address[LOG_ADDRESS_MAX_LEN] = {0}, str_data[LOG_DATA_MAX_LEN] = {0}, str_disassembly[LOG_DISASSEMBLY_MAX_LEN] = {0};
+char str_temp[LOG_LINE_MAX_LEN] = {0};
+char* tracer_decoration_name;
+char* tracer_decoration_comment;
+char str_decoration[NL_MAX_MULTILINE_COMMENT_LEN + 2] = {0};
+char str_decoration_comment[NL_MAX_MULTILINE_COMMENT_LEN + 2] = {0};
+
+bool log_old_emu_paused = true;		// thanks to this flag the window only updates once after the game is paused
+extern bool JustFrameAdvanced;
+extern int currFrameCounter;
+
 FILE *LOG_FP;
 
 int Tracer_wndx=0, Tracer_wndy=0;
 
 void ShowLogDirDialog(void);
 void BeginLoggingSequence(void);
-void LogInstruction(void);
-void OutputLogLine(char *str);
 void EndLoggingSequence(void);
-//void PauseLoggingSequence(void);
 void UpdateLogWindow(void);
 void UpdateLogText(void);
 void EnableTracerMenuItems(void);
 int PromptForCDLogger(void);
 
-BOOL CALLBACK TracerCallB(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-	//Assemble the message to pause the game.  Uses the current hotkey mapping dynamically
-	string m1 = "Press " ;
-	string m2 = GetKeyComboName(FCEUD_CommandMapping[EMUCMD_PAUSE]);
-	string m3 = " to pause the game, or snap \r\nthe debugger to update this window.\r\n";
-	string message = m1+m2+m3;
-	
+BOOL CALLBACK TracerCallB(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
 	int i;
-	LOGFONT lf;
-	switch(uMsg) {
-		case WM_MOVE: {
-			if (!IsIconic(hwndDlg)) {
-			RECT wrect;
-			GetWindowRect(hwndDlg,&wrect);
-			Tracer_wndx = wrect.left;
-			Tracer_wndy = wrect.top;
-
-			#ifdef WIN32
-			WindowBoundsCheckNoResize(Tracer_wndx,Tracer_wndy,wrect.right);
-			#endif
+	switch(uMsg)
+	{
+		case WM_MOVE:
+		{
+			if (!IsIconic(hwndDlg))
+			{
+				RECT wrect;
+				GetWindowRect(hwndDlg,&wrect);
+				Tracer_wndx = wrect.left;
+				Tracer_wndy = wrect.top;
+				WindowBoundsCheckNoResize(Tracer_wndx,Tracer_wndy,wrect.right);
 			}
 			break;
-		};
+		}
 		case WM_INITDIALOG:
+		{
 			if (Tracer_wndx==-32000) Tracer_wndx=0; //Just in case
 			if (Tracer_wndy==-32000) Tracer_wndy=0;
 			SetWindowPos(hwndDlg,0,Tracer_wndx,Tracer_wndy,0,0,SWP_NOSIZE|SWP_NOZORDER|SWP_NOOWNERZORDER);
 			hTracer = hwndDlg;
 
-			//setup font
-			hlogFont = (HFONT)SendMessage(hwndDlg, WM_GETFONT, 0, 0);
-			GetObject(hlogFont, sizeof(LOGFONT), &lf);
-			strcpy(lf.lfFaceName,"Courier");
-			hlogNewFont = CreateFontIndirect(&lf);
-			SendDlgItemMessage(hwndDlg,IDC_TRACER_LOG,WM_SETFONT,(WPARAM)hlogNewFont,FALSE);
-			
+			// setup font
+			SendDlgItemMessage(hwndDlg, IDC_TRACER_LOG, WM_SETFONT, (WPARAM)debugSystem->hFixedFont, FALSE);
+
+			// calculate tracesi.nPage
+			RECT wrect;
+			GetClientRect(GetDlgItem(hwndDlg, IDC_TRACER_LOG), &wrect);
+			tracesi.nPage = wrect.bottom / debugSystem->fixedFontHeight;
+
 			//check the disabled radio button
 			CheckRadioButton(hwndDlg,IDC_RADIO_LOG_LAST,IDC_RADIO_LOG_TO_FILE,IDC_RADIO_LOG_LAST);
 
 			//EnableWindow(GetDlgItem(hwndDlg,IDC_SCRL_TRACER_LOG),FALSE);
 			//fill in the options for the log size
-			for(i = 0;i < LOG_OPTION_SIZE;i++){
-				SendDlgItemMessage(hwndDlg,IDC_TRACER_LOG_SIZE,CB_INSERTSTRING,-1,(LPARAM)(LPSTR)log_optn_strlst[i]);
+			for(i = 0;i < LOG_OPTION_SIZE;i++)
+			{
+				SendDlgItemMessage(hwndDlg, IDC_TRACER_LOG_SIZE, CB_INSERTSTRING, -1, (LPARAM)(LPSTR)log_optn_strlst[i]);
 			}
-			SendDlgItemMessage(hwndDlg,IDC_TRACER_LOG_SIZE,CB_SETCURSEL,0,0);
+			SendDlgItemMessage(hwndDlg, IDC_TRACER_LOG_SIZE, CB_SETCURSEL, (WPARAM)log_lines_option, 0);
 			SetDlgItemText(hwndDlg, IDC_TRACER_LOG, "Welcome to the Trace Logger.");
 			logtofile = 0;
 
-			if(logging_options == -1){
-				logging_options = (LOG_REGISTERS | LOG_PROCESSOR_STATUS);
-				CheckDlgButton(hwndDlg, IDC_CHECK_LOG_REGISTERS, BST_CHECKED);
-				CheckDlgButton(hwndDlg, IDC_CHECK_LOG_PROCESSOR_STATUS, BST_CHECKED);
-			} else{
-				if(logging_options&LOG_REGISTERS)CheckDlgButton(hwndDlg, IDC_CHECK_LOG_REGISTERS, BST_CHECKED);
-				if(logging_options&LOG_PROCESSOR_STATUS)CheckDlgButton(hwndDlg, IDC_CHECK_LOG_PROCESSOR_STATUS, BST_CHECKED);				
-			}
-			EnableWindow(GetDlgItem(hwndDlg,IDC_TRACER_LOG_SIZE),TRUE);
-			EnableWindow(GetDlgItem(hwndDlg,IDC_BTN_LOG_BROWSE),FALSE);
-
-			if(log_update_window)CheckDlgButton(hwndDlg, IDC_CHECK_LOG_UPDATE_WINDOW, BST_CHECKED);
-
+			CheckDlgButton(hwndDlg, IDC_CHECK_LOG_REGISTERS, (logging_options & LOG_REGISTERS) ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwndDlg, IDC_CHECK_LOG_PROCESSOR_STATUS, (logging_options & LOG_PROCESSOR_STATUS) ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwndDlg, IDC_CHECK_LOG_NEW_INSTRUCTIONS, (logging_options & LOG_NEW_INSTRUCTIONS) ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwndDlg, IDC_CHECK_LOG_NEW_DATA, (logging_options & LOG_NEW_DATA) ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwndDlg, IDC_CHECK_LOG_STATUSES_TO_THE_LEFT, (logging_options & LOG_TO_THE_LEFT) ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwndDlg, IDC_CHECK_LOG_FRAME_NUMBER, (logging_options & LOG_FRAME_NUMBER) ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwndDlg, IDC_CHECK_LOG_MESSAGES, (logging_options & LOG_MESSAGES) ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwndDlg, IDC_CHECK_LOG_BREAKPOINTS, (logging_options & LOG_BREAKPOINTS) ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwndDlg, IDC_CHECK_SYMBOLIC_TRACING, (logging_options & LOG_SYMBOLIC) ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwndDlg, IDC_CHECK_CODE_TABBING, (logging_options & LOG_CODE_TABBING) ? BST_CHECKED : BST_UNCHECKED);
+			
+			EnableWindow(GetDlgItem(hwndDlg, IDC_TRACER_LOG_SIZE), TRUE);
+			EnableWindow(GetDlgItem(hwndDlg, IDC_BTN_LOG_BROWSE), FALSE);
+			CheckDlgButton(hwndDlg, IDC_CHECK_LOG_UPDATE_WINDOW, log_update_window ? BST_CHECKED : BST_UNCHECKED);
 			EnableTracerMenuItems();
 			break;
+		}
 		case WM_CLOSE:
 		case WM_QUIT:
-			if(logging)EndLoggingSequence();
-			DeleteObject(hlogNewFont);
-			logging_options &= 3;
+			if(logging)
+				EndLoggingSequence();
 			hTracer = 0;
 			EndDialog(hwndDlg,0);
 			break;
@@ -165,32 +185,64 @@ BOOL CALLBACK TracerCallB(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 							break;
 						case IDC_CHECK_LOG_REGISTERS:
 							logging_options ^= LOG_REGISTERS;
+							CheckDlgButton(hwndDlg, IDC_CHECK_LOG_REGISTERS, (logging_options & LOG_REGISTERS) ? BST_CHECKED : BST_UNCHECKED);
 							break;
 						case IDC_CHECK_LOG_PROCESSOR_STATUS:
 							logging_options ^= LOG_PROCESSOR_STATUS;
-							break; 
+							CheckDlgButton(hwndDlg, IDC_CHECK_LOG_PROCESSOR_STATUS, (logging_options & LOG_PROCESSOR_STATUS) ? BST_CHECKED : BST_UNCHECKED);
+							break;
+						case IDC_CHECK_LOG_STATUSES_TO_THE_LEFT:
+							logging_options ^= LOG_TO_THE_LEFT;
+							CheckDlgButton(hwndDlg, IDC_CHECK_LOG_STATUSES_TO_THE_LEFT, (logging_options & LOG_TO_THE_LEFT) ? BST_CHECKED : BST_UNCHECKED);
+							break;
+						case IDC_CHECK_LOG_FRAME_NUMBER:
+							logging_options ^= LOG_FRAME_NUMBER;
+							CheckDlgButton(hwndDlg, IDC_CHECK_LOG_FRAME_NUMBER, (logging_options & LOG_FRAME_NUMBER) ? BST_CHECKED : BST_UNCHECKED);
+							break;
+						case IDC_CHECK_LOG_MESSAGES:
+							logging_options ^= LOG_MESSAGES;
+							CheckDlgButton(hwndDlg, IDC_CHECK_LOG_MESSAGES, (logging_options & LOG_MESSAGES) ? BST_CHECKED : BST_UNCHECKED);
+							break;
+						case IDC_CHECK_LOG_BREAKPOINTS:
+							logging_options ^= LOG_BREAKPOINTS;
+							CheckDlgButton(hwndDlg, IDC_CHECK_LOG_BREAKPOINTS, (logging_options & LOG_BREAKPOINTS) ? BST_CHECKED : BST_UNCHECKED);
+							break;
+						case IDC_CHECK_SYMBOLIC_TRACING:
+							logging_options ^= LOG_SYMBOLIC;
+							CheckDlgButton(hwndDlg, IDC_CHECK_SYMBOLIC_TRACING, (logging_options & LOG_SYMBOLIC) ? BST_CHECKED : BST_UNCHECKED);
+							break;
+						case IDC_CHECK_CODE_TABBING:
+							logging_options ^= LOG_CODE_TABBING;
+							CheckDlgButton(hwndDlg, IDC_CHECK_CODE_TABBING, (logging_options & LOG_CODE_TABBING) ? BST_CHECKED : BST_UNCHECKED);
+							break;
 						case IDC_CHECK_LOG_NEW_INSTRUCTIONS:
 							logging_options ^= LOG_NEW_INSTRUCTIONS;
-							if(logging && (!PromptForCDLogger())){
-								logging_options ^= LOG_NEW_INSTRUCTIONS; //turn it back off
-								CheckDlgButton(hTracer, IDC_CHECK_LOG_NEW_INSTRUCTIONS, BST_UNCHECKED);
-							}
+							if(logging && (!PromptForCDLogger()))
+								logging_options &= ~LOG_NEW_INSTRUCTIONS; //turn it back off
+							CheckDlgButton(hwndDlg, IDC_CHECK_LOG_NEW_INSTRUCTIONS, (logging_options & LOG_NEW_INSTRUCTIONS) ? BST_CHECKED : BST_UNCHECKED);
 							//EnableTracerMenuItems();
 							break;
 						case IDC_CHECK_LOG_NEW_DATA:
 							logging_options ^= LOG_NEW_DATA;
-							if(logging && (!PromptForCDLogger())){
-								logging_options ^= LOG_NEW_DATA; //turn it back off
-								CheckDlgButton(hTracer, IDC_CHECK_LOG_NEW_DATA, BST_UNCHECKED);
-							}
+							if(logging && (!PromptForCDLogger()))
+								logging_options &= ~LOG_NEW_DATA; //turn it back off
+							CheckDlgButton(hwndDlg, IDC_CHECK_LOG_NEW_DATA, (logging_options & LOG_NEW_DATA) ? BST_CHECKED : BST_UNCHECKED);
 							break;
 						case IDC_CHECK_LOG_UPDATE_WINDOW:
+						{
 							//todo: if this gets unchecked then we need to clear out the window
 							log_update_window ^= 1;
-							if(!FCEUI_EmulationPaused() && !log_update_window) //mbg merge 7/19/06 changed to use EmulationPaused()
-								SetDlgItemText(hTracer, IDC_TRACER_LOG, message.c_str());
-							//PauseLoggingSequence();
+							if(!FCEUI_EmulationPaused() && !log_update_window)
+							{
+								// Assemble the message to pause the game.  Uses the current hotkey mapping dynamically
+								string m1 = "Pause the game (press ";
+								string m2 = GetKeyComboName(FCEUD_CommandMapping[EMUCMD_PAUSE]);
+								string m3 = " key or snap the Debugger) to update this window.\r\n";
+								string pauseMessage = m1 + m2 + m3;
+								SetDlgItemText(hTracer, IDC_TRACER_LOG, pauseMessage.c_str());
+							}
 							break;
+						}
 						case IDC_BTN_LOG_BROWSE:
 							ShowLogDirDialog();
 							break;
@@ -203,54 +255,49 @@ BOOL CALLBACK TracerCallB(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	}
 
 
-	//if (logging && !logtofile) {
-		switch(uMsg) {
-			case WM_VSCROLL:
-				if (lParam) {
-					//if ((!logging) || (logging && logtofile))break;
-					//if(!(logging && !logtofile))break;
-					if ((!logging) || logtofile) break;
+	switch(uMsg) {
+		case WM_VSCROLL:
+			if (lParam) {
+				if ((!logging) || logtofile) break;
 
-					if(!FCEUI_EmulationPaused() && !log_update_window) break; //mbg merge 7/19/06 changd to use EmulationPaused()
+				if(!FCEUI_EmulationPaused() && !log_update_window) break; //mbg merge 7/19/06 changd to use EmulationPaused()
 
-					GetScrollInfo((HWND)lParam,SB_CTL,&tracesi);
-					switch(LOWORD(wParam)) {
-						case SB_ENDSCROLL:
-						case SB_TOP:
-						case SB_BOTTOM: break;
-						case SB_LINEUP: tracesi.nPos--; break;
-						case SB_LINEDOWN:tracesi.nPos++; break;
-						case SB_PAGEUP: tracesi.nPos-=tracesi.nPage; break;
-						case SB_PAGEDOWN: tracesi.nPos+=tracesi.nPage; break;
-						case SB_THUMBPOSITION: //break;
-						case SB_THUMBTRACK: tracesi.nPos = tracesi.nTrackPos; break;
-					}
-					if(tracesi.nPos < tracesi.nMin) tracesi.nPos = tracesi.nMin;
-					if((tracesi.nPos+(int)tracesi.nPage) > tracesi.nMax) tracesi.nPos = tracesi.nMax-(int)tracesi.nPage; //mbg merge 7/19/06 added casts
-					if(tracesi.nPos < 0)tracesi.nPos = 0; //this fixes a bad crash that occurs if you scroll up when only a few isntructions were logged
-					SetScrollInfo((HWND)lParam,SB_CTL,&tracesi,TRUE);
-					UpdateLogText();
+				GetScrollInfo((HWND)lParam,SB_CTL,&tracesi);
+				switch(LOWORD(wParam))
+				{
+					case SB_ENDSCROLL:
+					case SB_TOP:
+					case SB_BOTTOM: break;
+					case SB_LINEUP: tracesi.nPos--; break;
+					case SB_LINEDOWN:tracesi.nPos++; break;
+					case SB_PAGEUP: tracesi.nPos -= tracesi.nPage; break;
+					case SB_PAGEDOWN: tracesi.nPos += tracesi.nPage; break;
+					case SB_THUMBPOSITION: //break;
+					case SB_THUMBTRACK: tracesi.nPos = tracesi.nTrackPos; break;
 				}
-				break;
-		}
-	//}
+				if ((tracesi.nPos + (int)tracesi.nPage) > tracesi.nMax)
+					tracesi.nPos = tracesi.nMax - (int)tracesi.nPage;
+				if (tracesi.nPos < tracesi.nMin)
+					tracesi.nPos = tracesi.nMin;
+				SetScrollInfo((HWND)lParam,SB_CTL,&tracesi,TRUE);
+				UpdateLogText();
+			}
+			break;
+	}
 	return FALSE;
 }
 
-void BeginLoggingSequence(void){
-	//Assemble the message to pause the game.  Uses the current hotkey mapping dynamically
-	string m1 = "Press ";
-	string m2 = GetKeyComboName(FCEUD_CommandMapping[EMUCMD_PAUSE]);
-	string m3 = " to pause the game, or snap \r\nthe debugger to update this window.\r\n";
-	string pauseMessage = m1 + m2 + m3;
-	
+void BeginLoggingSequence(void)
+{
 	char str[2048], str2[100];
 	int i, j;
 
 	if(!PromptForCDLogger())return; //do nothing if user selected no and CD Logger is needed
 
-	if(logtofile){
+	if(logtofile)
+	{
 		if(logfilename == NULL) ShowLogDirDialog();
+		if (!logfilename) return;
 		LOG_FP = fopen(logfilename,"w");
 		if(LOG_FP == NULL){
 			sprintf(str,"Error Opening File %s",logfilename);
@@ -258,18 +305,28 @@ void BeginLoggingSequence(void){
 			return;
 		}
 		fprintf(LOG_FP,FCEU_NAME_AND_VERSION" - Trace Log File\n"); //mbg merge 7/19/06 changed string
-	} else {
+	} else
+	{
+		log_lines_option = SendDlgItemMessage(hTracer, IDC_TRACER_LOG_SIZE, CB_GETCURSEL, 0, 0);
+		if (log_lines_option == CB_ERR)
+			log_lines_option = 0;
 		strcpy(str,"Allocating Memory...\r\n");
 		SetDlgItemText(hTracer, IDC_TRACER_LOG, str);
-		tracelogbufsize = j = log_optn_intlst[SendDlgItemMessage(hTracer,IDC_TRACER_LOG_SIZE,CB_GETCURSEL,0,0)];
+		tracelogbufsize = j = log_optn_intlst[log_lines_option];
 		tracelogbuf = (char**)malloc(j*sizeof(char *)); //mbg merge 7/19/06 added cast
-		for(i = 0;i < j;i++){
-			tracelogbuf[i] = (char*)malloc(80); //mbg merge 7/19/06 added cast
+		for(i = 0;i < j;i++)
+		{
+			tracelogbuf[i] = (char*)malloc(LOG_LINE_MAX_LEN); //mbg merge 7/19/06 added cast
 			tracelogbuf[i][0] = 0;
 		}
-		sprintf(str2,"%d Bytes Allocated...\r\n",j*80);
+		sprintf(str2, "%d Bytes Allocated...\r\n", j * LOG_LINE_MAX_LEN);
 		strcat(str,str2);
-		strcat(str,pauseMessage.c_str());
+		// Assemble the message to pause the game.  Uses the current hotkey mapping dynamically
+		string m1 = "Pause the game (press ";
+		string m2 = GetKeyComboName(FCEUD_CommandMapping[EMUCMD_PAUSE]);
+		string m3 = " key or snap the Debugger) to update this window.\r\n";
+		string pauseMessage = m1 + m2 + m3;
+		strcat(str, pauseMessage.c_str());
 		SetDlgItemText(hTracer, IDC_TRACER_LOG, str);
 		tracelogbufpos = tracelogbufusedsize = 0;
 	}
@@ -281,115 +338,156 @@ void BeginLoggingSequence(void){
 	SetDlgItemText(hTracer, IDC_BTN_START_STOP_LOGGING,"Stop Logging");
 	return;
 }
-/*
-void LogInstructionOld(){
-	char str[96], chr[32];
-	int addr=X.PC;
-	int size, j;
-	uint8 opcode[3];
-
-	sprintf(str, "$%04X:", addr);
-	if ((size = opsize[GetMem(addr)]) == 0) {
-		sprintf(chr, "%02X        UNDEFINED", GetMem(addr)); addr++;
-		strcat(str,chr);
-	}
-	else {
-		if ((addr+size) > 0xFFFF) {
-			sprintf(chr, "%02X        OVERFLOW", GetMem(addr));
-			strcat(str,chr);
-			goto done;
-		}
-		for (j = 0; j < size; j++) {
-			sprintf(chr, "%02X ", opcode[j] = GetMem(addr)); addr++;
-			strcat(str,chr);
-		}
-		while (size < 3) {
-			strcat(str,"   "); //pad output to align ASM
-			size++;
-		}
-		strcat(strcat(str," "),BinToASM(addr,opcode));
-	}
-done:
-	strcat(str,"\n");
-	if(logtofile){
-		fprintf(LOG_FP,str);
-	}
-}*/
 
 //todo: really speed this up
-void FCEUD_TraceInstruction(){
-	if(!logging) return;
+void FCEUD_TraceInstruction(uint8 *opcode, int size)
+{
+	if (!logging)
+		return;
 
-	char address[7], data[11], disassembly[28], axystate[21], procstatus[12];
-	char str[96];
-	int addr=X.PC;
-	int size, j;
-	uint8 opcode[3], tmp;
+	unsigned int addr = X.PC;
+	uint8 tmp;
 	static int unloggedlines;
 
 	if(((logging_options & LOG_NEW_INSTRUCTIONS) && (oldcodecount != codecount)) ||
-	   ((logging_options & LOG_NEW_DATA) && (olddatacount != datacount))){//something new was logged
+	   ((logging_options & LOG_NEW_DATA) && (olddatacount != datacount)))
+	{
+		//something new was logged
 		oldcodecount = codecount;
 		olddatacount = datacount;
-		if(unloggedlines > 0){
-			sprintf(str,"(%d lines skipped)",unloggedlines);
-			OutputLogLine(str);
+		if(unloggedlines > 0)
+		{
+			sprintf(str_temp, "(%d lines skipped)", unloggedlines);
+			OutputLogLine(str_temp);
 			unloggedlines = 0;
 		}
-	} else {
+	} else
+	{
 		if((logging_options & LOG_NEW_INSTRUCTIONS) ||
-			(logging_options & LOG_NEW_DATA)){
-			if(FCEUI_GetLoggingCD())unloggedlines++;
+			(logging_options & LOG_NEW_DATA))
+		{
+			if(FCEUI_GetLoggingCD())
+				unloggedlines++;
 			return;
-			}
-	}
-
-	sprintf(address, "$%04X:", addr);
-	axystate[0] = str[0] = 0;
-	size = opsize[GetMem(addr)];
-
-	if ((addr+size) > 0xFFFF){
-		sprintf(data, "%02X        ", GetMem(addr&0xFFFF));
-		sprintf(disassembly,"OVERFLOW");
-	} else {
-	switch(size){
-			case 0:
-				sprintf(data, "%02X        ", GetMem(addr));
-				sprintf(disassembly,"UNDEFINED");
-				break;
-			case 1:
-				opcode[0]=GetMem(addr++);
-				sprintf(data, "%02X        ", opcode[0]);
-				strcpy(disassembly,Disassemble(addr,opcode));
-				break;
-			case 2:
-				opcode[0]=GetMem(addr++);
-				opcode[1]=GetMem(addr++);
-				sprintf(data, "%02X %02X     ", opcode[0],opcode[1]);
-				strcpy(disassembly,Disassemble(addr,opcode));
-				break;
-			case 3:
-				opcode[0]=GetMem(addr++);
-				opcode[1]=GetMem(addr++);
-				opcode[2]=GetMem(addr++);
-				sprintf(data, "%02X %02X %02X  ", opcode[0],opcode[1],opcode[2]);
-				strcpy(disassembly,Disassemble(addr,opcode));
-				break;
 		}
 	}
-	//stretch the disassembly string out if we have to output other stuff.
-	if(logging_options & (LOG_REGISTERS|LOG_PROCESSOR_STATUS)){
-		for(j = strlen(disassembly);j < 27;j++)disassembly[j] = ' ';
-		disassembly[27] = 0;
+
+	if ((addr + size) > 0xFFFF)
+	{
+		sprintf(str_data, "%02X        ", opcode[0]);
+		sprintf(str_disassembly, "OVERFLOW");
+	} else
+	{
+		char* a = 0;
+		switch (size)
+		{
+			case 0:
+				sprintf(str_data, "%02X        ", opcode[0]);
+				sprintf(str_disassembly,"UNDEFINED");
+				break;
+			case 1:
+			{
+				sprintf(str_data, "%02X        ", opcode[0]);
+				a = Disassemble(addr + 1, opcode);
+				// special case: an RTS opcode
+				if (opcode[0] == 0x60)
+				{
+					// add the beginning address of the subroutine that we exit from
+					unsigned int caller_addr = GetMem(((X.S) + 1)|0x0100) + (GetMem(((X.S) + 2)|0x0100) << 8) - 0x2;
+					unsigned int call_addr = GetMem(caller_addr + 1) + (GetMem(caller_addr + 2) << 8);
+					sprintf(str_decoration, " (from $%04X)", call_addr);
+					strcat(a, str_decoration);
+				}
+				break;
+			}
+			case 2:
+				sprintf(str_data, "%02X %02X     ", opcode[0],opcode[1]);
+				a = Disassemble(addr + 2, opcode);
+				break;
+			case 3:
+				sprintf(str_data, "%02X %02X %02X  ", opcode[0],opcode[1],opcode[2]);
+				a = Disassemble(addr + 3, opcode);
+				break;
+		}
+
+		if (a)
+		{
+			if (logging_options & LOG_SYMBOLIC)
+			{
+				// Insert Name and Comment lines if needed
+				tracer_decoration_name = 0;
+				tracer_decoration_comment = 0;
+				decorateAddress(addr, &tracer_decoration_name, &tracer_decoration_comment);
+				if (tracer_decoration_name)
+				{
+					strcpy(str_decoration, tracer_decoration_name);
+					strcat(str_decoration, ": ");
+					OutputLogLine(str_decoration, true);
+				}
+				if (tracer_decoration_comment)
+				{
+					// make a copy
+					strcpy(str_decoration_comment, tracer_decoration_comment);
+					strcat(str_decoration_comment, "\r\n");
+					tracer_decoration_comment = str_decoration_comment;
+					// divide the str_decoration_comment into strings (Comment1, Comment2, ...)
+					char* end_pos = strstr(tracer_decoration_comment, "\r");
+					while (end_pos)
+					{
+						end_pos[0] = 0;		// set \0 instead of \r
+						strcpy(str_decoration, "; ");
+						strcat(str_decoration, tracer_decoration_comment);
+						OutputLogLine(str_decoration, true);
+						end_pos += 2;
+						tracer_decoration_comment = end_pos;
+						end_pos = strstr(tracer_decoration_comment, "\r");
+					}
+				}
+				replaceNames(ramBankNames, a);
+				replaceNames(loadedBankNames, a);
+				replaceNames(lastBankNames, a);
+			}
+			strcpy(str_disassembly, a);
+		}
 	}
 
-	if(logging_options & LOG_REGISTERS){
-		sprintf(axystate,"A:%02X X:%02X Y:%02X S:%02X",(X.A),(X.X),(X.Y),(X.S));
+	if (size == 1 && GetMem(addr - 1) == 0x60)
+	{
+		// special case: an RTS opcode
+		// add "----------" to emphasize the end of subroutine
+		strcat(str_disassembly, " ");
+		for (int i = strlen(str_disassembly); i < (LOG_DISASSEMBLY_MAX_LEN - 1); ++i)
+			str_disassembly[i] = '-';
+		str_disassembly[LOG_DISASSEMBLY_MAX_LEN - 1] = 0;
+	} else
+	{
+		// stretch the disassembly string out if we have to output other stuff.
+		if ((logging_options & (LOG_REGISTERS|LOG_PROCESSOR_STATUS)) && !(logging_options & LOG_TO_THE_LEFT))
+		{
+			for (int i = strlen(str_disassembly); i < (LOG_DISASSEMBLY_MAX_LEN - 1); ++i)
+				str_disassembly[i] = ' ';
+			str_disassembly[LOG_DISASSEMBLY_MAX_LEN - 1] = 0;
+		}
+	}
+
+	// Start filling the str_temp line: Frame number, AXYS state, Processor status, Tabs, Address, Data, Disassembly
+	if (logging_options & LOG_FRAME_NUMBER)
+	{
+		sprintf(str_temp, "%06u: ", currFrameCounter);
+	} else
+	{
+		str_temp[0] = 0;
+	}
+
+	if (logging_options & LOG_REGISTERS)
+	{
+		sprintf(str_axystate,"A:%02X X:%02X Y:%02X S:%02X ",(X.A),(X.X),(X.Y),(X.S));
 	}
 	
-	if(logging_options & LOG_PROCESSOR_STATUS){
+	if (logging_options & LOG_PROCESSOR_STATUS)
+	{
 		tmp = X.P^0xFF;
-		sprintf(procstatus,"P:%c%c%c%c%c%c%c%c",
+		sprintf(str_procstatus,"P:%c%c%c%c%c%c%c%c ",
 			'N'|(tmp&0x80)>>2,
 			'V'|(tmp&0x40)>>1,
 			'U'|(tmp&0x20),
@@ -401,30 +499,65 @@ void FCEUD_TraceInstruction(){
 			);
 	}
 
+	if (logging_options & LOG_TO_THE_LEFT)
+	{
+		if (logging_options & LOG_REGISTERS)
+			strcat(str_temp, str_axystate);
+		if (logging_options & LOG_PROCESSOR_STATUS)
+			strcat(str_temp, str_procstatus);
+	}
 
-	strcat(str,address);
-	strcat(str,data);
-	strcat(str,disassembly);
-	if(logging_options & LOG_REGISTERS)strcat(str,axystate);
-	if((logging_options & LOG_REGISTERS) && (logging_options & LOG_PROCESSOR_STATUS))strcat(str," ");
-	if(logging_options & LOG_PROCESSOR_STATUS)strcat(str,procstatus);
+	if (logging_options & LOG_CODE_TABBING)
+	{
+		// add spaces at the beginning of the line according to stack pointer
+		int spaces = (0xFF - X.S) & LOG_TABS_MASK;
+		for (int i = 0; i < spaces; i++)
+			str_tabs[i] = ' ';
+		str_tabs[spaces] = 0;
+		strcat(str_temp, str_tabs);
+	}
 
-	OutputLogLine(str);
+	sprintf(str_address, "$%04X:", addr);
+	strcat(str_temp, str_address);
+	strcat(str_temp, str_data);
+	strcat(str_temp, str_disassembly);
 
+	if (!(logging_options & LOG_TO_THE_LEFT))
+	{
+		if (logging_options & LOG_REGISTERS)
+			strcat(str_temp, str_axystate);
+		if (logging_options & LOG_PROCESSOR_STATUS)
+			strcat(str_temp, str_procstatus);
+	}
+
+	OutputLogLine(str_temp);
 	return;
 }
 
-void OutputLogLine(char *str){
-	if(logtofile){
-		strcat(str,"\n");
-		fputs(str,LOG_FP);
+void OutputLogLine(const char *str, bool add_newline)
+{
+	if(logtofile)
+	{
+		fputs(str, LOG_FP);
+		if (add_newline)
+			fputs("\n", LOG_FP);
 		fflush(LOG_FP);
-	}else{
-		strcat(str,"\r\n");
-		if(strlen(str) < 80)strcpy(tracelogbuf[tracelogbufpos],str);
+	} else
+	{
+		if (add_newline)
+		{
+			strncpy(tracelogbuf[tracelogbufpos], str, LOG_LINE_MAX_LEN - 3);
+			tracelogbuf[tracelogbufpos][LOG_LINE_MAX_LEN - 3] = 0;
+			strcat(tracelogbuf[tracelogbufpos], "\r\n");
+		} else
+		{
+			strncpy(tracelogbuf[tracelogbufpos], str, LOG_LINE_MAX_LEN - 1);
+			tracelogbuf[tracelogbufpos][LOG_LINE_MAX_LEN - 1] = 0;
+		}
 		tracelogbufpos++;
-		if(tracelogbufusedsize < tracelogbufsize)tracelogbufusedsize++;
-		tracelogbufpos%=tracelogbufsize;
+		if (tracelogbufusedsize < tracelogbufsize)
+			tracelogbufusedsize++;
+		tracelogbufpos %= tracelogbufsize;
 	}
 }
 
@@ -445,57 +578,53 @@ void EndLoggingSequence(void){
 
 }
 
-//void PauseLoggingSequence(void){
-void UpdateLogWindow(void){
+void UpdateLogWindow(void)
+{
+	//we don't want to continue if the trace logger isn't logging, or if its logging to a file.
+	if ((!logging) || logtofile)
+		return; 
 
-	//if((tracelogbufpos == 0) || (tracelogbuf[tracelogbufpos][0]))
-	//	tracesi.nMax = tracelogbufsize;
-	//else tracesi.nMax = tracelogbufpos;
-
-	//todo: fix this up.
-	//if(!log_update_window && !userpause){
-	//	SetDlgItemText(hTracer, IDC_TRACER_LOG, "Press F2 to pause the game, or snap \r\nthe debugger to update this window.\r\n");
-	//	return;
-	//}
-	
-	//
-	
-	//we don't want to continue if the trace logger isn't logging, or if its logging to  a file.
-	if((!logging) || logtofile)return; 
-
-	//if the game isn't paused, and the option to update the log window while running isn't checked, then halt here.
-	if(!FCEUI_EmulationPaused() && !log_update_window){ //mbg merge 7/19/06 changd to use EmulationPaused()
+	// only update the window when some emulation occured
+	// and only update the window when emulator is paused or log_update_window=true
+	bool emu_paused = (FCEUI_EmulationPaused() != 0);
+	if ((!emu_paused && !log_update_window) || (log_old_emu_paused && !JustFrameAdvanced))	//mbg merge 7/19/06 changd to use EmulationPaused()
+	{
+		log_old_emu_paused = emu_paused;
 		return;
 	}
+	log_old_emu_paused = emu_paused;
 
 	tracesi.cbSize = sizeof(SCROLLINFO);
 	tracesi.fMask = SIF_ALL;
-	tracesi.nPage = 21;
 	tracesi.nMin = 0;
-	tracesi.nMax = tracelogbufusedsize; //todo: try -2
-	tracesi.nPos = tracesi.nMax-tracesi.nPage;
-	if (tracesi.nPos < tracesi.nMin) tracesi.nPos = tracesi.nMin;
+	tracesi.nMax = tracelogbufusedsize;
+	tracesi.nPos = tracesi.nMax - tracesi.nPage;
+	if (tracesi.nPos < tracesi.nMin)
+		tracesi.nPos = tracesi.nMin;
 	SetScrollInfo(GetDlgItem(hTracer,IDC_SCRL_TRACER_LOG),SB_CTL,&tracesi,TRUE);
+
+	if (logging_options & LOG_SYMBOLIC)
+		loadNameFiles();
+
 	UpdateLogText();
 
 	return;
 }
 
-void UpdateLogText(void){
+void UpdateLogText(void)
+{
 	int i, j;
-	char str[2048];
+	char str[3000];
 	str[0] = 0;
-	/*
-	for(i = 21;i > 0;i--){
-		j = tracelogbufpos-i-1;
-		if((tracelogbufusedsize == tracelogbufsize) && (j < 0))j = tracelogbufsize+j;	
-		if(j >= 0)strcat(str,tracelogbuf[j]);
-	}
-	*/
+	int last_line = tracesi.nPos + tracesi.nPage;
+	if (last_line > tracesi.nMax)
+		last_line = tracesi.nMax;
 
-	for(i = tracesi.nPos;i < std::min(tracesi.nMax,tracesi.nPos+21);i++){
+	for(i = tracesi.nPos; i < last_line; i++)
+	{
 		j = i;
-		if(tracelogbufusedsize == tracelogbufsize){
+		if(tracelogbufusedsize == tracelogbufsize)
+		{
 			j = (tracelogbufpos+i)%tracelogbufsize;
 		}
 		strcat(str,tracelogbuf[j]);
@@ -507,111 +636,89 @@ void UpdateLogText(void){
 }
 
 void EnableTracerMenuItems(void){
-
-	//if(logging_options & LOG_NEW_INSTRUCTIONS){
-		//EnableWindow(GetDlgItem(hTracer,IDC_CHECK_LOG_NEW_DATA),TRUE);
-	//} else {
-	//	CheckDlgButton(hTracer, IDC_CHECK_LOG_NEW_DATA, BST_UNCHECKED);
-		//EnableWindow(GetDlgItem(hTracer,IDC_CHECK_LOG_NEW_DATA),FALSE);
-	//}
-
-	if(logging){
+	if(logging)
+	{
 		EnableWindow(GetDlgItem(hTracer,IDC_RADIO_LOG_LAST),FALSE);
 		EnableWindow(GetDlgItem(hTracer,IDC_RADIO_LOG_TO_FILE),FALSE);
 		EnableWindow(GetDlgItem(hTracer,IDC_TRACER_LOG_SIZE),FALSE);
-		//EnableWindow(GetDlgItem(hTracer,IDC_CHECK_LOG_REGISTERS),FALSE);
-		//EnableWindow(GetDlgItem(hTracer,IDC_CHECK_LOG_PROCESSOR_STATUS),FALSE);
 		EnableWindow(GetDlgItem(hTracer,IDC_BTN_LOG_BROWSE),FALSE);
-		//EnableWindow(GetDlgItem(hTracer,IDC_CHECK_LOG_NEW_INSTRUCTIONS),FALSE);
-		//EnableWindow(GetDlgItem(hTracer,IDC_CHECK_LOG_NEW_DATA),FALSE);
 		return;
 	}
 
 	EnableWindow(GetDlgItem(hTracer,IDC_RADIO_LOG_LAST),TRUE);
 	EnableWindow(GetDlgItem(hTracer,IDC_RADIO_LOG_TO_FILE),TRUE);
 	EnableWindow(GetDlgItem(hTracer,IDC_TRACER_LOG_SIZE),TRUE);
-	//EnableWindow(GetDlgItem(hTracer,IDC_CHECK_LOG_REGISTERS),TRUE);
-	//EnableWindow(GetDlgItem(hTracer,IDC_CHECK_LOG_PROCESSOR_STATUS),TRUE); //uncomment me
 	EnableWindow(GetDlgItem(hTracer,IDC_BTN_LOG_BROWSE),TRUE);
 	EnableWindow(GetDlgItem(hTracer,IDC_CHECK_LOG_NEW_INSTRUCTIONS),TRUE);
 
-	if(logtofile){
+	if(logtofile)
+	{
 		EnableWindow(GetDlgItem(hTracer,IDC_TRACER_LOG_SIZE),FALSE);
 		EnableWindow(GetDlgItem(hTracer,IDC_BTN_LOG_BROWSE),TRUE);
-		CheckDlgButton(hTracer, IDC_CHECK_LOG_UPDATE_WINDOW, BST_UNCHECKED);
 		log_update_window = 0;
 		EnableWindow(GetDlgItem(hTracer,IDC_CHECK_LOG_UPDATE_WINDOW),FALSE);
-	} else{
+	} else
+	{
 		EnableWindow(GetDlgItem(hTracer,IDC_TRACER_LOG_SIZE),TRUE);
 		EnableWindow(GetDlgItem(hTracer,IDC_BTN_LOG_BROWSE),FALSE);
 		EnableWindow(GetDlgItem(hTracer,IDC_CHECK_LOG_UPDATE_WINDOW),TRUE);
 	}
 
-/*
-	if(FCEUI_GetLoggingCD()){
-			EnableWindow(GetDlgItem(hTracer,IDC_CHECK_LOG_NEW_INSTRUCTIONS),TRUE);
-		if(logging_options & LOG_NEW_INSTRUCTIONS){
-			EnableWindow(GetDlgItem(hTracer,IDC_CHECK_LOG_NEW_DATA),TRUE);
-		} else EnableWindow(GetDlgItem(hTracer,IDC_CHECK_LOG_NEW_DATA),FALSE);
-	}
-	else{
-			EnableWindow(GetDlgItem(hTracer,IDC_CHECK_LOG_NEW_INSTRUCTIONS),FALSE);
-			EnableWindow(GetDlgItem(hTracer,IDC_CHECK_LOG_NEW_DATA),FALSE);
-			CheckDlgButton(hTracer, IDC_CHECK_LOG_NEW_INSTRUCTIONS, BST_UNCHECKED);
-			CheckDlgButton(hTracer, IDC_CHECK_LOG_NEW_DATA, BST_UNCHECKED);
-			logging_options &= 3;
-	}
-*/
 	return;
 }
 
 //this returns 1 if the CD logger is activated when needed, or 0 if the user selected no, not to activate it
-int PromptForCDLogger(void){
-	if((logging_options & (LOG_NEW_INSTRUCTIONS|LOG_NEW_DATA)) && (!FCEUI_GetLoggingCD())){
-		if(MessageBox(hTracer,"In order for some of the features you have selected to take effect,\
+int PromptForCDLogger(void)
+{
+	if ((logging_options & (LOG_NEW_INSTRUCTIONS|LOG_NEW_DATA)) && (!FCEUI_GetLoggingCD()))
+	{
+		if (MessageBox(hTracer,"In order for some of the features you have selected to take effect,\
  the Code/Data Logger must also be running.\
  Would you like to Start the Code/Data Logger Now?","Start Code/Data Logger?",
-			MB_YESNO) == IDYES){
-				DoCDLogger();
+			MB_YESNO) == IDYES)
+		{
+			if (DoCDLogger())
+			{
 				FCEUI_SetLoggingCD(1);
-				//EnableTracerMenuItems();
 				SetDlgItemText(hCDLogger, BTN_CDLOGGER_START_PAUSE, "Pause");
 				return 1;
 			}
-		return 0; //user selected no so 0 is returned
+			return 0; // CDLogger couldn't start, probably because the game is closed
+		}
+		return 0; // user selected no so 0 is returned
 	}
 	return 1;
 }
 
 void ShowLogDirDialog(void){
- const char filter[]="6502 Trace Log File (*.log)\0*.log;*.txt\0" "6502 Trace Log File (*.txt)\0*.log;*.txt\0All Files (*.*)\0*.*\0\0"; //'" "' used to prevent octal conversion on the numbers
- char nameo[2048];
- OPENFILENAME ofn;
- memset(&ofn,0,sizeof(ofn));
- ofn.lStructSize=sizeof(ofn);
- ofn.hInstance=fceu_hInstance;
- ofn.lpstrTitle="Log Trace As...";
- ofn.lpstrFilter=filter;
- strcpy(nameo,GetRomName());
- ofn.lpstrFile=nameo;
- ofn.nMaxFile=256;
- ofn.Flags=OFN_EXPLORER|OFN_FILEMUSTEXIST|OFN_HIDEREADONLY;
- ofn.hwndOwner = hTracer;
- if(GetSaveFileName(&ofn)){
-	if (ofn.nFilterIndex == 1)
-		AddExtensionIfMissing(nameo, sizeof(nameo), ".log");
-	else if (ofn.nFilterIndex == 2)
-		AddExtensionIfMissing(nameo, sizeof(nameo), ".txt");
-
-	if(logfilename)free(logfilename);
-	logfilename = (char*)malloc(strlen(nameo)+1); //mbg merge 7/19/06 added cast
-	strcpy(logfilename,nameo);
- }
- return;
+	const char filter[]="6502 Trace Log File (*.log)\0*.log;*.txt\0" "6502 Trace Log File (*.txt)\0*.log;*.txt\0All Files (*.*)\0*.*\0\0"; //'" "' used to prevent octal conversion on the numbers
+	char nameo[2048];
+	OPENFILENAME ofn;
+	memset(&ofn,0,sizeof(ofn));
+	ofn.lStructSize=sizeof(ofn);
+	ofn.hInstance=fceu_hInstance;
+	ofn.lpstrTitle="Log Trace As...";
+	ofn.lpstrFilter=filter;
+	strcpy(nameo,GetRomName());
+	ofn.lpstrFile=nameo;
+	ofn.nMaxFile=256;
+	ofn.Flags=OFN_EXPLORER|OFN_FILEMUSTEXIST|OFN_HIDEREADONLY;
+	ofn.hwndOwner = hTracer;
+	if(GetSaveFileName(&ofn)){
+		if (ofn.nFilterIndex == 1)
+			AddExtensionIfMissing(nameo, sizeof(nameo), ".log");
+		else if (ofn.nFilterIndex == 2)
+			AddExtensionIfMissing(nameo, sizeof(nameo), ".txt");
+		if(logfilename)
+			free(logfilename);
+		logfilename = (char*)malloc(strlen(nameo)+1); //mbg merge 7/19/06 added cast
+		strcpy(logfilename,nameo);
+	}
+	return;
 }
 
-void DoTracer(){
-
+void DoTracer()
+{
 	if (!GameInfo) {
 		FCEUD_PrintError("You must have a game loaded before you can use the Trace Logger.");
 		return;
@@ -621,10 +728,13 @@ void DoTracer(){
 	//	return;
 	//}
 
-	if(!hTracer){
+	if(!hTracer)
+	{
 		CreateDialog(fceu_hInstance,"TRACER",NULL,TracerCallB);
 		//hTracer gets set in WM_INITDIALOG
-	} else {
-		SetWindowPos(hTracer,HWND_TOP,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_NOOWNERZORDER);
+	} else
+	{
+		ShowWindow(hTracer, SW_SHOWNORMAL);
+		SetForegroundWindow(hTracer);
 	}
 }

@@ -2,11 +2,15 @@
 #include <gdk/gdkkeysyms.h>
 #include <gdk/gdkx.h>
 
-#include <SDL/SDL.h>
+#ifdef _GTK3
+#include <gdk/gdkkeysyms-compat.h>
+#endif
 
 #include <fstream>
 #include <iostream>
 #include <cstdlib>
+
+#include <SDL/SDL.h>
 
 #include "../../types.h"
 #include "../../fceu.h"
@@ -15,9 +19,8 @@
 #include "../../movie.h"
 #include "../../palette.h"
 #include "../../fds.h"
-
-
 #include "../common/configSys.h"
+
 #include "sdl.h"
 #include "gui.h"
 #include "dface.h"
@@ -29,67 +32,138 @@
 #include "../../fceulua.h"
 #endif
 
+// Fix compliation errors for older version of GTK (Ubuntu 10.04 LTS)
+#if GTK_MINOR_VERSION < 24 && GTK_MAJOR_VERSION == 2
+  #define GTK_COMBO_BOX_TEXT GTK_COMBO_BOX
+  #define gtk_combo_box_text_new gtk_combo_box_new
+  #define gtk_combo_box_text_get_active_text gtk_combo_box_get_active_text
+  #define gtk_combo_box_text_append_text gtk_combo_box_append_text
+#endif
+
 void toggleSound(GtkWidget* check, gpointer data);
 void loadGame ();
 void closeGame();
 extern Config *g_config;
 
 GtkWidget* MainWindow = NULL;
-GtkWidget* socket = NULL;
+GtkWidget* evbox = NULL;
 GtkWidget* padNoCombo = NULL;
 GtkWidget* configNoCombo = NULL;
 GtkWidget* buttonMappings[10];
 GtkRadioAction* stateSlot = NULL;
 
+// check to see if a particular GTK version is available
+// 2.24 is required for most of the dialogs -- ie: checkGTKVersion(2,24);
+bool checkGTKVersion(int major_required, int minor_required)
+{
+	int major = GTK_MAJOR_VERSION;
+	int minor = GTK_MINOR_VERSION;
+
+	if(major > major_required)
+	{
+		return true;
+	} else if (major == major_required)
+	{
+		if(minor >= minor_required)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	} else
+	{
+		return false;
+	}
+}
+
+// This function configures a single hotkey
+int configHotkey(char* hotkeyString)
+{
+	SDL_Surface *screen;
+	SDL_Event event;
+	KillVideo();
+	screen = SDL_SetVideoMode(420, 200, 8, 0);
+	//SDL_WM_SetCaption("Press a key to bind...", 0);
+
+	int newkey = 0;
+	while(1)
+	{
+		SDL_WaitEvent(&event);
+	
+		switch (event.type)
+		{
+			case SDL_KEYDOWN:
+				newkey = event.key.keysym.sym;
+				g_config->setOption(hotkeyString, newkey);
+				extern FCEUGI *GameInfo;
+				InitVideo(GameInfo);
+				return 0;
+		}
+	}	
+	
+	return 0;
+}
 // This function configures a single button on a gamepad
 int configGamepadButton(GtkButton* button, gpointer p)
 {
 	gint x = ((gint)(glong)(p));
 	//gint x = GPOINTER_TO_INT(p);
-	int padNo = atoi(gtk_combo_box_get_active_text(GTK_COMBO_BOX(padNoCombo))) - 1;
-	int configNo = atoi(gtk_combo_box_get_active_text(GTK_COMBO_BOX(configNoCombo))) - 1;
+	int padNo = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(padNoCombo))) - 1;
+	int configNo = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(configNoCombo))) - 1;
 		
-    char buf[256];
-    std::string prefix;
+	char buf[256];
+	std::string prefix;
     
-    // only configure when the "Change" button is pressed in, not when it is unpressed
-    if(!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button)))
-    	return 0;
+	// only configure when the "Change" button is pressed in, not when it is unpressed
+	if(!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button)))
+		return 0;
     
-    ButtonConfigBegin();
+	ButtonConfigBegin();
     
-    snprintf(buf, sizeof(buf), "SDL.Input.GamePad.%d", padNo);
-    prefix = buf;
-    DWaitButton(NULL, &GamePadConfig[padNo][x], configNo);
+	snprintf(buf, sizeof(buf), "SDL.Input.GamePad.%d", padNo);
+	prefix = buf;
+	DWaitButton(NULL, &GamePadConfig[padNo][x], configNo);
 
-    g_config->setOption(prefix + GamePadNames[x], GamePadConfig[padNo][x].ButtonNum[configNo]);
+	g_config->setOption(prefix + GamePadNames[x], GamePadConfig[padNo][x].ButtonNum[configNo]);
 
-    if(GamePadConfig[padNo][x].ButtType[0] == BUTTC_KEYBOARD)
-    {
+	if(GamePadConfig[padNo][x].ButtType[0] == BUTTC_KEYBOARD)
+	{
 		g_config->setOption(prefix + "DeviceType", "Keyboard");
-    } else if(GamePadConfig[padNo][x].ButtType[0] == BUTTC_JOYSTICK) {
-        g_config->setOption(prefix + "DeviceType", "Joystick");
-    } else {
-        g_config->setOption(prefix + "DeviceType", "Unknown");
-    }
-    g_config->setOption(prefix + "DeviceNum", GamePadConfig[padNo][x].DeviceNum[configNo]);
-    g_config->save();
+	} else if(GamePadConfig[padNo][x].ButtType[0] == BUTTC_JOYSTICK) {
+		g_config->setOption(prefix + "DeviceType", "Joystick");
+	} else {
+		g_config->setOption(prefix + "DeviceType", "Unknown");
+	}
+	g_config->setOption(prefix + "DeviceNum", GamePadConfig[padNo][x].DeviceNum[configNo]);
     
-    snprintf(buf, sizeof(buf), "<tt>%s</tt>", ButtonName(&GamePadConfig[padNo][x], configNo));
+	snprintf(buf, sizeof(buf), "<tt>%s</tt>", ButtonName(&GamePadConfig[padNo][x], configNo));
 	gtk_label_set_markup(GTK_LABEL(buttonMappings[x]), buf);
 
-    ButtonConfigEnd();
+	ButtonConfigEnd();
     
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(button), FALSE);
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(button), FALSE);
     
-    return 0;
+	return 0;
+}
+
+void resetVideo()
+{
+	KillVideo();
+	InitVideo(GameInfo);
+}
+
+void closeVideoWin(GtkWidget* w, GdkEvent* e, gpointer p)
+{
+	resetVideo();
+	gtk_widget_destroy(w);
 }
 
 void closeDialog(GtkWidget* w, GdkEvent* e, gpointer p)
 {
 	gtk_widget_destroy(w);
 }
-
 void toggleLowPass(GtkWidget* w, gpointer p)
 {
 	if(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w)))
@@ -103,7 +177,6 @@ void toggleLowPass(GtkWidget* w, gpointer p)
 		FCEUI_SetLowPass(0);
 	}
 	g_config->save();
-	
 }
 
 // Wrapper for pushing GTK options into the config file
@@ -115,6 +188,7 @@ void toggleOption(GtkWidget* w, gpointer p)
 		g_config->setOption((char*)p, 1);
 	else
 		g_config->setOption((char*)p, 0);
+	
 	g_config->save();
 	UpdateEMUCore(g_config);
 }
@@ -150,7 +224,8 @@ void loadPalette (GtkWidget* w, gpointer p)
 	fileChooser = gtk_file_chooser_dialog_new ("Open NES Palette", GTK_WINDOW(MainWindow),
 			GTK_FILE_CHOOSER_ACTION_OPEN, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
 			GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL);
-	
+	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(fileChooser), getcwd(NULL, 0));
+
 	if (gtk_dialog_run (GTK_DIALOG (fileChooser)) ==GTK_RESPONSE_ACCEPT)
 	{
 		char* filename;
@@ -165,9 +240,9 @@ void loadPalette (GtkWidget* w, gpointer p)
 			"Failed to load the palette.");
 			
 			gtk_dialog_run(GTK_DIALOG(msgbox));
-			gtk_widget_hide_all(msgbox);
+			gtk_widget_hide(msgbox);
 		}
-			
+		
 		gtk_entry_set_text(GTK_ENTRY(p), filename);
 		
 	}
@@ -213,7 +288,7 @@ void openPaletteConfig()
 	paletteButton = gtk_button_new_from_stock(GTK_STOCK_OPEN);
 	gtk_button_set_label(GTK_BUTTON(paletteButton), "Open palette");
 	paletteEntry = gtk_entry_new();
-	gtk_entry_set_editable(GTK_ENTRY(paletteEntry), FALSE);
+	gtk_editable_set_editable(GTK_EDITABLE(paletteEntry), FALSE);
 	
 	clearButton = gtk_button_new_from_stock(GTK_STOCK_CLEAR);
 	
@@ -224,15 +299,12 @@ void openPaletteConfig()
 	g_signal_connect(paletteButton, "clicked", G_CALLBACK(loadPalette), paletteEntry);
 	g_signal_connect(clearButton, "clicked", G_CALLBACK(clearPalette), paletteEntry);
 	
-	
-	
 	// sync with config
 	std::string fn;
 	g_config->getOption("SDL.Palette", &fn);
 	gtk_entry_set_text(GTK_ENTRY(paletteEntry), fn.c_str());
 	
 	// ntsc color check
-	
 	ntscColorChk = gtk_check_button_new_with_label("Use NTSC palette");
 	
 	g_signal_connect(ntscColorChk, "clicked", G_CALLBACK(toggleOption), (gpointer)"SDL.NTSCpalette");
@@ -244,8 +316,7 @@ void openPaletteConfig()
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(ntscColorChk), 1);
 	else
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(ntscColorChk), 0);
-	
-	
+
 	// color / tint / hue sliders
 	slidersFrame = gtk_frame_new("NTSC palette controls");
 	slidersVbox = gtk_vbox_new(FALSE, 2);
@@ -275,8 +346,8 @@ void openPaletteConfig()
 	gtk_box_pack_start(GTK_BOX(vbox), paletteFrame, FALSE, TRUE, 5);
 	gtk_box_pack_start(GTK_BOX(vbox), slidersFrame, FALSE, TRUE, 5);
 	
-	g_signal_connect(GTK_OBJECT(win), "delete-event", G_CALLBACK(closeDialog), NULL);
-	g_signal_connect(GTK_OBJECT(win), "response", G_CALLBACK(closeDialog), NULL);
+	g_signal_connect(win, "delete-event", G_CALLBACK(closeDialog), NULL);
+	g_signal_connect(win, "response", G_CALLBACK(closeDialog), NULL);
 	
 	gtk_widget_show_all(win);
 	
@@ -349,7 +420,6 @@ void openNetworkConfig()
 	
 	g_signal_connect(userEntry, "changed", G_CALLBACK(setUsername), NULL);
 
-	
 	frame = gtk_frame_new("Network options");
 	vbox = gtk_vbox_new(FALSE, 5);
 	ipBox = gtk_hbox_new(FALSE, 5);
@@ -384,51 +454,126 @@ void openNetworkConfig()
 	
 	gtk_container_add(GTK_CONTAINER(frame), vbox);
 	
-	gtk_box_pack_start_defaults(GTK_BOX(box), userBox);
-	gtk_box_pack_start_defaults(GTK_BOX(box), frame);
+	gtk_box_pack_start(GTK_BOX(box), userBox, TRUE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(box), frame, TRUE, TRUE, 0);
 	
 	gtk_widget_show_all(win);
 	
-	g_signal_connect(GTK_OBJECT(win), "delete-event", G_CALLBACK(closeDialog), NULL);
-	g_signal_connect(GTK_OBJECT(win), "response", G_CALLBACK(netResponse), NULL);
+	g_signal_connect(win, "delete-event", G_CALLBACK(closeDialog), NULL);
+	g_signal_connect(win, "response", G_CALLBACK(netResponse), NULL);
 }
 
-// creates and opens hotkey config window
-/*void openHotkeyConfig()
+// handler prototype
+static void tree_selection_changed_cb (GtkTreeSelection *selection, gpointer data);
+
+void flushGtkEvents()
 {
-	std::string prefix = "SDL.Hotkeys.";
-	GtkWidget* win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	while (gtk_events_pending ())
+		gtk_main_iteration_do (FALSE);
+
+	return;
+}
+
+GtkWidget* HotkeyWin;
+
+// creates and opens hotkey config window
+void openHotkeyConfig()
+{
 	enum
 	{
-	COMMAND_COLUMN,
-	KEY_COLUMN,
-	N_COLUMNS
+		COMMAND_COLUMN,
+		KEY_COLUMN,
+		N_COLUMNS
 	};
-	GtkListStore* store = gtk_list_store_new(N_COLUMNS, G_TYPE_STRING, G_TYPE_STRING);
-	GtkTreeIter iter;
+	GtkWidget* win = gtk_dialog_new_with_buttons("Hotkey Configuration",
+			GTK_WINDOW(MainWindow), (GtkDialogFlags)(GTK_DIALOG_DESTROY_WITH_PARENT),
+			GTK_STOCK_CLOSE,
+			GTK_RESPONSE_OK,
+			NULL);
+	gtk_window_set_default_size(GTK_WINDOW(win), 400, 800);
+	HotkeyWin = win;
+	GtkWidget *tree;
+	GtkWidget *vbox;
+	GtkWidget *scroll;
+
+
+
+	vbox = gtk_dialog_get_content_area(GTK_DIALOG(win));
 	
-	gtk_list_store_append(store, &iter); // aquire iter
-	
-	
-		int buf;
-	for(int i=0; i<HK_MAX; i++)
-	{
-		//g_config->getOption(prefix + HotkeyStrings[i], &buf);
-		gtk_list_store_set(store, &iter, 
-				COMMAND_COLUMN, prefix + HotkeyStrings[i], 
-				KEY_COLUMN, "TODO", -1);
-	}
-	GtkWidget* tree = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
+	GtkTreeStore *hotkey_store = gtk_tree_store_new(N_COLUMNS, G_TYPE_STRING, G_TYPE_STRING);
+
+	std::string prefix = "SDL.Hotkeys.";
+    GtkTreeIter iter; // parent
+    GtkTreeIter iter2; // child
+    
+    gtk_tree_store_append(hotkey_store, &iter, NULL); // aquire iter
+     
+    int keycode;
+    for(int i=0; i<HK_MAX; i++)
+    {
+        const char* optionName = (prefix + HotkeyStrings[i]).c_str();
+        g_config->getOption(optionName, &keycode);
+        gtk_tree_store_set(hotkey_store, &iter, 
+                COMMAND_COLUMN, optionName,
+                KEY_COLUMN, SDL_GetKeyName((SDLKey)keycode),
+                -1);
+        gtk_tree_store_append(hotkey_store, &iter, NULL); // acquire child     iterator
+    }                      
+
+	tree = gtk_tree_view_new_with_model(GTK_TREE_MODEL(hotkey_store));
 	GtkCellRenderer *renderer;
-	GtkTreeViewColumn *column;
+	GtkTreeViewColumn* column;
+
 	
 	renderer = gtk_cell_renderer_text_new();
-	column = gtk_tree_view_column_new_with_attributes("Command", renderer, "text", 0, NULL);
+	column = gtk_tree_view_column_new_with_attributes("Command", renderer, "text", COMMAND_COLUMN, NULL);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(tree), column);
-	
-	gtk_container_add(GTK_CONTAINER(win),tree);
+	column = gtk_tree_view_column_new_with_attributes("Key", renderer, "text", KEY_COLUMN, NULL);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(tree), column);
+	scroll = gtk_scrolled_window_new(NULL, NULL);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_NEVER,
+			GTK_POLICY_AUTOMATIC);
+	gtk_container_add(GTK_CONTAINER(scroll), tree);
+	gtk_box_pack_start(GTK_BOX(vbox), scroll, TRUE, TRUE, 5);
 	gtk_widget_show_all(win);
-}*/
+
+	g_signal_connect(win, "delete-event", G_CALLBACK(closeDialog), NULL);
+    g_signal_connect(win, "response", G_CALLBACK(closeDialog), NULL);
+
+	GtkTreeSelection *select;
+
+	select = gtk_tree_view_get_selection (GTK_TREE_VIEW (tree));
+	gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
+	g_signal_connect ( G_OBJECT (select), "changed", G_CALLBACK (tree_selection_changed_cb),
+			NULL);
+	gtk_tree_selection_unselect_all (select);
+}
+
+static void tree_selection_changed_cb (GtkTreeSelection *selection, gpointer data)
+{
+	GtkTreeIter iter;
+	GtkTreeModel *model;
+	char* hotkey;
+
+	if (gtk_tree_selection_get_selected (selection, &model, &iter))
+	{
+		gtk_tree_model_get (model, &iter, 0, &hotkey, -1);
+
+		gtk_widget_hide(HotkeyWin);
+
+		flushGtkEvents();
+
+		configHotkey(hotkey);
+
+		g_signal_emit_by_name(HotkeyWin, "destroy-event");
+
+		openHotkeyConfig();
+
+		g_free (hotkey);
+
+	}
+}
+
 GtkWidget* 	typeCombo;
 
 // TODO: finish this
@@ -437,24 +582,18 @@ int setInputDevice(GtkWidget* w, gpointer p)
 	std::string s = "SDL.Input.";
 	s = s + (char*)p;
 	printf("%s", s.c_str());
-	g_config->setOption(s, gtk_combo_box_get_active_text(GTK_COMBO_BOX(typeCombo)));
+	g_config->setOption(s, gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(typeCombo)));
 	g_config->save();
 	
 	return 1;
-}
-
-gboolean closeGamepadConfig(GtkWidget* w, GdkEvent* event, gpointer p)
-{
-	gtk_widget_destroy(w);
-	return FALSE;
 }
 
 void updateGamepadConfig(GtkWidget* w, gpointer p)
 {
 	int i;
 	char strBuf[128];
-	int padNo = atoi(gtk_combo_box_get_active_text(GTK_COMBO_BOX(padNoCombo))) - 1;
-	int configNo = atoi(gtk_combo_box_get_active_text(GTK_COMBO_BOX(configNoCombo))) - 1;
+	int padNo = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(padNoCombo))) - 1;
+	int configNo = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(configNoCombo))) - 1;
 	
 	for(i=0; i<10; i++)
 	{
@@ -472,9 +611,17 @@ void updateGamepadConfig(GtkWidget* w, gpointer p)
 	}
 }
 
-// creates and opens the gamepad config window
+// creates and opens the gamepad config window (requires GTK 2.24)
 void openGamepadConfig()
 {
+	// GTK 2.24 required for this dialog
+	if (checkGTKVersion(2, 24) == false)
+	{
+		// TODO: present this in a GTK MessageBox?
+		printf(" Warning: GTK >= 2.24 required for this dialog.\nTo configure the gamepads, use \"--inputcfg\" from the command line (ie: \"fceux --inputcfg gamepad1\").\n");
+		return;
+	}
+
 	GtkWidget* win;
 	GtkWidget* vbox;
 	GtkWidget* hboxPadNo;
@@ -504,35 +651,35 @@ void openGamepadConfig()
 	fourScoreChk = gtk_check_button_new_with_label("Enable Four Score");
 	oppositeDirChk = gtk_check_button_new_with_label("Allow Up+Down / Left+Right");
 	
-	typeCombo = gtk_combo_box_new_text();
-	gtk_combo_box_append_text(GTK_COMBO_BOX(typeCombo), "gamepad");
-	gtk_combo_box_append_text(GTK_COMBO_BOX(typeCombo), "zapper");
-	gtk_combo_box_append_text(GTK_COMBO_BOX(typeCombo), "powerpad.0");
-	gtk_combo_box_append_text(GTK_COMBO_BOX(typeCombo), "powerpad.1");
-	gtk_combo_box_append_text(GTK_COMBO_BOX(typeCombo), "arkanoid");
+	typeCombo = gtk_combo_box_text_new();
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(typeCombo), "gamepad");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(typeCombo), "zapper");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(typeCombo), "powerpad.0");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(typeCombo), "powerpad.1");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(typeCombo), "arkanoid");
 	
 	gtk_combo_box_set_active(GTK_COMBO_BOX(typeCombo), 0);
 	
 	
-	padNoCombo = gtk_combo_box_new_text();
-	gtk_combo_box_append_text(GTK_COMBO_BOX(padNoCombo), "1");
-	gtk_combo_box_append_text(GTK_COMBO_BOX(padNoCombo), "2");
-	gtk_combo_box_append_text(GTK_COMBO_BOX(padNoCombo), "3");
-	gtk_combo_box_append_text(GTK_COMBO_BOX(padNoCombo), "4");
+	padNoCombo = gtk_combo_box_text_new();
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(padNoCombo), "1");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(padNoCombo), "2");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(padNoCombo), "3");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(padNoCombo), "4");
 	gtk_combo_box_set_active(GTK_COMBO_BOX(padNoCombo), 0);
-	g_signal_connect(GTK_OBJECT(padNoCombo), "changed", G_CALLBACK(updateGamepadConfig), NULL);
+	g_signal_connect(padNoCombo, "changed", G_CALLBACK(updateGamepadConfig), NULL);
 	
-	configNoCombo = gtk_combo_box_new_text();
-	gtk_combo_box_append_text(GTK_COMBO_BOX(configNoCombo), "1");
-	gtk_combo_box_append_text(GTK_COMBO_BOX(configNoCombo), "2");
-	gtk_combo_box_append_text(GTK_COMBO_BOX(configNoCombo), "3");
-	gtk_combo_box_append_text(GTK_COMBO_BOX(configNoCombo), "4");
+	configNoCombo = gtk_combo_box_text_new();
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(configNoCombo), "1");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(configNoCombo), "2");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(configNoCombo), "3");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(configNoCombo), "4");
 	gtk_combo_box_set_active(GTK_COMBO_BOX(configNoCombo), 0);
-	g_signal_connect(GTK_OBJECT(padNoCombo), "changed", G_CALLBACK(updateGamepadConfig), NULL);
+	g_signal_connect(padNoCombo, "changed", G_CALLBACK(updateGamepadConfig), NULL);
 	
 	
-	g_signal_connect(GTK_OBJECT(typeCombo), "changed", G_CALLBACK(setInputDevice), 
-		gtk_combo_box_get_active_text(GTK_COMBO_BOX(typeCombo)));
+	g_signal_connect(typeCombo, "changed", G_CALLBACK(setInputDevice), 
+		gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(typeCombo)));
 	
 	// sync with config
 	int buf = 0;
@@ -541,8 +688,14 @@ void openGamepadConfig()
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(fourScoreChk), 1);
 	else
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(fourScoreChk), 0);
+	g_config->getOption("SDL.Input.EnableOppositeDirectionals", &buf);
+	if(buf)
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(oppositeDirChk), 1);
+	else
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(oppositeDirChk), 0);
 	
-	g_signal_connect(GTK_OBJECT(fourScoreChk), "clicked", G_CALLBACK(toggleOption), (gpointer)"SDL.FourScore");
+	g_signal_connect(fourScoreChk, "clicked", G_CALLBACK(toggleOption), (gpointer)"SDL.FourScore");
+	g_signal_connect(oppositeDirChk, "clicked", G_CALLBACK(toggleOption), (gpointer)"SDL.Input.EnableOppositeDirectionals");
 	
 	gtk_box_pack_start(GTK_BOX(hboxPadNo), padNoLabel, TRUE, TRUE, 5);
 	gtk_box_pack_start(GTK_BOX(hboxPadNo), padNoCombo, TRUE, TRUE, 5);
@@ -552,7 +705,7 @@ void openGamepadConfig()
 	//gtk_box_pack_start_defaults(GTK_BOX(vbox), typeCombo);
 	
 	gtk_box_pack_start(GTK_BOX(vbox), fourScoreChk, FALSE, TRUE, 5);
-	//gtk_box_pack_start(GTK_BOX(vbox), oppositeDirChk, FALSE, TRUE, 5);
+	gtk_box_pack_start(GTK_BOX(vbox), oppositeDirChk, FALSE, TRUE, 5);
 	
 	
 	// create gamepad buttons
@@ -583,7 +736,7 @@ void openGamepadConfig()
 		gtk_table_attach(GTK_TABLE(buttonTable), changeButton, 2, 3, i, i+1,
 				(GtkAttachOptions)0, (GtkAttachOptions)0, 0, 0);
 		
-		gtk_signal_connect(GTK_OBJECT(changeButton), "clicked", G_CALLBACK(configGamepadButton), GINT_TO_POINTER(i));
+		g_signal_connect(changeButton, "clicked", G_CALLBACK(configGamepadButton), GINT_TO_POINTER(i));
 		buttonMappings[i] = mappedKey;
 	}
 	
@@ -592,8 +745,8 @@ void openGamepadConfig()
 	
 	gtk_box_pack_start(GTK_BOX(vbox), buttonFrame, TRUE, TRUE, 5);
 	
-	g_signal_connect(GTK_OBJECT(win), "delete-event", G_CALLBACK(closeGamepadConfig), NULL);
-	g_signal_connect(GTK_OBJECT(win), "response", G_CALLBACK(closeGamepadConfig), NULL);
+	g_signal_connect(win, "delete-event", G_CALLBACK(closeDialog), NULL);
+	g_signal_connect(win, "response", G_CALLBACK(closeDialog), NULL);
 	
 	gtk_widget_show_all(win);
 	
@@ -607,13 +760,12 @@ int setBufSize(GtkWidget* w, gpointer p)
 	// reset sound subsystem for changes to take effect
 	KillSound();
 	InitSound();
-	g_config->save();
 	return false;
 }
 
 void setRate(GtkWidget* w, gpointer p)
 {
-	char* str = gtk_combo_box_get_active_text(GTK_COMBO_BOX(w));
+	char* str = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(w));
 	g_config->setOption("SDL.Sound.Rate", atoi(str));
 	// reset sound subsystem for changes to take effect
 	KillSound();
@@ -624,7 +776,7 @@ void setRate(GtkWidget* w, gpointer p)
 
 void setQuality(GtkWidget* w, gpointer p)
 {
-	char* str = gtk_combo_box_get_active_text(GTK_COMBO_BOX(w));
+	char* str = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(w));
 	if(!strcmp(str, "Very High"))
 		g_config->setOption("SDL.Sound.Quality", 2);
 	if(!strcmp(str, "High"))
@@ -645,7 +797,7 @@ void resizeGtkWindow()
 		double xscale, yscale;
 		g_config->getOption("SDL.XScale", &xscale);
 		g_config->getOption("SDL.YScale", &yscale);
-		gtk_widget_set_size_request(socket, 256*xscale, 224*yscale);
+		gtk_widget_set_size_request(evbox, 256*xscale, 224*yscale);
 		GtkRequisition req;
 		gtk_widget_size_request(GTK_WIDGET(MainWindow), &req);
 		gtk_window_resize(GTK_WINDOW(MainWindow), req.width, req.height);
@@ -657,23 +809,21 @@ void setScaler(GtkWidget* w, gpointer p)
 {
 	int x = gtk_combo_box_get_active(GTK_COMBO_BOX(w));
 	g_config->setOption("SDL.SpecialFilter", x);
-	g_config->save();
 	
 	// 1 - hq2x 2 - Scale2x 3 - NTSC2x 4 - hq3x  5 - Scale3x
 	if (x >= 1 && x <= 3)
 	{
 		g_config->setOption("SDL.XScale", 2.0);
 		g_config->setOption("SDL.YScale", 2.0);
-		g_config->save();
 		resizeGtkWindow();
 	}
 	if (x >= 4 && x < 6)
 	{
 		g_config->setOption("SDL.XScale", 3.0);
 		g_config->setOption("SDL.YScale", 3.0);
-		g_config->save();
 		resizeGtkWindow();
 	}
+	g_config->save();
 	
 }
 
@@ -696,6 +846,7 @@ int setYscale(GtkWidget* w, gpointer p)
 	return 0;
 }
 
+#ifdef OPENGL
 void setGl(GtkWidget* w, gpointer p)
 {
 	if(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w)))
@@ -704,7 +855,16 @@ void setGl(GtkWidget* w, gpointer p)
 		g_config->setOption("SDL.OpenGL", 0);
 	g_config->save();
 }
-	
+
+void setDoubleBuffering(GtkWidget* w, gpointer p)
+{
+	if(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w)))
+		g_config->setOption("SDL.DoubleBuffering", 1);
+	else
+		g_config->setOption("SDL.DoubleBuffering", 0);
+	g_config->save();
+}
+#endif
 
 void openVideoConfig()
 {
@@ -716,23 +876,24 @@ void openVideoConfig()
 	GtkWidget* scalerCombo;
 	GtkWidget* glChk;
 	GtkWidget* linearChk;
+	GtkWidget* dbChk;
 	GtkWidget* palChk;
 	GtkWidget* ppuChk;
 	GtkWidget* spriteLimitChk;
+	GtkWidget* frameskipChk;
+	GtkWidget* clipSidesChk;
 	GtkWidget* xscaleSpin;
 	GtkWidget* yscaleSpin;
 	GtkWidget* xscaleLbl;
 	GtkWidget* yscaleLbl;
 	GtkWidget* xscaleHbox;
 	GtkWidget* yscaleHbox;
-	
-	
+	GtkWidget* showFpsChk;
+		
 	win = gtk_dialog_new_with_buttons("Video Preferences",
-									  GTK_WINDOW(MainWindow),
-									  (GtkDialogFlags)(GTK_DIALOG_DESTROY_WITH_PARENT),
-									  GTK_STOCK_CLOSE,
-									  GTK_RESPONSE_OK,
-									  NULL);
+				GTK_WINDOW(MainWindow),
+				(GtkDialogFlags)(GTK_DIALOG_DESTROY_WITH_PARENT),
+				GTK_STOCK_CLOSE, GTK_RESPONSE_OK, NULL);
 	gtk_window_set_icon_name(GTK_WINDOW(win), "video-display");
 	//gtk_widget_set_size_request(win, 250, 250);
 	
@@ -743,27 +904,27 @@ void openVideoConfig()
 	// scalar widgets
 	hbox1 = gtk_hbox_new(FALSE, 3);
 	scalerLbl = gtk_label_new("Special Scaler: ");
-	scalerCombo = gtk_combo_box_new_text();
+	scalerCombo = gtk_combo_box_text_new();
 	// -Video Modes Tag-
-	gtk_combo_box_append_text(GTK_COMBO_BOX(scalerCombo), "none");
-	gtk_combo_box_append_text(GTK_COMBO_BOX(scalerCombo), "hq2x");
-	gtk_combo_box_append_text(GTK_COMBO_BOX(scalerCombo), "scale2x");
-	gtk_combo_box_append_text(GTK_COMBO_BOX(scalerCombo), "NTSC 2x");
-	gtk_combo_box_append_text(GTK_COMBO_BOX(scalerCombo), "hq3x");
-	gtk_combo_box_append_text(GTK_COMBO_BOX(scalerCombo), "scale3x");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(scalerCombo), "none");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(scalerCombo), "hq2x");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(scalerCombo), "scale2x");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(scalerCombo), "NTSC 2x");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(scalerCombo), "hq3x");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(scalerCombo), "scale3x");
 	
 	// sync with cfg
 	int buf;
 	g_config->getOption("SDL.SpecialFilter", &buf);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(scalerCombo), buf);
 	
-	g_signal_connect(GTK_OBJECT(scalerCombo), "changed", G_CALLBACK(setScaler), NULL);
+	g_signal_connect(scalerCombo, "changed", G_CALLBACK(setScaler), NULL);
 	gtk_box_pack_start(GTK_BOX(hbox1), scalerLbl, FALSE, FALSE, 5);
 	gtk_box_pack_start(GTK_BOX(hbox1), scalerCombo, FALSE, FALSE, 5);
-	
+#ifdef OPENGL	
 	// openGL check
 	glChk = gtk_check_button_new_with_label("Enable OpenGL");
-	g_signal_connect(GTK_OBJECT(glChk), "clicked", G_CALLBACK(setGl), (gpointer)scalerCombo);
+	g_signal_connect(glChk, "clicked", G_CALLBACK(setGl), NULL);
 	
 	// sync with config
 	buf = 0;
@@ -775,7 +936,7 @@ void openVideoConfig()
 	
 	// openGL linear filter check
 	linearChk = gtk_check_button_new_with_label("Enable OpenGL linear filter");
-	g_signal_connect(GTK_OBJECT(linearChk), "clicked", G_CALLBACK(toggleOption), (gpointer)"SDL.OpenGLip");
+	g_signal_connect(linearChk, "clicked", G_CALLBACK(toggleOption), (gpointer)"SDL.OpenGLip");
 	
 	// sync with config
 	buf = 0;
@@ -784,10 +945,24 @@ void openVideoConfig()
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(linearChk), 1);
 	else
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(linearChk), 0);
-		
+  	
+    // DoubleBuffering check
+	dbChk = gtk_check_button_new_with_label("Enable double buffering");
+	g_signal_connect(dbChk, "clicked", G_CALLBACK(setDoubleBuffering), NULL);
+	
+	// sync with config
+	buf = 0;
+	g_config->getOption("SDL.DoubleBuffering", &buf);
+	if(buf)
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dbChk), 1);
+	else
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dbChk), 0);
+#endif
+	
+	
 	// PAL check
 	palChk = gtk_check_button_new_with_label("Enable PAL mode");
-	g_signal_connect(GTK_OBJECT(palChk), "clicked", G_CALLBACK(toggleOption), (gpointer)"SDL.PAL");
+	g_signal_connect(palChk, "clicked", G_CALLBACK(toggleOption), (gpointer)"SDL.PAL");
 	
 	// sync with config
 	buf = 0;
@@ -799,7 +974,7 @@ void openVideoConfig()
 		
 	// New PPU check
 	ppuChk = gtk_check_button_new_with_label("Enable new PPU");
-	g_signal_connect(GTK_OBJECT(ppuChk), "clicked", G_CALLBACK(toggleOption), (gpointer)"SDL.NewPPU");
+	g_signal_connect(ppuChk, "clicked", G_CALLBACK(toggleOption), (gpointer)"SDL.NewPPU");
 	
 	// sync with config
 	buf = 0;
@@ -809,9 +984,9 @@ void openVideoConfig()
 	else
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(ppuChk), 0);
 	
-	// disable 8 sprite limit check
-	spriteLimitChk = gtk_check_button_new_with_label("Disable Sprite Limit");
-	g_signal_connect(GTK_OBJECT(spriteLimitChk), "clicked", G_CALLBACK(toggleOption), (gpointer)"SDL.DisableSpriteLimit");
+  // "disable 8 sprite limit" check
+	spriteLimitChk = gtk_check_button_new_with_label("Disable sprite limit");
+	g_signal_connect(spriteLimitChk, "clicked", G_CALLBACK(toggleOption), (gpointer)"SDL.DisableSpriteLimit");
 	
 	// sync with config
 	buf = 0;
@@ -820,6 +995,31 @@ void openVideoConfig()
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(spriteLimitChk), 1);
 	else
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(spriteLimitChk), 0);
+
+	// frameskip check
+	frameskipChk = gtk_check_button_new_with_label("Enable frameskip");
+	g_signal_connect(frameskipChk, "clicked", G_CALLBACK(toggleOption), (gpointer)"SDL.Frameskip");
+	
+	// sync with config
+	buf = 0;
+	g_config->getOption("SDL.Frameskip", &buf);
+	if(buf)
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(frameskipChk), 1);
+	else
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(frameskipChk), 0);
+
+
+	// clip sides check
+	clipSidesChk = gtk_check_button_new_with_label("Clip sides");
+	g_signal_connect(clipSidesChk, "clicked", G_CALLBACK(toggleOption), (gpointer)"SDL.ClipSides");
+	
+	// sync with config
+	buf = 0;
+	g_config->getOption("SDL.ClipSides", &buf);
+	if(buf)
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(clipSidesChk), 1);
+	else
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(clipSidesChk), 0);
 		
 	// xscale / yscale
 	xscaleHbox = gtk_hbox_new(FALSE, 5);
@@ -843,21 +1043,41 @@ void openVideoConfig()
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(xscaleSpin), f);
 	g_config->getOption("SDL.YScale", &f);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(yscaleSpin), f);
-	
 
+	// show FPS check
+	showFpsChk = gtk_check_button_new_with_label("Show FPS");
+	g_signal_connect(showFpsChk, "clicked", G_CALLBACK(toggleOption), (gpointer)"SDL.ShowFPS");
+
+	// sync with config
+	buf = 0;
+	g_config->getOption("SDL.ShowFPS", &buf);
+	if(buf)
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(showFpsChk), 1);
+	else
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(showFpsChk), 0);
+
+	
 	
 	gtk_box_pack_start(GTK_BOX(vbox), lbl, FALSE, FALSE, 5);	
 	gtk_box_pack_start(GTK_BOX(vbox), hbox1, FALSE, FALSE, 5);
+#ifdef OPENGL
 	gtk_box_pack_start(GTK_BOX(vbox), glChk, FALSE, FALSE, 5);
 	gtk_box_pack_start(GTK_BOX(vbox), linearChk, FALSE, FALSE, 5);
+	gtk_box_pack_start(GTK_BOX(vbox), dbChk, FALSE, FALSE, 5);
+#endif
 	gtk_box_pack_start(GTK_BOX(vbox), palChk, FALSE, FALSE,5);
 	gtk_box_pack_start(GTK_BOX(vbox), ppuChk, FALSE, FALSE, 5);
+#ifdef FRAMESKIP
+	gtk_box_pack_start(GTK_BOX(vbox), frameskipChk, FALSE, FALSE, 5);
+#endif 
 	gtk_box_pack_start(GTK_BOX(vbox), spriteLimitChk, FALSE, FALSE, 5);
+	gtk_box_pack_start(GTK_BOX(vbox), clipSidesChk, FALSE, FALSE, 5);
 	gtk_box_pack_start(GTK_BOX(vbox), xscaleHbox, FALSE, FALSE, 5);
 	gtk_box_pack_start(GTK_BOX(vbox), yscaleHbox, FALSE, FALSE, 5);
+	gtk_box_pack_start(GTK_BOX(vbox), showFpsChk, FALSE, FALSE, 5);
 	
-	g_signal_connect(GTK_OBJECT(win), "delete-event", G_CALLBACK(closeDialog), NULL);
-	g_signal_connect(GTK_OBJECT(win), "response", G_CALLBACK(closeDialog), NULL);
+	g_signal_connect(win, "delete-event", G_CALLBACK(closeVideoWin), NULL);
+	g_signal_connect(win, "response", G_CALLBACK(closeVideoWin), NULL);
 	
 	gtk_widget_show_all(win);
 	
@@ -903,7 +1123,6 @@ int mixerChanged(GtkWidget* w, gpointer p)
 	
 	return 0;
 }
-	
 
 void openSoundConfig()
 {
@@ -925,20 +1144,17 @@ void openSoundConfig()
 	GtkWidget* mixerHbox;
 	GtkWidget* mixers[6];
 	GtkWidget* mixerFrames[6];
-	
-	
+
 	win = gtk_dialog_new_with_buttons("Sound Preferences",
-									  GTK_WINDOW(MainWindow),
-									  (GtkDialogFlags)(GTK_DIALOG_DESTROY_WITH_PARENT),
-									  GTK_STOCK_CLOSE,
-									  GTK_RESPONSE_OK,
-									  NULL);
+										GTK_WINDOW(MainWindow),
+										(GtkDialogFlags)(GTK_DIALOG_DESTROY_WITH_PARENT),
+										GTK_STOCK_CLOSE,
+										GTK_RESPONSE_OK,
+										NULL);
 	gtk_window_set_icon_name(GTK_WINDOW(win), "audio-x-generic");
 	main_hbox = gtk_hbox_new(FALSE, 15);
 	vbox = gtk_vbox_new(False, 5);
-	//gtk_widget_set_size_request(win, 300, 200);
-	
-	
+
 	// sound enable check
 	soundChk = gtk_check_button_new_with_label("Enable sound");
 	
@@ -950,9 +1166,7 @@ void openSoundConfig()
 	else
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(soundChk), FALSE);
 	
-	gtk_signal_connect(GTK_OBJECT(soundChk), "clicked",
-	 G_CALLBACK(toggleSound), NULL);
-	 
+	g_signal_connect(soundChk, "clicked", G_CALLBACK(toggleSound), NULL);
 
 	// low pass filter check
 	lowpassChk = gtk_check_button_new_with_label("Enable low pass filter");
@@ -964,14 +1178,14 @@ void openSoundConfig()
 	else
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(lowpassChk), FALSE);
 	
-	gtk_signal_connect(GTK_OBJECT(lowpassChk), "clicked", G_CALLBACK(toggleLowPass), NULL);
+	g_signal_connect(lowpassChk, "clicked", G_CALLBACK(toggleLowPass), NULL);
 	
 	// sound quality combo box
 	hbox1 = gtk_hbox_new(FALSE, 3);
-	qualityCombo = gtk_combo_box_new_text();
-	gtk_combo_box_append_text(GTK_COMBO_BOX(qualityCombo), "Low");
-	gtk_combo_box_append_text(GTK_COMBO_BOX(qualityCombo), "High");
-	gtk_combo_box_append_text(GTK_COMBO_BOX(qualityCombo), "Very High");
+	qualityCombo = gtk_combo_box_text_new();
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(qualityCombo), "Low");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(qualityCombo), "High");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(qualityCombo), "Very High");
 
 	// sync widget with cfg 
 	g_config->getOption("SDL.Sound.Quality", &cfgBuf);
@@ -991,7 +1205,7 @@ void openSoundConfig()
 	
 	// sound rate widgets
 	hbox2 = gtk_hbox_new(FALSE, 3);
-	rateCombo = gtk_combo_box_new_text();
+	rateCombo = gtk_combo_box_text_new();
 	
 	const int rates[5] = {11025, 22050, 44100, 48000, 96000};
 	
@@ -999,7 +1213,7 @@ void openSoundConfig()
 	for(int i=0; i<5;i++)
 	{
 		sprintf(buf, "%d", rates[i]);
-		gtk_combo_box_append_text(GTK_COMBO_BOX(rateCombo), buf);	
+		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(rateCombo), buf);	
 	}
 	
 	// sync widget with cfg 
@@ -1009,8 +1223,7 @@ void openSoundConfig()
 			gtk_combo_box_set_active(GTK_COMBO_BOX(rateCombo), i);
 		
 	g_signal_connect(rateCombo, "changed", G_CALLBACK(setRate), NULL);
-	
-	
+		
 	// sound rate widgets
 	rateLbl = gtk_label_new("Rate (Hz): ");
 	
@@ -1020,15 +1233,13 @@ void openSoundConfig()
 	hbox3 = gtk_hbox_new(FALSE, 2);
 	bufferHscale = gtk_hscale_new_with_range(15, 200, 2);
 	bufferLbl = gtk_label_new("Buffer size (in ms)");
-	
 
 	// sync widget with cfg 
 	g_config->getOption("SDL.Sound.BufSize", &cfgBuf);
 	gtk_range_set_value(GTK_RANGE(bufferHscale), cfgBuf);
 	
 	g_signal_connect(bufferHscale, "button-release-event", G_CALLBACK(setBufSize), NULL);
-	
-	
+
 	// mixer
 	mixerFrame = gtk_frame_new("Mixer:");
 	mixerHbox = gtk_hbox_new(TRUE, 5);
@@ -1072,8 +1283,8 @@ void openSoundConfig()
 	
 	gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(win))), main_hbox, TRUE, TRUE, 0);
 	
-	g_signal_connect(GTK_OBJECT(win), "delete-event", G_CALLBACK(closeDialog), NULL);
-	g_signal_connect(GTK_OBJECT(win), "response", G_CALLBACK(closeDialog), NULL);
+	g_signal_connect(win, "delete-event", G_CALLBACK(closeDialog), NULL);
+	g_signal_connect(win, "response", G_CALLBACK(closeDialog), NULL);
 	
 	gtk_widget_show_all(win);
 	
@@ -1089,6 +1300,10 @@ void quit ()
 	// it raises a GTK-Critical when its called
 	//gtk_main_quit();
 	FCEUI_Kill();
+	// LoadGame() checks for an IP and if it finds one begins a network session
+	// clear the NetworkIP field so this doesn't happen unintentionally
+	g_config->setOption("SDL.NetworkIP", "");
+	g_config->save();
 	SDL_Quit();
 	exit(0);
 }
@@ -1097,7 +1312,7 @@ const char* Authors[]= {
 	" Lukas Sabota", " Soules", " Bryan Cain", " radsaq", " Shinydoofy",
 	"FceuX 2.0 Developers:",
 	" SP", " zeromus", " adelikat", " caH4e3", " qfox",
-	" Luke Gustafson", " _mz", " UncombedCoconut", " DwEdit",
+	" Luke Gustafson", " _mz", " UncombedCoconut", " DwEdit", " AnS",
 	"Pre 2.0 Guys:",
 	" Bero", " Xodnizel", " Aaron Oneal", " Joe Nahmias",
 	" Paul Kuliniewicz", " Quietust", " Ben Parnell", " Parasyte & bbitmaster",
@@ -1111,7 +1326,7 @@ void openAbout ()
 	gtk_show_about_dialog(GTK_WINDOW(MainWindow),
 		"program-name", "fceuX",
 		"version", FCEU_VERSION_STRING,
-		"copyright", "© 2011 FceuX development team",
+		"copyright", "© 2012 FceuX development team",
 		"license", "GPL-2; See COPYING",
 		//"license-type", GTK_LICENSE_GPL_2_0,
 		"website", "http://fceux.com",
@@ -1158,7 +1373,6 @@ void hardReset ()
 		resizeGtkWindow();
 	}
 }
-		
 
 void enableFullscreen ()
 {
@@ -1167,14 +1381,21 @@ void enableFullscreen ()
 }
 void recordMovie()
 {
-	char* movie_fname = const_cast<char*>(FCEU_MakeFName(FCEUMKF_MOVIE, 0, 0).c_str());
-	FCEUI_printf("Recording movie to %s\n", movie_fname);
-    FCEUI_SaveMovie(movie_fname, MOVIE_FLAG_NONE, L"");
+	if(isloaded)
+	{
+		char* movie_fname = const_cast<char*>(FCEU_MakeFName(FCEUMKF_MOVIE, 0, 0).c_str());
+		FCEUI_printf("Recording movie to %s\n", movie_fname);
+		FCEUI_SaveMovie(movie_fname, MOVIE_FLAG_NONE, L"");
+	}
     
-    return;
+	return;
 }
 void recordMovieAs ()
 {
+	if(!isloaded)
+	{
+		return;
+	}
 	GtkWidget* fileChooser;
 	
 	GtkFileFilter* filterFm2;
@@ -1190,10 +1411,11 @@ void recordMovieAs ()
 	
 	fileChooser = gtk_file_chooser_dialog_new ("Save FM2 movie for recording", GTK_WINDOW(MainWindow),
 			GTK_FILE_CHOOSER_ACTION_SAVE, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
-			GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL);
+			GTK_STOCK_SAVE, GTK_RESPONSE_ACCEPT, NULL);
 	gtk_file_chooser_set_current_name (GTK_FILE_CHOOSER(fileChooser), ".fm2");
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(fileChooser), filterFm2);
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(fileChooser), filterAll);
+	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(fileChooser), getcwd(NULL, 0));
 	
 	if (gtk_dialog_run (GTK_DIALOG (fileChooser)) ==GTK_RESPONSE_ACCEPT)
 	{
@@ -1202,12 +1424,13 @@ void recordMovieAs ()
 		fname = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (fileChooser));
 		if (!fname.size())
 			return; // no filename selected, quit the whole thing
+	  char* movie_fname = const_cast<char*>(FCEU_MakeFName(FCEUMKF_MOVIE, 0, 0).c_str());
 		
 		std::string s = GetUserText("Author name");
 		std::wstring author(s.begin(), s.end());
 
 		
-		FCEUI_SaveMovie(fname.c_str(), MOVIE_FLAG_FROM_POWERON, author);
+		FCEUI_SaveMovie(fname.c_str(), MOVIE_FLAG_NONE, author);
 	}
 	gtk_widget_destroy (fileChooser);
 }
@@ -1216,9 +1439,16 @@ void loadMovie ()
 {
 	GtkWidget* fileChooser;
 	
+	GtkFileFilter* filterMovies;
 	GtkFileFilter* filterFm2;
 	GtkFileFilter* filterAll;
-	
+
+	filterMovies = gtk_file_filter_new();
+	gtk_file_filter_add_pattern(filterMovies, "*.fm2");
+	gtk_file_filter_add_pattern(filterMovies, "*.FM2f");
+	gtk_file_filter_add_pattern(filterMovies, "*.fm3");
+	gtk_file_filter_set_name(filterMovies, "FM2 Movies, TAS Editor Projects");
+
 	filterFm2 = gtk_file_filter_new();
 	gtk_file_filter_add_pattern(filterFm2, "*.fm2");
 	gtk_file_filter_add_pattern(filterFm2, "*.FM2f");
@@ -1232,8 +1462,10 @@ void loadMovie ()
 			GTK_FILE_CHOOSER_ACTION_OPEN, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
 			GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL);
 			
+	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(fileChooser), filterMovies);
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(fileChooser), filterFm2);
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(fileChooser), filterAll);
+	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(fileChooser), getcwd(NULL, 0));
 	
 	if (gtk_dialog_run (GTK_DIALOG (fileChooser)) ==GTK_RESPONSE_ACCEPT)
 	{
@@ -1241,14 +1473,14 @@ void loadMovie ()
 		
 		fname = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (fileChooser));
 		static int pauseframe;
-        g_config->getOption("SDL.PauseFrame", &pauseframe);
-        g_config->setOption("SDL.PauseFrame", 0);
-        FCEUI_printf("Playing back movie located at %s\n", fname);
-        if(FCEUI_LoadMovie(fname, false, false, pauseframe ? pauseframe : false) == FALSE)
-        {
+		g_config->getOption("SDL.PauseFrame", &pauseframe);
+		g_config->setOption("SDL.PauseFrame", 0);
+		FCEUI_printf("Playing back movie located at %s\n", fname);
+		if(FCEUI_LoadMovie(fname, false, pauseframe ? pauseframe : false) == FALSE)
+		{
 			GtkWidget* d;
 			d = gtk_message_dialog_new(GTK_WINDOW(MainWindow), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, 
-				"Could not open the selected FM2 file.");
+				"Could not open the movie file.");
 			gtk_dialog_run(GTK_DIALOG(d));
 			gtk_widget_destroy(d);
 		}
@@ -1278,12 +1510,16 @@ void loadLua ()
 	
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(fileChooser), filterLua);
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(fileChooser), filterAll);
+	const char* last_file;
+	g_config->getOption("SDL.LastLoadLua", &last_file);
+	gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(fileChooser), last_file);
 	
 	if (gtk_dialog_run (GTK_DIALOG (fileChooser)) ==GTK_RESPONSE_ACCEPT)
 	{
 		char* filename;
 		
 		filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (fileChooser));
+		g_config->setOption("SDL.LastLoadLua", filename);
 		gtk_widget_destroy(fileChooser);
 		if(FCEU_LoadLuaCode(filename) == 0)
 		{
@@ -1328,6 +1564,7 @@ void loadFdsBios ()
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(fileChooser), filterDiskSys);
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(fileChooser), filterRom);
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(fileChooser), filterAll);
+	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(fileChooser), getcwd(NULL, 0));
 	
 	if (gtk_dialog_run (GTK_DIALOG (fileChooser)) ==GTK_RESPONSE_ACCEPT)
 	{
@@ -1419,6 +1656,7 @@ void loadGameGenie ()
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(fileChooser), filterRom);
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(fileChooser), filterNes);
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(fileChooser), filterAll);
+	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(fileChooser), getcwd(NULL, 0));
 	
 	if (gtk_dialog_run (GTK_DIALOG (fileChooser)) ==GTK_RESPONSE_ACCEPT)
 	{
@@ -1432,10 +1670,10 @@ void loadGameGenie ()
 		GtkWidget* d;
 		enableGameGenie(TRUE);
 		d = gtk_message_dialog_new(GTK_WINDOW(MainWindow), GTK_DIALOG_MODAL, GTK_MESSAGE_INFO, GTK_BUTTONS_OK, 
-			"Game Genie ROM copied to ~/.fceux/gg.rom.");
+     		"Game Genie ROM copied to: '%s'.", fn_out.c_str());
 		gtk_dialog_run(GTK_DIALOG(d));
 		gtk_widget_destroy(d);
-	
+
 		f2<<f1.rdbuf();
 		g_free(filename);
 	}
@@ -1492,7 +1730,6 @@ void loadNSF ()
 			gtk_widget_destroy(d);
 		}
 		g_config->setOption("SDL.LastOpenNSF", filename);
-		g_config->save();
 		g_free(filename);
 	}
 	else
@@ -1502,8 +1739,8 @@ void loadNSF ()
 void closeGame()
 {
 	GdkColor bg = {0, 0, 0, 0};
-	gtk_widget_modify_bg(socket, GTK_STATE_NORMAL, &bg);
-	CloseGame();
+	gtk_widget_modify_bg(evbox, GTK_STATE_NORMAL, &bg);
+	CloseGame(); 
 }
 
 void loadGame ()
@@ -1573,7 +1810,6 @@ void loadGame ()
 		filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (fileChooser));
 		gtk_widget_destroy (fileChooser);
 		g_config->setOption("SDL.LastOpenFile", filename);
-		g_config->save();
 		closeGame();
 		if(LoadGame(filename) == 0)
 		{
@@ -1613,7 +1849,7 @@ void saveStateAs()
 			GTK_FILE_CHOOSER_ACTION_SAVE, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
 			GTK_STOCK_SAVE, GTK_RESPONSE_ACCEPT, NULL);
 			
-	gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(fileChooser), last_dir);
+	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(fileChooser), last_dir);
 	
 	gtk_file_chooser_set_current_name (GTK_FILE_CHOOSER(fileChooser), ".sav");
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(fileChooser), filterSav);
@@ -1626,7 +1862,6 @@ void saveStateAs()
 		filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (fileChooser));
 		FCEUI_SaveState(filename);
 		g_config->setOption("SDL.LastSaveStateAs", filename);
-		g_config->save();
 		g_free(filename);
 	}
 	gtk_widget_destroy (fileChooser);
@@ -1637,6 +1872,7 @@ void saveStateAs()
 void loadStateFrom()
 {
 	GtkWidget* fileChooser;
+	GtkFileFilter* filterFcs;
 	GtkFileFilter* filterSav;
 	GtkFileFilter* filterAll;
 	
@@ -1644,6 +1880,11 @@ void loadStateFrom()
 	gtk_file_filter_add_pattern(filterSav, "*.sav");
 	gtk_file_filter_add_pattern(filterSav, "*.SAV");
 	gtk_file_filter_set_name(filterSav, "SAV files");
+	
+	filterFcs = gtk_file_filter_new();
+	gtk_file_filter_add_pattern(filterFcs, "*.fc?");
+	gtk_file_filter_add_pattern(filterFcs, "*.FC?");
+	gtk_file_filter_set_name(filterFcs, "FCS files");
 	
 	filterAll = gtk_file_filter_new();
 	gtk_file_filter_add_pattern(filterAll, "*");
@@ -1657,6 +1898,7 @@ void loadStateFrom()
 	g_config->getOption("SDL.LastLoadStateFrom", &last_dir);
 	gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(fileChooser), last_dir);
 
+	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(fileChooser), filterFcs);
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(fileChooser), filterSav);
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(fileChooser), filterAll);
 	
@@ -1667,13 +1909,9 @@ void loadStateFrom()
 		filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (fileChooser));
 		FCEUI_LoadState(filename);
 		g_config->setOption("SDL.LastLoadStateFrom", filename);
-		g_config->save();
 		g_free(filename);
 	}
-	
 	gtk_widget_destroy (fileChooser);
-	
-	
 }
 
 void quickLoad()
@@ -1885,8 +2123,6 @@ gint convertKeypress(GtkWidget *grab, GdkEventKey *event, gpointer user_data)
 	return FALSE;
 }
 
-
-
 // Our menu, in the XML markup format used by GtkUIManager
 static char* menuXml = 
 	"<ui>"
@@ -1924,6 +2160,7 @@ static char* menuXml =
 	"    </menu>"
 	"    <menu action='OptionsMenuAction'>"
 	"      <menuitem action='GamepadConfigAction' />"
+	"      <menuitem action='HotkeyConfigAction' />"
 	"      <menuitem action='SoundConfigAction' />"
 	"      <menuitem action='VideoConfigAction' />"
 	"      <menuitem action='PaletteConfigAction' />"
@@ -1979,7 +2216,10 @@ static GtkActionEntry normal_entries[] = {
 	{"QuitAction", GTK_STOCK_QUIT, "_Quit", "<control>Q", NULL, G_CALLBACK(quit)},
 	
 	{"OptionsMenuAction", NULL, "_Options"},
+#if GTK_MAJOR_VERSION == 3 || (GTK_MAJOR_VERSION == 2 && GTK_MINOR_VERSION >= 24)
 	{"GamepadConfigAction", "input-gaming", "_Gamepad Config", NULL, NULL, G_CALLBACK(openGamepadConfig)},
+#endif
+	{"HotkeyConfigAction", "input", "_Hotkey Config", NULL, NULL, G_CALLBACK(openHotkeyConfig)},
 	{"SoundConfigAction", "audio-x-generic", "_Sound Config", NULL, NULL, G_CALLBACK(openSoundConfig)},
 	{"VideoConfigAction", "video-display", "_Video Config", NULL, NULL, G_CALLBACK(openVideoConfig)},
 	{"PaletteConfigAction", GTK_STOCK_SELECT_COLOR, "_Palette Config", NULL, NULL, G_CALLBACK(openPaletteConfig)},
@@ -2041,26 +2281,26 @@ static GtkWidget* CreateMenubar( GtkWidget* window)
 	/* Add the menu items to the UIManager as a GtkActionGroup. */
 	action_group = gtk_action_group_new ("MenubarActions");
 	gtk_action_group_add_actions (action_group, normal_entries, G_N_ELEMENTS (normal_entries), NULL);
-    gtk_action_group_add_toggle_actions (action_group, toggle_entries, G_N_ELEMENTS (toggle_entries), NULL);
-    gtk_action_group_add_radio_actions (action_group, radio_entries, G_N_ELEMENTS (radio_entries), 0, G_CALLBACK(changeState), NULL);
-    gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
+	gtk_action_group_add_toggle_actions (action_group, toggle_entries, G_N_ELEMENTS (toggle_entries), NULL);
+	gtk_action_group_add_radio_actions (action_group, radio_entries, G_N_ELEMENTS (radio_entries), 0, G_CALLBACK(changeState), NULL);
+	gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
     
-    /* Read the menu layout from the XML markup. */
-    gtk_ui_manager_add_ui_from_string (ui_manager, menuXml, -1, &error);
-    if (error)
-    {
-        fprintf (stderr, "Unable to create menu bar: %s\n", error->message);
-        g_error_free (error);
-    }
+	/* Read the menu layout from the XML markup. */
+	gtk_ui_manager_add_ui_from_string (ui_manager, menuXml, -1, &error);
+	if (error)
+	{
+		fprintf (stderr, "Unable to create menu bar: %s\n", error->message);
+		g_error_free (error);
+	}
     
-    /* Attach the new accelerator group to the window. */
-    accel_group = gtk_ui_manager_get_accel_group (ui_manager);
-    gtk_window_add_accel_group (GTK_WINDOW (window), accel_group);
+	/* Attach the new accelerator group to the window. */
+	accel_group = gtk_ui_manager_get_accel_group (ui_manager);
+	gtk_window_add_accel_group (GTK_WINDOW (window), accel_group);
     
-    /* Get an action that can be used to change the active state slot selection. */
-    state = gtk_action_group_get_action (action_group, "State0Action");
-    if (state && GTK_IS_RADIO_ACTION (state))
-    	stateSlot = GTK_RADIO_ACTION (state);
+	/* Get an action that can be used to change the active state slot selection. */
+	state = gtk_action_group_get_action (action_group, "State0Action");
+	if (state && GTK_IS_RADIO_ACTION (state))
+		stateSlot = GTK_RADIO_ACTION (state);
     
 	/* Finally, return the actual menu bar created by the UIManager. */
 	return gtk_ui_manager_get_widget (ui_manager, "/Menubar");
@@ -2078,7 +2318,93 @@ void showGui(bool b)
 	if(b)
 		gtk_widget_show_all(MainWindow);
 	else
-		gtk_widget_hide_all(MainWindow);
+		gtk_widget_hide(MainWindow);
+}
+
+int GtkMouseData[3] = {0,0,0};
+
+gint handleMouseClick(GtkWidget* widget, GdkEvent *event, gpointer callback_data)
+{
+	GtkMouseData[0] = ((GdkEventButton*)event)->x;
+	GtkMouseData[1] = ((GdkEventButton*)event)->y;
+	int button = ((GdkEventButton*)event)->button;
+	if(!(((GdkEventButton*)event)->type == GDK_BUTTON_PRESS))
+		GtkMouseData[2] = 0;
+	else
+	{
+		if(button == 1)
+			GtkMouseData[2] |= 0x1;
+		if(button == 3)
+			GtkMouseData[2] |= 0x3;
+	}
+
+	// this doesn't work because we poll the mouse position rather
+	// than use events
+	/*
+	SDL_Event sdlev;
+	sdlev.type = SDL_MOUSEBUTTONDOWN;
+	if(((GdkEventButton*)event)->type == GDK_BUTTON_PRESS)
+		 sdlev.button.type = SDL_MOUSEBUTTONDOWN;
+	else
+		sdlev.button.type = SDL_MOUSEBUTTONUP;
+	sdlev.button.button = ((GdkEventButton*)event)->button;
+	sdlev.button.state = ((GdkEventButton*)event)->state;
+	sdlev.button.x = ((GdkEventButton*)event)->x;
+	sdlev.button.y = ((GdkEventButton*)event)->y;
+
+	SDL_PushEvent(&sdlev);
+	*/
+  
+	return 0;
+}
+// NES resolution = 256x240
+const int NES_WIDTH=256;
+const int NES_HEIGHT=240;
+
+void handle_resize(GtkWindow* win, GdkEvent* event, gpointer data)
+{
+	// TODO this is a stub atm
+	// this should handle resizing so the emulation takes up as much
+	// of the GTK window as possible
+
+
+	// get new window width/height
+	int width, height;
+	width = event->configure.width;
+	height = event->configure.height;
+	printf("DEBUG: new window size: %dx%d\n", width, height);
+
+	// get width/height multipliers
+	double xscale = width / (double)NES_WIDTH;
+	double yscale = height / (double)NES_HEIGHT;
+
+	// TODO check KeepRatio (where is this)
+	// do this to keep aspect ratio
+	if(xscale > yscale)
+		xscale = yscale;
+	if(yscale > xscale)
+		yscale = xscale;
+
+	//TODO if openGL make these integers
+	g_config->setOption("SDL.XScale", xscale);
+	g_config->setOption("SDL.YScale", yscale);
+    //gtk_widget_realize(evbox);
+	flushGtkEvents();
+	if(GameInfo != 0)
+	{
+		KillVideo();
+		InitVideo(GameInfo);
+	}
+	gtk_widget_set_size_request(evbox, (int)(NES_WIDTH*xscale), (int)(NES_HEIGHT*yscale));
+	GdkColor black;
+	black.red = 0;
+	black.green = 0;
+	black.blue = 0;
+//	gtk_widget_modify_bg(GTK_WIDGET(win), GTK_STATE_NORMAL, &black);
+
+	printf("DEBUG: new xscale: %f yscale: %f\n", xscale, yscale);
+
+	return;
 }
 
 int InitGTKSubsystem(int argc, char** argv)
@@ -2087,9 +2413,10 @@ int InitGTKSubsystem(int argc, char** argv)
 	GtkWidget* vbox;
 	
 	MainWindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_window_set_policy (GTK_WINDOW (MainWindow), FALSE, FALSE, TRUE);
+//	gtk_window_set_policy (GTK_WINDOW (MainWindow), FALSE, FALSE, TRUE);
+	gtk_window_set_resizable(GTK_WINDOW(MainWindow), TRUE);
 	gtk_window_set_title(GTK_WINDOW(MainWindow), FCEU_NAME_AND_VERSION);
-	gtk_window_set_default_size(GTK_WINDOW(MainWindow), 256, 224);
+	gtk_window_set_default_size(GTK_WINDOW(MainWindow), NES_WIDTH, NES_HEIGHT);
 	
 	GdkPixbuf* icon = gdk_pixbuf_new_from_xpm_data(icon_xpm);
 	gtk_window_set_default_icon(icon);
@@ -2115,30 +2442,35 @@ int InitGTKSubsystem(int argc, char** argv)
 	// 1/24/11
 	//
 	// prg - Bryan Cain, you are the man!
-	GtkWidget* hbox = gtk_hbox_new(FALSE, 0);
-	gtk_widget_show(hbox);
-	gtk_box_pack_end (GTK_BOX(vbox), hbox, TRUE, TRUE, 0);
 	
-	socket = gtk_event_box_new();
-	gtk_box_pack_start (GTK_BOX(hbox), socket, TRUE, FALSE, 0);
+	evbox = gtk_event_box_new();
+	gtk_box_pack_start (GTK_BOX(vbox), evbox, TRUE, TRUE, 0);
 	
 	double xscale, yscale;
 	g_config->getOption("SDL.XScale", &xscale);
 	g_config->getOption("SDL.YScale", &yscale);
-	gtk_widget_set_size_request(socket, 256*xscale, 224*yscale);
-	gtk_widget_realize(socket);
-	gtk_widget_show(socket);
+
+	gtk_widget_set_size_request(evbox, NES_WIDTH*xscale, NES_HEIGHT*yscale);
+	gtk_widget_realize(evbox);
+	gtk_widget_show(evbox);
+	gtk_widget_show_all(vbox);
 	
 	GdkColor bg = {0, 0, 0, 0};
-	gtk_widget_modify_bg(socket, GTK_STATE_NORMAL, &bg);
+	gtk_widget_modify_bg(evbox, GTK_STATE_NORMAL, &bg);
 	
 	// set up keypress "snooper" to convert GDK keypress events into SDL keypresses
 	gtk_key_snooper_install(convertKeypress, NULL);
-	
-	g_signal_connect(MainWindow, "destroy-event", quit, NULL);
+
+	// pass along mouse data from GTK to SDL
+	g_signal_connect(G_OBJECT(evbox), "button-press-event", G_CALLBACK(handleMouseClick), NULL);
+	g_signal_connect(G_OBJECT(evbox), "button-release-event", G_CALLBACK(handleMouseClick), NULL);
+
 	
 	// signal handlers
 	g_signal_connect(MainWindow, "delete-event", quit, NULL);
+	g_signal_connect(MainWindow, "destroy-event", quit, NULL);
+	// resize handler
+//	g_signal_connect(MainWindow, "configure-event", G_CALLBACK(handle_resize), NULL);
 	
 	gtk_widget_show_all(MainWindow);
 	

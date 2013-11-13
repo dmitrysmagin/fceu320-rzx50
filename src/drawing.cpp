@@ -114,7 +114,7 @@ void DrawTextLineBG(uint8 *dest)
 		int offs;
 
 		if(y>=7) offs=otable[13-y];
-		else offs=otable[y];  
+		else offs=otable[y];
 
 		for(x=offs;x<(256-offs);x++)
 		{
@@ -136,7 +136,7 @@ void DrawMessage(bool beforeMovie)
 		uint8 *t;
 		guiMessage.howlong--;
 
-		if (guiMessage.linesFromBottom > 0) 
+		if (guiMessage.linesFromBottom > 0)
 			t=XBuf+FCEU_TextScanlineOffsetFromBottom(guiMessage.linesFromBottom)+1;
 		else
 			t=XBuf+FCEU_TextScanlineOffsetFromBottom(20)+1;
@@ -169,7 +169,7 @@ void DrawMessage(bool beforeMovie)
 		//don't display movie messages if we're not before the movie
 		if(beforeMovie && !subtitleMessage.isMovieMessage)
 			return;
-		
+
 		uint8 *tt;
 		subtitleMessage.howlong--;
 		tt=XBuf+FCEU_TextScanlineOffsetFromBottom(216);
@@ -307,7 +307,7 @@ static void drawstatus(uint8* XBuf, int n, int y, int xofs)
 	uint8* slines=sline_icons[n];
 	int i;
 
-	
+
 	XBuf += FCEU_TextScanlineOffsetFromBottom(y) + 240 + 255 + xofs;
 	for(i=0; slines[i]!=99; i+=3)
 	{
@@ -334,7 +334,7 @@ void FCEU_DrawRecordingStatus(uint8* XBuf)
 {
 	if(FCEUD_ShowStatusIcon())
 	{
-		bool hasPlayRecIcon = false;	
+		bool hasPlayRecIcon = false;
 		if(FCEUMOV_Mode(MOVIEMODE_RECORD))
 		{
 			drawstatus(XBuf-ClipSidesOffset,2,28,0);
@@ -388,7 +388,7 @@ void FCEU_DrawNumberRow(uint8 *XBuf, int *nstatus, int cur)
 					XBaf[12*256+x+z*21+z*1]=4;
 			}
 		}
-}  
+}
 
 static int FixJoedChar(uint8 ch)
 {
@@ -419,6 +419,9 @@ void DrawTextTransWH(uint8 *dest, uint32 width, uint8 *textmsg, uint8 fgcolor, i
 		ch  = FixJoedChar(*textmsg);
 		wid = JoedCharWidth(*textmsg);
 
+		int newx = x+wid;
+		if(newx >= (int)width) { x=beginx; y+=8; }
+
 		for(int ny=0; ny<7; ++ny)
 		{
 			uint8 d = Font6x7[ch*8 + 1+ny];
@@ -434,8 +437,8 @@ void DrawTextTransWH(uint8 *dest, uint32 width, uint8 *textmsg, uint8 fgcolor, i
 					target[y+ny][x+nx] = 1;
 			}
 		}
-		x += wid;
-		if(x >= width) { x=beginx; y+=8; }
+    x += wid;
+
 	}
 textoverflow:
 	for(y=0; y<62; ++y)			//Max border is 2, so the max safe y is 62 (since 64 is the max for the target array

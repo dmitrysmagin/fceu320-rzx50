@@ -15,7 +15,7 @@
 *
 * You should have received a copy of the GNU General Public License
 * along with this program; if not, write to the Free Software
-* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 //todo - config synchronization guards
@@ -38,7 +38,7 @@ static int bits;
 #include "oakra.h"
 
 OAKRA_Module_OutputDS *dsout;
-bool muteTurbo=false;
+bool muteTurbo = true;
 
 //prototypes
 void UpdateSoundChannelQualityMode(HWND hwndDlg);	//Updates the sound channel volume sliders, disables and renames them for low quality
@@ -183,7 +183,7 @@ public:
 		if(incr<256) 
 		{
 			 //sanity check: should never be less than 256
-			printf("OHNO -- %d -- shouldnt be less than 256!\n",incr);
+			FCEU_printf("OHNO -- %d -- shouldnt be less than 256!\n", incr);
 		}
 
 		incr = (incr*scale)>>8; //apply scaling factor

@@ -15,11 +15,11 @@
 *
 * You should have received a copy of the GNU General Public License
 * along with this program; if not, write to the Free Software
-* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 // For commctrl.h below
-#define _WIN32_IE	0x0300
+#define _WIN32_IE	0x0550
 
 #include "../../version.h"
 
@@ -385,15 +385,20 @@ void HandleHotkeys()
 	FCEUI_HandleEmuCommands(FCEUD_TestCommandState);
 }
 
+void UpdateRawInputAndHotkeys()
+{
+	KeyboardUpdateState();
+	UpdateJoysticks();
+
+	HandleHotkeys();
+}
+
 void FCEUD_UpdateInput()
 {
 	bool joy=false,mouse=false;
 	EMOVIEMODE FCEUMOVState = FCEUMOV_Mode();
 
-	KeyboardUpdateState();
-	UpdateJoysticks();
-
-	HandleHotkeys();
+  UpdateRawInputAndHotkeys();
 
 	{
 		for(int x=0;x<2;x++)
@@ -458,10 +463,12 @@ void InitInputPorts(bool fourscore)
 
 	int attrib;
 
-	if(fourscore) {
+	if(fourscore)
+	{
 		FCEUI_SetInput(0,SI_GAMEPAD,&JSreturn,0);
 		FCEUI_SetInput(1,SI_GAMEPAD,&JSreturn,0);
-	} else {
+	} else
+	{
 		for(int i=0;i<2;i++)
 		{
 			attrib=0;
@@ -536,7 +543,7 @@ ButtConfig fkbmap[0x48]=
 	MK(1),MK(2),MK(3),MK(4),MK(5),MK(6),MK(7),MK(8),MK(9),MK(0),
 	MK(MINUS),MK(EQUAL),MK(BACKSLASH),MK(BACKSPACE),
 	MK(ESCAPE),MK(Q),MK(W),MK(E),MK(R),MK(T),MK(Y),MK(U),MK(I),MK(O),
-	MK(P),MK(GRAVE),MK(BRACKET_LEFT),MK(ENTER),
+	MK(P),MK(TILDE),MK(BRACKET_LEFT),MK(ENTER),
 	MK(LEFTCONTROL),MK(A),MK(S),MK(D),MK(F),MK(G),MK(H),MK(J),MK(K),
 	MK(L),MK(SEMICOLON),MK(APOSTROPHE),MK(BRACKET_RIGHT),MK(INSERT),
 	MK(LEFTSHIFT),MK(Z),MK(X),MK(C),MK(V),MK(B),MK(N),MK(M),MK(COMMA),
@@ -741,16 +748,10 @@ static char *MakeButtString(ButtConfig *bc)
 		if(bc->ButtType[x] == BUTTC_KEYBOARD)
 		{
 			strcat(tmpstr,"KB: ");
-			if(!GetKeyNameText(bc->ButtonNum[x]<<16,tmpstr+strlen(tmpstr),16))
+			if(!GetKeyNameText(((bc->ButtonNum[x] & 0x7F) << 16) | ((bc->ButtonNum[x] & 0x80) << 17), tmpstr+strlen(tmpstr), 16))
 			{
-				switch(bc->ButtonNum[x])
-				{
-				case 200: strcpy(tmpstr+strlen(tmpstr),"Up Arrow"); break;
-				case 203: strcpy(tmpstr+strlen(tmpstr),"Left Arrow"); break;
-				case 205: strcpy(tmpstr+strlen(tmpstr),"Right Arrow"); break;
-				case 208: strcpy(tmpstr+strlen(tmpstr),"Down Arrow"); break;
-				default: sprintf(tmpstr+strlen(tmpstr),"%03d",bc->ButtonNum[x]); break;
-				}
+				// GetKeyNameText wasn't able to provide a name for the key, then just show scancode
+				sprintf(tmpstr+strlen(tmpstr),"%03d",bc->ButtonNum[x]);
 			}
 		}
 		else if(bc->ButtType[x] == BUTTC_JOYSTICK)
@@ -935,7 +936,7 @@ int DWaitButton(HWND hParent, const uint8 *text, ButtConfig *bc)
 				{
 					LPARAM tmpo;
 
-					tmpo=((msg.lParam>>16)&0x7F)|((msg.lParam>>17)&0x80);
+					tmpo = ((msg.lParam >> 16) & 0x7F) | ((msg.lParam >> 17) & 0x80);
 					PostMessage(die,WM_USER+666,0,tmpo);
 					continue;
 				}
@@ -1273,6 +1274,16 @@ BOOL CALLBACK InputConCallB(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 		UpdateFourscoreState(hwndDlg);
 
+		if(FCEUMOV_Mode(MOVIEMODE_TASEDITOR))
+		{
+			// disable changing fourscore and ports
+			EnableWindow(GetDlgItem(hwndDlg, CHECK_ENABLE_FOURSCORE), false);
+			EnableWindow(GetDlgItem(hwndDlg, CHECK_ENABLE_MICROPHONE), false);
+			EnableWindow(GetDlgItem(hwndDlg, COMBO_PAD1), false);
+			EnableWindow(GetDlgItem(hwndDlg, COMBO_PAD2), false);
+			EnableWindow(GetDlgItem(hwndDlg, COMBO_FAM), false);
+		}
+
 		break;
 
 	case WM_CLOSE:
@@ -1524,7 +1535,7 @@ int FCEUD_TestCommandState(int c)
 		//		else
 		//			keys_nr=GetKeyboard_nr();
 	}
-	else if(c != EMUCMD_SPEED_TURBO) // TODO: this should be made more general by detecting if the command has an "off" function, but right now Turbo is the only command that has it
+	else if(c != EMUCMD_SPEED_TURBO && c != EMUCMD_TASEDITOR_REWIND) // TODO: this should be made more general by detecting if the command has an "off" function
 	{
 		keys=GetKeyboard_jd();
 		keys_nr=GetKeyboard_nr(); 
@@ -1680,22 +1691,21 @@ static void PresetImport(int preset)
 	{
 		//Save the directory
 		if(ofn.nFileOffset < 1024)
-			if(ofn.nFileOffset < 1024)
-			{
-				free(InputPresetDir);
-				InputPresetDir=(char*)malloc(strlen(ofn.lpstrFile)+1);
-				strcpy(InputPresetDir,ofn.lpstrFile);
-				InputPresetDir[ofn.nFileOffset]=0;
-			}
+		{
+			free(InputPresetDir);
+			InputPresetDir=(char*)malloc(strlen(ofn.lpstrFile)+1);
+			strcpy(InputPresetDir,ofn.lpstrFile);
+			InputPresetDir[ofn.nFileOffset]=0;
+		}
 
-			FILE *fp=FCEUD_UTF8fopen(nameo,"r");
-			switch(preset)
-			{
-			case 1: fread(GamePadPreset1,1,sizeof(GamePadPreset1),fp); break;
-			case 2: fread(GamePadPreset2,1,sizeof(GamePadPreset2),fp); break;
-			case 3: fread(GamePadPreset3,1,sizeof(GamePadPreset3),fp); break;
-			}
-			fclose(fp);
+		FILE *fp=FCEUD_UTF8fopen(nameo,"r");
+		switch(preset)
+		{
+		case 1: fread(GamePadPreset1,1,sizeof(GamePadPreset1),fp); break;
+		case 2: fread(GamePadPreset2,1,sizeof(GamePadPreset2),fp); break;
+		case 3: fread(GamePadPreset3,1,sizeof(GamePadPreset3),fp); break;
+		}
+		fclose(fp);
 	}
 }
 

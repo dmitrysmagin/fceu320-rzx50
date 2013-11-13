@@ -1,10 +1,11 @@
 #include <stdlib.h>
 #include "common.h"
+#include "tracer.h"
 
 static HWND logwin = 0;
 
 static char *logtext[MAXIMUM_NUMBER_OF_LOGS];
-static unsigned int logcount=0;
+static int logcount=0;
 
 int MLogPosX=0,MLogPosY=0;	//X,Y coordinates of dialog
 
@@ -20,7 +21,7 @@ unsigned int truncated_logcount()
 void RedoText(void)
 {
 	char textbuf[65536] = { 0 };
-	unsigned int x;
+	int x;
 	int tbs=0; // textbuf size
 	int cs; // current log size
 
@@ -66,7 +67,7 @@ void RedoText(void)
 	}
 
 	SetDlgItemText(logwin, LBL_LOG_TEXT, textbuf);
-	SendDlgItemMessage(logwin, LBL_LOG_TEXT, EM_LINESCROLL, 0, 200);
+	SendDlgItemMessage(logwin, LBL_LOG_TEXT, EM_LINESCROLL, 0, MAXIMUM_NUMBER_OF_LOGS);
 }
 
 /**
@@ -94,14 +95,21 @@ BOOL CALLBACK LogCon(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			}
 			break;
 		case WM_COMMAND:
-			if(HIWORD(wParam)==BN_CLICKED)
+		{
+			if (HIWORD(wParam) == BN_CLICKED)
 			{
-				DestroyWindow(hwndDlg);
-
-				// Clear the handle
-				logwin = 0;
+				if (LOWORD(wParam) == CLEAR_LOG)
+				{
+					ClearLog();
+				} else
+				{
+					DestroyWindow(hwndDlg);
+					// Clear the handle
+					logwin = 0;
+				}
 			}
 			break;
+		}
 	}
 
 	return 0;
@@ -116,7 +124,20 @@ void MakeLogWindow(void)
 	{
 		logwin = CreateDialog(fceu_hInstance, "MESSAGELOG" , 0, LogCon);
 		RedoText(); // XXX jeblanchard Why didn't this work in WM_INITDIALOG?
+	} else
+	{
+		ShowWindow(logwin, SW_SHOWNORMAL);
+		SetForegroundWindow(logwin);
 	}
+}
+
+void ClearLog()
+{
+	for (logcount--; logcount >= 0; logcount--)
+		free(logtext[truncated_logcount()]);
+	logcount = 0;
+	if (logwin)
+		RedoText();
 }
 
 /**
@@ -189,7 +210,7 @@ void AddLogText(const char *text, unsigned int add_newline)
 	}
 
 	// Add a final newline if requested
-	if(add_newline)
+	if (add_newline)
 	{
 		*msg_iterator = '\r';
 		msg_iterator++;
@@ -199,6 +220,13 @@ void AddLogText(const char *text, unsigned int add_newline)
 
 	// Terminating 0-byte
 	*msg_iterator = 0;
+
+	// also log the text into Trace Logger log if needed
+	if (logging && (logging_options & LOG_MESSAGES))
+	{
+		OutputLogLine(strdup(logtext[truncated_logcount()]), add_newline != 0);
+		log_old_emu_paused = false;		// force Trace Logger update
+	}
 
 	// Keep track of the added log
 	logcount++;

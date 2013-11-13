@@ -5,6 +5,9 @@
 #include <windows.h>
 //#include "debug.h"
 
+// this is default value, but use debugSystem->fixedFontHeight in calculations
+#define FIXED_FONT_HEIGHT 14
+
 // TODO: Maybe change breakpoint array to std::vector
 // Maximum number of breakpoints supported
 #define MAXIMUM_NUMBER_OF_BREAKPOINTS 64
@@ -20,6 +23,7 @@ extern HWND hDebug;
 extern int childwnd,numWPs; //mbg merge 7/18/06 had to make extern
 extern bool debuggerAutoload;
 extern bool debuggerSaveLoadDEBFiles;
+extern bool debuggerDisplayROMoffsets;
 
 void CenterWindow(HWND hwndDlg);
 void DoPatcher(int address,HWND hParent);
@@ -27,8 +31,9 @@ void UpdatePatcher(HWND hwndDlg);
 int GetEditHex(HWND hwndDlg, int id);
 
 extern void AddBreakList();
+extern char* BreakToText(unsigned int num);
 
-void UpdateDebugger();
+void UpdateDebugger(bool jump_to_pc = true);
 void DoDebug(uint8 halt);
 void DebuggerExit();
 
@@ -45,6 +50,11 @@ public:
 	HFONT hFixedFont;
 	int fixedFontWidth;
 	int fixedFontHeight;
+
+	HFONT hHexeditorFont;
+	int HexeditorFontWidth;
+	int HexeditorFontHeight;
+
 } *debugSystem;
 
 

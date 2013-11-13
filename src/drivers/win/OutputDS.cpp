@@ -192,8 +192,8 @@ OAKRA_Voice *OAKRA_Module_OutputDS::getVoice(OAKRA_Format &format) {
 	if(voice->dead)
 	{
 		delete voice;
-	}
-	else
+		voice = 0;
+	} else
 	{
 		((Data *)data)->voices.push_back(voice);
 	}
@@ -212,7 +212,10 @@ void OAKRA_Module_OutputDS::freeVoiceInternal(OAKRA_Voice *voice, bool internal)
 	if(j!=-1)
 		data->voices.erase(data->voices.begin()+j);
 	if(!internal)
+	{
 		delete voice;
+		voice = 0;
+	}
 	unlock();
 }
 
@@ -279,10 +282,14 @@ void OAKRA_Module_OutputDS::update() {
 	//that way, the voice's death callback won't occur within the driver lock
 	unlock();
 
-	//kill those voices
-	for(int i=0;i<(int)deaders.size();i++) {
-		deaders[i]->callbackDied();
-		freeVoice(deaders[i]);
+	// kill those voices
+	if (deaders.size())
+	{
+		for (int i = 0; i < (int)deaders.size(); i++)
+		{
+			deaders[i]->callbackDied();
+			freeVoice(deaders[i]);
+		}
 	}
 }
 

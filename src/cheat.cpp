@@ -15,7 +15,7 @@
 *
 * You should have received a copy of the GNU General Public License
 * along with this program; if not, write to the Free Software
-* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include <string>
@@ -269,7 +269,8 @@ void FCEU_LoadGameCheats(FILE *override)
 				namebuf[x]=0;
 				break;
 			}
-			else if(namebuf[x]<0x20) namebuf[x]=' ';
+			else if(namebuf[x] > 0x00 && namebuf[x] < 0x20)
+				namebuf[x]=0x20;
 		}
 
 		AddCheatEntry(namebuf,addr,val,doc?compare:-1,status,type);
@@ -379,7 +380,7 @@ int FCEUI_AddCheat(const char *name, uint32 addr, uint8 val, int compare, int ty
 	}
 	savecheats=1;
 	RebuildSubCheats();
-	
+
 	return(1);
 }
 
@@ -595,7 +596,7 @@ int FCEUI_DecodePAR(const char *str, int *a, int *v, int *c, int *type)
 /* name can be NULL if the name isn't going to be changed. */
 /* same goes for a, v, and s(except the values of each one must be <0) */
 
-int FCEUI_SetCheat(uint32 which, const char *name, int32 a, int32 v, int compare,int s, int type)
+int FCEUI_SetCheat(uint32 which, const char *name, int32 a, int32 v, int c, int s, int type)
 {
 	struct CHEATF *next=cheats;
 	uint32 x=0;
@@ -607,8 +608,7 @@ int FCEUI_SetCheat(uint32 which, const char *name, int32 a, int32 v, int compare
 			if(name)
 			{
 				char *t;
-
-				if((t=(char *)realloc(next->name,strlen(name+1))))
+				if((t=(char *)realloc(next->name, strlen(name)+1)))
 				{
 					next->name=t;
 					strcpy(next->name,name);
@@ -622,7 +622,8 @@ int FCEUI_SetCheat(uint32 which, const char *name, int32 a, int32 v, int compare
 				next->val=v;
 			if(s>=0)
 				next->status=s;
-			next->compare=compare;
+			if(c>=-1)
+				next->compare=c;
 			next->type=type;
 
 			savecheats=1;
@@ -677,6 +678,15 @@ static int InitCheatComp(void)
 void FCEUI_CheatSearchSetCurrentAsOriginal(void)
 {
 	uint32 x;
+
+	if(!CheatComp)
+	{
+		if(InitCheatComp())
+		{
+			CheatMemErr();
+			return;
+		}
+	}
 	for(x=0x000;x<0x10000;x++)
 		if(!(CheatComp[x]&CHEATC_NOSHOW))
 		{
@@ -942,7 +952,7 @@ void UpdateFrozenList(void)
 	//The purpose of this function is to keep an up to date list of addresses that are currently frozen
 	//and make these accessible to other dialogs that deal with memory addresses such as
 	//memwatch, hex editor, ramfilter, etc.
-	
+
 	int x;
 	FrozenAddresses.clear();		//Clear vector and repopulate
 	for(x=0;x<numsubcheats;x++)

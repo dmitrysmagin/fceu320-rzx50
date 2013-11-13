@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 #include "main.h"
@@ -40,7 +40,7 @@ extern bool turbo;
 char *ParseArgies(int argc, char *argv[])
 {         
         static ARGPSTRUCT FCEUArgs[]={
-         {"-pal",0,&pal_emulation,0},
+         {"-pal",&pal_setting_specified,&pal_emulation,0},
          {"-noicon",0,&status_icon,0},
          {"-gg",0,&genie,0},
          {"-no8lim",0,&eoptions,0x8000|EO_NOSPRLIM},

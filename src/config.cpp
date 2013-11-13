@@ -15,10 +15,10 @@ static char *aboutString = 0;
 
 ///returns a string suitable for use in an aboutbox
 char *FCEUI_GetAboutString() {
-	const char *aboutTemplate = 
+	const char *aboutTemplate =
 	FCEU_NAME_AND_VERSION "\n\n\
 Administrators:\n\
-zeromus, adelikat\n\n\
+zeromus, adelikat, AnS\n\n\
 Current Contributors:\n\
 punkrockguy318 (Lukas Sabota)\n\
 Plombo (Bryan Cain)\n\
@@ -51,7 +51,7 @@ __TIME__ " " __DATE__ "\n";
 	//allocate the string and concatenate the template with the compiler string
 	if (!(aboutString = (char*)FCEU_dmalloc(strlen(aboutTemplate) + strlen(compilerString) + 1)))
         return NULL;
-	
+
     sprintf(aboutString,"%s%s",aboutTemplate,compilerString);
 	return aboutString;
 }

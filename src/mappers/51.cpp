@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 #include "mapinc.h"
@@ -26,7 +26,7 @@
 static uint32 Get8K(uint32 A)
 {
  uint32 bank;
- 
+
  bank=(page<<2)|((A>>13)&1);
 
  if(A&0x4000 && !(mode&1)) bank|=0xC;

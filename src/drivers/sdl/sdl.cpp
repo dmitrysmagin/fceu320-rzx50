@@ -59,7 +59,7 @@ int closeFinishedMovie = 0;
 
 int CloseGame(void);
 
-static int inited = 0;	
+static int inited = 0;
 
 int eoptions=0;
 
@@ -104,7 +104,7 @@ Option         Value   Description\n\
 --soundbufsize x       Set sound buffer size to x ms.\n\
 --volume      {0-256}  Set volume to x.\n\
 --soundrecord  f       Record sound to file f.\n\
---playmov      f       Play back a recorded FCM/FM2 movie from filename f.\n\
+--playmov      f       Play back a recorded FCM/FM2/FM3 movie from filename f.\n\
 --pauseframe   x       Pause movie playback at frame x.\n\
 --fcmconvert   f       Convert fcm movie file f to fm2.\n\
 --ripsubs      f       Convert movie's subtitles to srt\n\
@@ -118,7 +118,7 @@ Option         Value   Description\n\
 --netkey       s       Use string 's' to create a unique session for the game loaded.\n\
 --players      x       Set the number of local players.\n\
 --rp2mic       {0,1}   Replace Port 2 Start with microphone (Famicom).\n\
---nogui        {0,1}   Enable or disable the GTK GUI\n";
+--nogui                Don't load the GTK GUI";
 
 
 // these should be moved to the man file
@@ -145,11 +145,11 @@ static void ShowUsage(char *prog)
 	printf("\nUsage is as follows:\n%s <options> filename\n\n",prog);
 	puts(DriverUsage);
 #ifdef _S9XLUA_H
-	puts ("--loadlua      f        Loads lua script from filename f.");
+	puts ("--loadlua      f       Loads lua script from filename f.");
 #endif
 #ifdef CREATE_AVI
-	puts ("--videolog     c        Calls mencoder to grab the video and audio streams to\n					   encode them. Check the documentation for more on this.");
-	puts ("--mute        {0|1}     Mutes FCEUX while still passing the audio stream to\n					   mencoder.");
+	puts ("--videolog     c       Calls mencoder to grab the video and audio streams to\n                         encode them. Check the documentation for more on this.");
+	puts ("--mute        {0|1}    Mutes FCEUX while still passing the audio stream to\n                         mencoder during avi creation.");
 #endif
 	puts("");
 	printf("Compiled with SDL version %d.%d.%d\n", SDL_MAJOR_VERSION, SDL_MINOR_VERSION, SDL_PATCHLEVEL );
@@ -491,6 +491,13 @@ void FCEUD_TraceInstruction() {
 }
 
 
+#ifdef _GTK
+	int noGui = 0;
+#else
+	int noGui = 1;
+#endif
+
+
 /**
  * The main loop for the SDL.
  */
@@ -502,11 +509,11 @@ int main(int argc, char *argv[])
   // these six lines will still print the help output
 	if(argc > 1)
 	{
-            if(!strcmp(argv[1], "--help") || !strcmp(argv[1],"-h"))
-    	    {
-	        ShowUsage(argv[0]);
-                return 0;
-            }
+		if(!strcmp(argv[1], "--help") || !strcmp(argv[1],"-h"))
+		{
+	       ShowUsage(argv[0]);
+			return 0;
+		}
 	}
 
 	int error, frameskip;
@@ -530,8 +537,7 @@ int main(int argc, char *argv[])
 
 	// Initialize the configuration system
 	g_config = InitConfig();
-	
-	
+		
 	if(!g_config) {
 		SDL_Quit();
 		return -1;
@@ -545,6 +551,23 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 	
+	// check for --help or -h and display usage; also check for --nogui
+	for(int i=0; i<argc;i++)
+	{
+		if(strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0)
+		{
+			ShowUsage(argv[0]);
+			SDL_Quit();
+			return 0;
+		}
+#ifdef _GTK
+		else if(strcmp(argv[i], "--nogui") == 0)
+		{
+			noGui = 1;
+			argv[i] = "";
+		}
+#endif
+	}
 	int romIndex = g_config->parse(argc, argv);
 
 	// This is here so that a default fceux.cfg will be created on first
@@ -557,14 +580,19 @@ int main(int argc, char *argv[])
 		g_config->save();
 	
 	std::string s;
+
 	g_config->getOption("SDL.InputCfg", &s);
-    
-    // set the FAMICOM PAD 2 Mic thing 
-    {
-        int t;
-        g_config->getOption("SDL.Input.FamicomPad2.EnableMic", &t);
-		if (t)	
-        	replaceP2StartWithMicrophone = t;
+	if(s.size() != 0)
+	{
+	InitVideo(GameInfo);
+	InputCfg(s);
+	}
+	// set the FAMICOM PAD 2 Mic thing 
+	{
+	int t;
+	g_config->getOption("SDL.Input.FamicomPad2.EnableMic", &t);
+		if(t)
+			replaceP2StartWithMicrophone = t;
 	}
 
     // update the input devices
@@ -605,6 +633,14 @@ int main(int argc, char *argv[])
 	  return 0;
 	}
 	
+	// check to see if recording HUD to AVI is enabled
+	int rh;
+	g_config->getOption("SDL.RecordHUD", &rh);
+	if( rh == 0)
+		FCEUI_SetAviEnableHUDrecording(true);
+	else
+		FCEUI_SetAviEnableHUDrecording(false);
+
 	// check to see if movie messages are disabled
 	int mm;
 	g_config->getOption("SDL.MovieMsg", &mm);
@@ -681,17 +717,7 @@ int main(int argc, char *argv[])
 		SDL_Quit();
 		return 0;
 	}
-
-	// check for --help or -h and display usage
-	for(int i=0; i<argc;i++)
-	{
-		if(strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0)
-		{
-			ShowUsage(argv[0]);
-			SDL_Quit();
-			return 0;
-		}
-	}
+   
 
 	// if we're not compiling w/ the gui, exit if a rom isn't specified
 #ifndef _GTK
@@ -735,21 +761,18 @@ int main(int argc, char *argv[])
 	
 	// load the hotkeys from the config life
 	setHotKeys();
-	
-#ifdef _GTK
-	gtk_init(&argc, &argv);
 
-	int noGui;
-	g_config->getOption("SDL.NoGUI", &noGui);
-	if(noGui == 0)
-		InitGTKSubsystem(argc, argv);
-#endif
-	
 #ifdef _GTK
-	while(gtk_events_pending())
+	if(noGui == 0)
+	{
+		gtk_init(&argc, &argv);
+		InitGTKSubsystem(argc, argv);
+		while(gtk_events_pending())
 			gtk_main_iteration_do(FALSE);
+	}
 #endif
-	if(romIndex >= 0)
+
+  if(romIndex >= 0)
 	{
 		// load the specified game
 		error = LoadGame(argv[romIndex]);
@@ -768,13 +791,13 @@ int main(int argc, char *argv[])
 	g_config->setOption("SDL.Movie", "");
 	if (s != "")
 	{
-		if(s.find(".fm2") != std::string::npos)
+		if(s.find(".fm2") != std::string::npos || s.find(".fm3") != std::string::npos)
 		{
 			static int pauseframe;
 			g_config->getOption("SDL.PauseFrame", &pauseframe);
 			g_config->setOption("SDL.PauseFrame", 0);
 			FCEUI_printf("Playing back movie located at %s\n", s.c_str());
-			FCEUI_LoadMovie(s.c_str(), false, false, pauseframe ? pauseframe : false);
+			FCEUI_LoadMovie(s.c_str(), false, pauseframe ? pauseframe : false);
 		}
 		else
 		{
@@ -803,7 +826,7 @@ int main(int argc, char *argv[])
 	g_config->getOption("SDL.Frameskip", &frameskip);
 	// loop playing the game
 #ifdef _GTK
-	if(noGui == false)
+	if(noGui == 0)
 	{
 		while(1)
 		{

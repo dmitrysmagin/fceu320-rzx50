@@ -20,7 +20,7 @@ enum EMOVIE_FLAG
 	//an ARCHAIC flag which means the movie was recorded from a soft reset.
 	//WHY would you do this?? do not create any new movies with this flag
 	MOVIE_FLAG_FROM_RESET = (1<<1),
-	
+
 	MOVIE_FLAG_PAL = (1<<2),
 
 	//movie was recorded from poweron. the alternative is from a savestate (or from reset)
@@ -58,7 +58,7 @@ enum EMOVIEMODE
 	MOVIEMODE_INACTIVE = 1,
 	MOVIEMODE_RECORD = 2,
 	MOVIEMODE_PLAY = 4,
-	MOVIEMODE_TASEDIT = 8,
+	MOVIEMODE_TASEDITOR = 8,
 	MOVIEMODE_FINISHED = 16
 };
 
@@ -82,15 +82,17 @@ bool FCEUMOV_ShouldPause(void);
 int FCEUMOV_GetFrame(void);
 int FCEUI_GetLagCount(void);
 bool FCEUI_GetLagged(void);
+void FCEUI_SetLagFlag(bool value);
 
 int FCEUMOV_WriteState(EMUFILE* os);
 bool FCEUMOV_ReadState(EMUFILE* is, uint32 size);
 void FCEUMOV_PreLoad();
 bool FCEUMOV_PostLoad();
 
-void FCEUMOV_EnterTasEdit();
-void FCEUMOV_ExitTasEdit();
 bool FCEUMOV_FromPoweron();
+
+void FCEUMOV_CreateCleanMovie();
+void FCEUMOV_ClearCommands();
 
 class MovieData;
 class MovieRecord
@@ -99,7 +101,7 @@ class MovieRecord
 public:
 	MovieRecord();
 	ValueArray<uint8,4> joysticks;
-	
+
 	struct {
 		uint8 x,y,b,bogo;
 		uint64 zaphit;
@@ -141,15 +143,16 @@ public:
 	}
 
 	bool Compare(MovieRecord& compareRec);
+	void Clone(MovieRecord& sourceRec);
 	void clear();
-	
+
 	void parse(MovieData* md, EMUFILE* is);
 	bool parseBinary(MovieData* md, EMUFILE* is);
 	void dump(MovieData* md, EMUFILE* os, int index);
 	void dumpBinary(MovieData* md, EMUFILE* os, int index);
 	void parseJoy(EMUFILE* is, uint8& joystate);
 	void dumpJoy(EMUFILE* os, uint8 joystate);
-	
+
 	static const char mnemonics[8];
 
 private:
@@ -172,7 +175,6 @@ public:
 	std::string romFilename;
 	std::vector<uint8> savestate;
 	std::vector<MovieRecord> records;
-	std::vector<std::vector<uint8> > savestates;
 	std::vector<std::wstring> comments;
 	std::vector<std::string> subtitles;
 	//this is the RERECORD COUNT. please rename variable.
@@ -181,6 +183,8 @@ public:
 
 	//was the frame data stored in binary?
 	bool binaryFlag;
+	// TAS Editor project files contain additional data after input
+	int loadFrameCount;
 
 	//which ports are defined for the movie
 	int ports[3];
@@ -188,12 +192,6 @@ public:
 	bool fourscore;
 	//whether microphone is enabled
 	bool microphone;
-	
-	//----TasEdit stuff---
-	int greenZoneCount;
-	int loadFrameCount;
-	int tweakCount;
-	//----
 
 	int getNumRecords() { return records.size(); }
 
@@ -228,18 +226,14 @@ public:
 	void truncateAt(int frame);
 	void installValue(std::string& key, std::string& val);
 	int dump(EMUFILE* os, bool binary);
-	int dumpGreenzone(EMUFILE *os, bool binary);
-	int loadGreenzone(EMUFILE *is, bool binary);
 
 	void clearRecordRange(int start, int len);
+	void eraseRecords(int at, int frames = 1);
 	void insertEmpty(int at, int frames);
-	
+	void cloneRegion(int at, int frames);
+
 	static bool loadSavestateFrom(std::vector<uint8>* buf);
 	static void dumpSavestateTo(std::vector<uint8>* buf, int compressionLevel);
-
-	bool loadTasSavestate(int frame);
-	void storeTasSavestate(int frame, int compression_level);
-	void TryDumpIncremental();
 
 private:
 	void installInt(std::string& val, int& var)
@@ -260,13 +254,12 @@ extern bool subtitlesOnAVI;
 extern bool freshMovie;
 extern bool movie_readonly;
 extern bool autoMovieBackup;
-extern int pauseframe;
 extern bool fullSaveStateLoads;
 //--------------------------------------------------
 void FCEUI_MakeBackupMovie(bool dispMessage);
 void FCEUI_CreateMovieFile(std::string fn);
 void FCEUI_SaveMovie(const char *fname, EMOVIE_FLAG flags, std::wstring author);
-bool FCEUI_LoadMovie(const char *fname, bool read_only, bool tasedit, int _stopframe);
+bool FCEUI_LoadMovie(const char *fname, bool read_only, int _stopframe);
 void FCEUI_MoviePlayFromBeginning(void);
 void FCEUI_StopMovie(void);
 bool FCEUI_MovieGetInfo(FCEUFILE* fp, MOVIE_INFO& info, bool skipFrameCount = false);
@@ -278,6 +271,7 @@ int FCEUI_GetMovieLength();
 int FCEUI_GetMovieRerecordCount();
 std::string FCEUI_GetMovieName(void);
 void FCEUI_MovieToggleFrameDisplay();
+void FCEUI_MovieToggleRerecordDisplay();
 void FCEUI_ToggleInputDisplay(void);
 
 void LoadSubtitles(MovieData &);

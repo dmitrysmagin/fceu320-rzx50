@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 
@@ -60,7 +60,6 @@
 #include "tracer.h"
 #include "cdlogger.h"
 #include "throttle.h"
-#include "tasedit.h"
 #include "replay.h"
 #include "palette.h" //For the SetPalette function
 #include "main.h"
@@ -71,6 +70,10 @@
 #include "video.h"
 #include "utils/xstring.h"
 #include <string.h>
+#include "taseditor.h"
+#include "taseditor/taseditor_window.h"
+
+extern TASEDITOR_WINDOW taseditor_window;
 
 //---------------------------
 //mbg merge 6/29/06 - new aboutbox
@@ -118,7 +121,7 @@ void ApplyDefaultCommandMapping(void);
 // Internal variables
 int frameSkipAmt = 18;
 uint8 *xbsave = NULL;
-int eoptions = EO_BGRUN | EO_FORCEISCALE;
+int eoptions = EO_BGRUN | EO_NOSPRLIM | EO_FORCEISCALE | EO_BESTFIT | EO_BGCOLOR;
 
 //global variables
 int soundoptions = SO_SECONDARY | SO_GFOCUS;
@@ -141,6 +144,7 @@ double saspectw = 1, saspecth = 1;
 double winsizemulx = 1, winsizemuly = 1;
 int genie = 0;
 int pal_emulation = 0;
+int pal_setting_specified = 0;
 int ntsccol = 0, ntsctint, ntschue;
 std::string BaseDirectory;
 int PauseAfterLoad;
@@ -149,7 +153,7 @@ int frameSkipCounter = 0; //Counter for managing frame skip
 // Contains the names of the overridden standard directories
 // in the order roms, nonvol, states, fdsrom, snaps, cheats, movies, memwatch, macro, input presets, lua scripts, base
 char *directory_names[14] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
+std::string cfgFile = "fceux.cfg";
 //Handle of the main window.
 HWND hAppWnd = 0;
 
@@ -308,20 +312,29 @@ int BlockingCheck()
 		{
 			//other accelerator capable dialogs could be added here
 			extern HWND hwndMemWatch;
-			extern HWND hwndTasEdit;
+
 			int handled = 0;
-			if(hwndMemWatch)
+
+			if(hCheat)
+				if(IsChild(hCheat, msg.hwnd))
+					handled = IsDialogMessage(hCheat, &msg);
+			if(!handled && hMemFind)
+			{
+				if(IsChild(hMemFind, msg.hwnd))
+					handled = IsDialogMessage(hMemFind, &msg);
+			}
+			if(!handled && hwndMemWatch)
 			{
 				if(IsChild(hwndMemWatch,msg.hwnd))
 					handled = TranslateAccelerator(hwndMemWatch,fceu_hAccel,&msg);
 				if(!handled)
 					handled = IsDialogMessage(hwndMemWatch,&msg);
 			}
-			if(RamSearchHWnd)
+			if(!handled && RamSearchHWnd)
 			{
-				handled |= IsDialogMessage(RamSearchHWnd, &msg);
+				handled = IsDialogMessage(RamSearchHWnd, &msg);
 			}
-			if(RamWatchHWnd)
+			if(!handled && RamWatchHWnd)
 			{
 				if(IsDialogMessage(RamWatchHWnd, &msg))
 				{
@@ -331,10 +344,15 @@ int BlockingCheck()
 				}
 			}
 
-			if(!handled && hwndTasEdit)
+			if(!handled && taseditor_window.hwndTasEditor)
 			{
-				if(IsChild(hwndTasEdit,msg.hwnd))
-					handled = TranslateAccelerator(hwndTasEdit,fceu_hAccel,&msg);
+				if(IsChild(taseditor_window.hwndTasEditor, msg.hwnd))
+					handled = TranslateAccelerator(taseditor_window.hwndTasEditor, fceu_hAccel, &msg);
+			}
+			if(!handled && taseditor_window.hwndFindNote)
+			{
+				if(IsChild(taseditor_window.hwndFindNote, msg.hwnd))
+					handled = IsDialogMessage(taseditor_window.hwndFindNote, &msg);
 			}
 			/* //adelikat - Currently no accel keys are used in the main window.  Uncomment this block to activate them.
 			if(!handled)
@@ -371,17 +389,13 @@ void FCEUD_PrintError(const char *errormsg)
 {
 	AddLogText(errormsg, 1);
 
-	if(fullscreen)
-	{
+	if (fullscreen && (eoptions & EO_HIDEMOUSE))
 		ShowCursorAbs(1);
-	}
 
 	MessageBox(0, errormsg, FCEU_NAME" Error", MB_ICONERROR | MB_OK | MB_SETFOREGROUND | MB_TOPMOST);
 
-	if(fullscreen)
-	{
+	if (fullscreen && (eoptions & EO_HIDEMOUSE))
 		ShowCursorAbs(0);
-	}
 }
 
 ///Generates a compiler identification string.
@@ -402,6 +416,12 @@ void DoFCEUExit()
 {
 	if(exiting)    //Eh, oops.  I'll need to try to fix this later.
 		return;
+
+#ifdef WIN32
+	//If user was asked to save changes in TAS Editor and chose cancel, don't close FCEUX
+	extern bool ExitTasEditor();
+	if (FCEUMOV_Mode(MOVIEMODE_TASEDITOR) && !ExitTasEditor()) return;
+#endif
 
 	if (CloseMemoryWatch() && AskSave())		//If user was asked to save changes in the memory watch dialog or ram watch, and chose cancel, don't close FCEUX!
 	{
@@ -463,9 +483,11 @@ void DoPriority()
 int DriverInitialize()
 {
 	if(soundo)
-	{
 		soundo = InitSound();
-	}
+
+	// AnS: forcing the resolution of fullscreen to be the same as current display resolution
+	vmod = 0;
+	vmodes[0].y = 0;
 
 	SetVideoMode(fullscreen);
 	InitInputStuff();             /* Initialize DInput interfaces. */
@@ -591,7 +613,7 @@ int main(int argc,char *argv[])
 
 	SetThreadAffinityMask(GetCurrentThread(),1);
 
-	printf("%08x",opsize);
+	//printf("%08x",opsize); //AGAIN?!
 
 	char *t;
 
@@ -619,22 +641,27 @@ int main(int argc,char *argv[])
 	// Get the base directory
 	GetBaseDirectory();
 
+	// load fceux.cfg
+	sprintf(TempArray,"%s\\%s",BaseDirectory.c_str(),cfgFile.c_str());
+	LoadConfig(TempArray);
+	//initDirectories();
+
 	// Parse the commandline arguments
 	t = ParseArgies(argc, argv);
 
-	if (ConfigToLoad) cfgFile.assign(ConfigToLoad);
+	int saved_pal_setting = !!pal_emulation;
 
-	//initDirectories();
-
-	// Load the config information
-	sprintf(TempArray,"%s\\%s",BaseDirectory.c_str(),cfgFile.c_str());
-	LoadConfig(TempArray);
+	if (ConfigToLoad)
+	{
+		// alternative config file specified
+		cfgFile.assign(ConfigToLoad);
+		// Load the config information
+		sprintf(TempArray,"%s\\%s",BaseDirectory.c_str(),cfgFile.c_str());
+		LoadConfig(TempArray);
+	}
 
 	//Bleh, need to find a better place for this.
 	{
-        pal_emulation = !!pal_emulation;
-        FCEUI_SetVidSystem(pal_emulation);
-
         FCEUI_SetGameGenie(genie!=0);
 
         fullscreen = !!fullscreen;
@@ -730,6 +757,13 @@ int main(int argc,char *argv[])
 		LoadNewGamey(hAppWnd, 0);
 	}
 
+	if (pal_setting_specified)
+	{
+		// Force the PAL setting specified in the command line
+        pal_emulation = saved_pal_setting;
+        FCEUI_SetVidSystem(pal_emulation);
+	}
+
 	if(PaletteToLoad)
 	{
 		SetPalette(PaletteToLoad);
@@ -743,7 +777,7 @@ int main(int argc,char *argv[])
 		if(FCEU_isFileInArchive(MovieToLoad))
 				replayReadOnlySetting = true;
 
-		FCEUI_LoadMovie(MovieToLoad, replayReadOnlySetting, false, replayStopFrameSetting!=0);
+		FCEUI_LoadMovie(MovieToLoad, replayReadOnlySetting, replayStopFrameSetting != 0);
 		FCEUX_LoadMovieExtras(MovieToLoad);
 		free(MovieToLoad);
 		MovieToLoad = NULL;
@@ -815,13 +849,15 @@ doloopy:
 			if(closeGame)
 			{
 				FCEUI_CloseGame();
-				GameInfo = 0;
+				GameInfo = NULL;
 			}
 
 		}
 		//xbsave = NULL;
 		RedrawWindow(hAppWnd,0,0,RDW_ERASE|RDW_INVALIDATE);
 	}
+  else
+    UpdateRawInputAndHotkeys();
 	Sleep(50);
 	if(!exiting)
 		goto doloopy;
@@ -846,10 +882,10 @@ void _updateWindow()
 	PPUViewDoBlit();
 	UpdateMemoryView(0);
 	UpdateCDLogger();
-	//UpdateLogWindow();	//adelikat: Moved to FCEUI_Emulate
+	UpdateLogWindow();	//adelikat: Moved to FCEUI_Emulate;    AnS: moved back
 	UpdateMemWatch();
 	NTViewDoBlit(0);
-	UpdateTasEdit();
+	//UpdateTasEditor();	//AnS: moved to FCEUD_Update
 }
 
 void win_debuggerLoop()
@@ -861,6 +897,16 @@ void win_debuggerLoop()
 		Sleep(50);
 		FCEUD_UpdateInput();
 		_updateWindow();
+		// HACK: break when Frame Advance is pressed
+		extern bool frameAdvanceRequested;
+		extern int frameAdvanceDelay;
+		if (frameAdvanceRequested)
+		{
+			if (frameAdvanceDelay==0 || frameAdvanceDelay >= 10)
+				FCEUI_SetEmulationPaused(2);
+			if (frameAdvanceDelay < 10)
+				frameAdvanceDelay++;
+		}
 	}
 	int zzz=9;
 }
@@ -881,6 +927,8 @@ void FCEUD_Update(uint8 *XBuf, int32 *Buffer, int Count)
 
 	//update debugging displays
 	_updateWindow();
+	// update TAS Editor
+	UpdateTasEditor();
 
 	extern bool JustFrameAdvanced;
 

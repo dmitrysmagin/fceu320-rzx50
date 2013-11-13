@@ -15,9 +15,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  * Super Mario Bros 2 J alt version
  * as well as "Voleyball" FDS conversion, bank layot is similar but no bankswitching and CHR ROM present
+ *
+ * mapper seems wrongly researched by me ;( it should be mapper 43 modification
  */
 
 #include "mapinc.h"
@@ -66,7 +68,7 @@ static void UNLSMB2JPower(void)
 }
 
 static void UNLSMB2JReset(void)
-{ 
+{
   prg=~0;
   Sync();
 }

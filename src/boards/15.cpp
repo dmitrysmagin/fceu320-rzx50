@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
 
@@ -27,8 +27,8 @@ static uint8 *WRAM=NULL;
 static uint32 WRAMSIZE;
 static SFORMAT StateRegs[]=
 {
-  {&latchea, 2, "LATCHEA"},
-  {&latched, 1, "LATCHED"},
+  {&latchea, 2, "AREG"},
+  {&latched, 1, "DREG"},
   {0}
 };
 
@@ -53,7 +53,7 @@ static void Sync(void)
         unsigned int b;
         b=latched&0x7F;
         if(i>=2 && !(latchea&0x2))
-          i=0x7F;
+          b=0x7F;
         setprg8(0x8000+(i<<13),(i&1)+((b<<1)^(latched>>7)));
       }
       break;
@@ -64,6 +64,7 @@ static DECLFW(M15Write)
 {
   latchea=A;
   latched=V;
+//  printf("%04X = %02X\n",A,V);
   Sync();
 }
 

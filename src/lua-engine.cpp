@@ -7,7 +7,7 @@
 #include <vector>
 #include <map>
 #include <string>
-#include <algorithm> 
+#include <algorithm>
 #include <stdlib.h>
 #include <math.h>
 
@@ -40,6 +40,12 @@
 
 #if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 #include "drivers/win/common.h"
+#include "drivers/win/taseditor/selection.h"
+#include "drivers/win/taseditor/laglog.h"
+#include "drivers/win/taseditor/markers.h"
+#include "drivers/win/taseditor/snapshot.h"
+#include "drivers/win/taseditor/taseditor_lua.h"
+extern TASEDITOR_LUA taseditor_lua;
 #endif
 
 extern "C"
@@ -51,6 +57,7 @@ extern "C"
 #if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	int iuplua_open(lua_State * L);
 	int iupcontrolslua_open(lua_State * L);
+	int luaopen_winapi(lua_State * L);
 
 	//luasocket
 	int luaopen_socket_core(lua_State *L);
@@ -66,11 +73,11 @@ extern "C"
 #ifndef _MSC_VER
  #define stricmp  strcasecmp
  #define strnicmp strncasecmp
- 
+
  #ifdef __GNUC__
   #define __forceinline __attribute__ ((always_inline))
- #else 
-  #define __forceinline 
+ #else
+  #define __forceinline
  #endif
 #endif
 
@@ -78,12 +85,14 @@ extern "C"
 extern void AddRecentLuaFile(const char *filename);
 #endif
 
+extern bool turbo;
+
 struct LuaSaveState {
 	std::string filename;
 	EMUFILE_MEMORY *data;
 	bool anonymous, persisted;
 	LuaSaveState()
-		: data(0) 
+		: data(0)
 		, anonymous(false)
 		, persisted(false)
 	{}
@@ -119,6 +128,7 @@ extern INT_PTR CALLBACK DlgLuaScriptDialog(HWND hDlg, UINT msg, WPARAM wParam, L
 extern void PrintToWindowConsole(int hDlgAsInt, const char* str);
 extern void WinLuaOnStart(int hDlgAsInt);
 extern void WinLuaOnStop(int hDlgAsInt);
+void TaseditorDisableManualFunctionIfNeeded();
 #endif
 
 static lua_State *L;
@@ -192,6 +202,9 @@ static const char* luaCallIDStrings [] =
 	"CALL_BEFOREEXIT",
 	"CALL_BEFORESAVE",
 	"CALL_AFTERLOAD",
+	"CALL_TASEDITOR_AUTO",
+	"CALL_TASEDITOR_MANUAL",
+
 };
 
 //make sure we have the right number of strings
@@ -217,7 +230,8 @@ static const char* toCString(lua_State* L, int idx=0);
 /**
  * Resets emulator speed / pause states after script exit.
  */
-static void FCEU_LuaOnStop() {
+static void FCEU_LuaOnStop()
+{
 	luaRunning = FALSE;
 	for (int i = 0 ; i < 4 ; i++ ){
 		luajoypads1[i]= 0xFF;	// Set these back to pass-through
@@ -228,7 +242,11 @@ static void FCEU_LuaOnStop() {
 	//	FCEUI_ToggleEmulationPause();
 	FCEUD_SetEmulationSpeed(EMUSPEED_NORMAL);		//TODO: Ideally lua returns the speed to the speed the user set before running the script
 													//rather than returning it to normal, and turbo off.  Perhaps some flags and a FCEUD_GetEmulationSpeed function
-	FCEUD_TurboOff();	//Turn off turbo
+	turbo = false;
+	//FCEUD_TurboOff();
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	TaseditorDisableManualFunctionIfNeeded();
+#endif
 }
 
 
@@ -301,7 +319,7 @@ static int emu_setrenderplanes(lua_State *L) {
 //   TODO: better enforcement, done in the same way as basicbot...
 static int emu_speedmode(lua_State *L) {
 	const char *mode = luaL_checkstring(L,1);
-	
+
 	if (strcasecmp(mode, "normal")==0) {
 		speedmode = SPEED_NORMAL;
 	} else if (strcasecmp(mode, "nothrottle")==0) {
@@ -312,9 +330,9 @@ static int emu_speedmode(lua_State *L) {
 		speedmode = SPEED_MAXIMUM;
 	} else
 		luaL_error(L, "Invalid mode %s to emu.speedmode",mode);
-	
+
 	//printf("new speed mode:  %d\n", speedmode);
-        if (speedmode == SPEED_NORMAL) 
+        if (speedmode == SPEED_NORMAL)
 		{
 			FCEUD_SetEmulationSpeed(EMUSPEED_NORMAL);
 			FCEUD_TurboOff();
@@ -322,7 +340,7 @@ static int emu_speedmode(lua_State *L) {
         else if (speedmode == SPEED_TURBO)				//adelikat: Making turbo actually use turbo.
 			FCEUD_TurboOn();							//Turbo and max speed are two different results. Turbo employs frame skipping and sound bypassing if mute turbo option is enabled.
 												//This makes it faster but with frame skipping. Therefore, maximum is still a useful feature, in case the user is recording an avi or making screenshots (or something else that needs all frames)
-		else											
+		else
 			FCEUD_SetEmulationSpeed(EMUSPEED_FASTEST);  //TODO: Make nothrottle turn off throttle, or remove the option
 	return 0;
 }
@@ -333,7 +351,7 @@ static int emu_speedmode(lua_State *L) {
 static int emu_poweron(lua_State *L) {
 	if (GameInfo)
 		FCEUI_PowerNES();
-	
+
 	return 0;
 }
 
@@ -343,7 +361,7 @@ static int emu_poweron(lua_State *L) {
 static int emu_softreset(lua_State *L) {
 	if (GameInfo)
 		FCEUI_ResetNES();
-	
+
 	return 0;
 }
 
@@ -354,60 +372,43 @@ static int emu_softreset(lua_State *L) {
 static int emu_frameadvance(lua_State *L) {
 	// We're going to sleep for a frame-advance. Take notes.
 
-	if (frameAdvanceWaiting) 
+	if (frameAdvanceWaiting)
 		return luaL_error(L, "can't call emu.frameadvance() from here");
 
 	frameAdvanceWaiting = TRUE;
 
-	// Now we can yield to the main 
+	// Now we can yield to the main
 	return lua_yield(L, 0);
 
 
 	// It's actually rather disappointing...
 }
 
+// bool emu.paused()
+static int emu_paused(lua_State *L)
+{
+	lua_pushboolean(L, FCEUI_EmulationPaused() != 0);
+	return 1;
+}
 
 // emu.pause()
 //
-//  Pauses the emulator, function "waits" until the user unpauses.
-//  This function MAY be called from a non-frame boundary, but the frame
-//  finishes executing anwyays. In this case, the function returns immediately.
-static int emu_pause(lua_State *L) {
-	
+//  Pauses the emulator. Returns immediately.
+static int emu_pause(lua_State *L)
+{
 	if (!FCEUI_EmulationPaused())
 		FCEUI_ToggleEmulationPause();
-	speedmode = SPEED_NORMAL;
-
-	// Return control if we're midway through a frame. We can't pause here.
-	if (frameAdvanceWaiting) {
-		return 0;
-	}
-
-	// If it's on a frame boundary, we also yield.	
-	frameAdvanceWaiting = TRUE;
-	return lua_yield(L, 0);
-	
+	return 0;
 }
 
 //emu.unpause()
 //
-//adelikat:  Why wasn't this added sooner?
-//Gives the user a way to unpause the emulator via lua
-static int emu_unpause(lua_State *L) {
-	
+//  Unpauses the emulator. Returns immediately.
+static int emu_unpause(lua_State *L)
+{
 	if (FCEUI_EmulationPaused())
 		FCEUI_ToggleEmulationPause();
-	speedmode = SPEED_NORMAL;
-
-	// Return control if we're midway through a frame. We can't pause here.
-	if (frameAdvanceWaiting) {
-		return 0;
-	}
-
-	// If it's on a frame boundary, we also yield.	
-	frameAdvanceWaiting = TRUE;
-	return lua_yield(L, 0);
-	
+	return 0;
 }
 
 
@@ -418,7 +419,7 @@ static int emu_message(lua_State *L) {
 
 	const char *msg = luaL_checkstring(L,1);
 	FCEU_DispMessage("%s",0, msg);
-	
+
 	return 0;
 
 }
@@ -458,7 +459,7 @@ static int emu_registerexit(lua_State *L) {
 }
 
 static int emu_addgamegenie(lua_State *L) {
-	
+
 	const char *msg = luaL_checkstring(L,1);
 
 	// Add a Game Genie code if it hasn't already been added
@@ -468,7 +469,7 @@ static int emu_addgamegenie(lua_State *L) {
 	uint32 Caddr;
 	uint8 Cval;
 	int Ccompare, Ctype;
-	
+
 	if (!FCEUI_DecodeGG(msg, &GGaddr, &GGval, &GGcomp)) {
 		luaL_error(L, "Failed to decode game genie code");
 		lua_pushboolean(L, false);
@@ -485,7 +486,7 @@ static int emu_addgamegenie(lua_State *L) {
 
 		i = i + 1;
 	}
-	
+
 	if (FCEUI_AddCheat(msg,GGaddr,GGval,GGcomp,1)) {
 		// Code was added
 		// Can't manage the display update the way I want, so I won't bother with it
@@ -500,7 +501,7 @@ static int emu_addgamegenie(lua_State *L) {
 }
 
 static int emu_delgamegenie(lua_State *L) {
-	
+
 	const char *msg = luaL_checkstring(L,1);
 
 	// Remove a Game Genie code. Very restrictive about deleted code.
@@ -511,7 +512,7 @@ static int emu_delgamegenie(lua_State *L) {
 	uint32 Caddr;
 	uint8 Cval;
 	int Ccompare, Ctype;
-	
+
 	if (!FCEUI_DecodeGG(msg, &GGaddr, &GGval, &GGcomp)) {
 		luaL_error(L, "Failed to decode game genie code");
 		lua_pushboolean(L, false);
@@ -1121,7 +1122,7 @@ void CallRegisteredLuaSaveFunctions(int savestateNumber, LuaSaveData& saveData)
 	{
 		lua_settop(L, 0);
 		lua_getfield(L, LUA_REGISTRYINDEX, luaCallIDStrings[LUACALL_BEFORESAVE]);
-		
+
 		if (lua_isfunction(L, -1))
 		{
 			lua_pushinteger(L, savestateNumber);
@@ -1153,7 +1154,7 @@ void CallRegisteredLuaLoadFunctions(int savestateNumber, const LuaSaveData& save
 	{
 		lua_settop(L, 0);
 		lua_getfield(L, LUA_REGISTRYINDEX, luaCallIDStrings[LUACALL_AFTERLOAD]);
-		
+
 		if (lua_isfunction(L, -1))
 		{
 			// since the scriptdata can be very expensive to load
@@ -1223,7 +1224,7 @@ static int memory_readbyterange(lua_State *L) {
 	}
 
 	lua_pushlstring(L,buf,range_size);
-	
+
 	return 1;
 }
 
@@ -1265,23 +1266,23 @@ static void toCStringConverter(lua_State* L, int i, char*& ptr, int& remaining)
 		case LUA_TBOOLEAN: APPENDPRINT lua_toboolean(L,i) ? "true" : "false" END break;
 		case LUA_TSTRING: APPENDPRINT "%s",lua_tostring(L,i) END break;
 		case LUA_TNUMBER: APPENDPRINT "%.12Lg",lua_tonumber(L,i) END break;
-		case LUA_TFUNCTION: 
+		case LUA_TFUNCTION:
 			/*if((L->base + i-1)->value.gc->cl.c.isC)
 			{
 				//lua_CFunction func = lua_tocfunction(L, i);
 				//std::map<lua_CFunction, const char*>::iterator iter = s_cFuncInfoMap.find(func);
 				//if(iter == s_cFuncInfoMap.end())
 					goto defcase;
-				//APPENDPRINT "function(%s)", iter->second END 
+				//APPENDPRINT "function(%s)", iter->second END
 			}
 			else
 			{
-				APPENDPRINT "function(" END 
+				APPENDPRINT "function(" END
 				Proto* p = (L->base + i-1)->value.gc->cl.l.p;
 				int numParams = p->numparams + (p->is_vararg?1:0);
 				for (int n=0; n<p->numparams; n++)
 				{
-					APPENDPRINT "%s", getstr(p->locvars[n].varname) END 
+					APPENDPRINT "%s", getstr(p->locvars[n].varname) END
 					if(n != numParams-1)
 						APPENDPRINT "," END
 				}
@@ -1504,7 +1505,7 @@ static int copytable(lua_State *L)
 		lua_pushnil(L);
 		return 1;
 	}
-	
+
 	lua_createtable(L, lua_objlen(L,1), 0);
 	int copyIndex = lua_gettop(L);
 
@@ -1869,6 +1870,37 @@ void CallRegisteredLuaFunctions(LuaCallID calltype)
 	}
 }
 
+void ForceExecuteLuaFrameFunctions()
+{
+	FCEU_LuaFrameBoundary();
+	CallRegisteredLuaFunctions(LUACALL_BEFOREEMULATION);
+	CallRegisteredLuaFunctions(LUACALL_AFTEREMULATION);
+}
+
+void TaseditorAutoFunction()
+{
+	CallRegisteredLuaFunctions(LUACALL_TASEDITOR_AUTO);
+}
+
+void TaseditorManualFunction()
+{
+	CallRegisteredLuaFunctions(LUACALL_TASEDITOR_MANUAL);
+}
+
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+void TaseditorDisableManualFunctionIfNeeded()
+{
+	if (L)
+	{
+		// check if LUACALL_TASEDITOR_MANUAL function is not nil
+		lua_getfield(L, LUA_REGISTRYINDEX, luaCallIDStrings[LUACALL_TASEDITOR_MANUAL]);
+		if (!lua_isfunction(L, -1))
+			taseditor_lua.DisableRunFunction();
+		lua_pop(L, 1);
+	} else taseditor_lua.DisableRunFunction();
+}
+#endif
+
 // Not for the signed versions though
 static int memory_readbytesigned(lua_State *L) {
 	signed char c = (signed char) FCEU_CheatGetByte(luaL_checkinteger(L,1));
@@ -2148,7 +2180,7 @@ static int input_get(lua_State *L) {
 #endif
 
 	// mouse position in game screen pixel coordinates
-	
+
 	extern void GetMouseData(uint32 (&md)[3]);
 
 	uint32 MouseData[3];
@@ -2162,16 +2194,16 @@ static int input_get(lua_State *L) {
 	lua_pushinteger(L, y);
 	lua_setfield(L, -2, "ymouse");
 	lua_pushinteger(L, click);
-	lua_setfield(L, -2, "click");		
+	lua_setfield(L, -2, "click");
 
 	return 1;
 }
 
-// table zapper.read 
+// table zapper.read
 //int which unecessary because zapper is always controller 2
 //Reads the zapper coordinates and a click value (1 if clicked, 0 if not, 2 if right click (but this is not used for zapper input)
 static int zapper_read(lua_State *L){
-	
+
 	lua_newtable(L);
 	int z = 0;
 	extern void GetMouseData(uint32 (&md)[3]); //adelikat: shouldn't this be ifdef'ed for Win32?
@@ -2193,7 +2225,7 @@ static int zapper_read(lua_State *L){
 		GetMouseData (MouseData);
 		x = MouseData[0];
 		y = MouseData[1];
-		click = MouseData[2];		
+		click = MouseData[2];
 		if (click > 1)
 			click = 1;	//adelikat: This is zapper.read() thus should only give valid zapper input (instead of simply mouse input
 	}
@@ -2202,7 +2234,7 @@ static int zapper_read(lua_State *L){
 	lua_pushinteger(L, y);
 	lua_setfield(L, -2, "y");
 	lua_pushinteger(L, click);
-	lua_setfield(L, -2, "fire");	
+	lua_setfield(L, -2, "fire");
 	return 1;
 }
 
@@ -2216,19 +2248,17 @@ static int joy_get_internal(lua_State *L, bool reportUp, bool reportDown) {
 
 	// Reads the joypads as inputted by the user
 	int which = luaL_checkinteger(L,1);
-	
+
 	if (which < 1 || which > 4) {
 		luaL_error(L,"Invalid input port (valid range 1-4, specified %d)", which);
 	}
-	
+
 	// Use the OS-specific code to do the reading.
-	/*extern void FCEUD_UpdateInput(void);	FatRatKnight: What's this call doing here?
-	FCEUD_UpdateInput();					I commented it out. Should we delete it?*/
 	extern SFORMAT FCEUCTRL_STATEINFO[];
 	uint8 buttons = ((uint8 *) FCEUCTRL_STATEINFO[1].v)[which - 1];
-	
+
 	lua_newtable(L);
-	
+
 	int i;
 	for (i = 0; i < 8; i++) {
 		bool pressed = (buttons & (1<<i))!=0;
@@ -2237,7 +2267,7 @@ static int joy_get_internal(lua_State *L, bool reportUp, bool reportDown) {
 			lua_setfield(L, -2, button_mappings[i]);
 		}
 	}
-	
+
 	return 1;
 }
 // joypad.get(which)
@@ -2262,11 +2292,37 @@ static int joypad_getup(lua_State *L)
 	return joy_get_internal(L, true, false);
 }
 
+// table joypad.getimmediate(int which)
+// Reads immediate state of joypads (at the moment of calling)
+static int joypad_getimmediate(lua_State *L)
+{
+	int which = luaL_checkinteger(L,1);
+	if (which < 1 || which > 4)
+	{
+		luaL_error(L,"Invalid input port (valid range 1-4, specified %d)", which);
+	}
+	// Currently only supports Windows, sorry...
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	extern uint32 GetGamepadPressedImmediate();
+	uint8 buttons = GetGamepadPressedImmediate() >> ((which - 1) * 8);
+
+	lua_newtable(L);
+	for (int i = 0; i < 8; ++i)
+	{
+		lua_pushboolean(L, (buttons & (1 << i)) != 0);
+		lua_setfield(L, -2, button_mappings[i]);
+	}
+#else
+	lua_pushnil(L);
+#endif
+	return 1;
+}
+
 
 // joypad.set(int which, table buttons)
 //
 //   Sets the given buttons to be pressed during the next
-//   frame advance. The table should have the right 
+//   frame advance. The table should have the right
 //   keys (no pun intended) set.
 /*FatRatKnight: I changed some of the logic.
   Now with 4 options!*/
@@ -2289,9 +2345,9 @@ static int joypad_set(lua_State *L) {
 	int i;
 	for (i=0; i < 8; i++) {
 		lua_getfield(L, 2, button_mappings[i]);
-		
+
 		//Button is not nil, so find out if it is true/false
-		if (!lua_isnil(L,-1))	
+		if (!lua_isnil(L,-1))
 		{
 			if (lua_toboolean(L,-1))							//True or string
 				luajoypads2[which-1] |= 1 << i;
@@ -2305,28 +2361,28 @@ static int joypad_set(lua_State *L) {
 		}
 		lua_pop(L,1);
 	}
-	
+
 	return 0;
 }
 
 // Helper function to convert a savestate object to the filename it represents.
 static const char *savestateobj2filename(lua_State *L, int offset) {
-	
+
 	// First we get the metatable of the indicated object
 	int result = lua_getmetatable(L, offset);
 
 	if (!result)
 		luaL_error(L, "object not a savestate object");
-	
+
 	// Also check that the type entry is set
 	lua_getfield(L, -1, "__metatable");
 	if (strcmp(lua_tostring(L,-1), "FCEU Savestate") != 0)
 		luaL_error(L, "object not a savestate object");
 	lua_pop(L,1);
-	
+
 	// Now, get the field we want
 	lua_getfield(L, -1, "filename");
-	
+
 	// Return it
 	return lua_tostring(L, -1);
 }
@@ -2350,7 +2406,7 @@ static int savestate_gc(lua_State *L) {
 	//// Delete the file
 	//remove(filename);
 	//
-	
+
 	// We exit, and the garbage collector takes care of the rest.
 	return 0;
 }
@@ -2387,22 +2443,22 @@ static int savestate_create_aliased(lua_State *L, bool newnumbering) {
 		// Also makes it persistent, but files are like that
 		if (CheckFileExists(ss->filename.c_str()))
 			ss->ensureLoad();
-		
+
 	}
 	else {
 		//char tempbuf[100] = "snluaXXXXXX";
 		//filename = mktemp(tempbuf);
 		//doesnt work -^
-		
+
 		//mbg 8/13/08 - this needs to be this way. we'll make a better system later:
 		ss->filename = tempnam(NULL, "snlua");
 		ss->anonymous = true;
 	}
-	
+
 
 	// The metatable we use, protected from Lua and contains garbage collection info and stuff.
 	lua_newtable(L);
-	
+
 	//// First, we must protect it
 	lua_pushstring(L, "FCEU Savestate");
 	lua_setfield(L, -2, "__metatable");
@@ -2411,13 +2467,13 @@ static int savestate_create_aliased(lua_State *L, bool newnumbering) {
 	//// Now we need to save the file itself.
 	//lua_pushstring(L, filename.c_str());
 	//lua_setfield(L, -2, "filename");
-	
+
 	// If it's an anonymous savestate, we must delete the file from disk should it be gargage collected
 	//if (which < 0) {
 		lua_pushcfunction(L, savestate_gc);
 		lua_setfield(L, -2, "__gc");
 	//}
-	
+
 	// Set the metatable
 	lua_setmetatable(L, -2);
 
@@ -2511,7 +2567,7 @@ static int savestate_load(lua_State *L) {
 }
 
 static int savestate_registersave(lua_State *L) {
- 
+
 	lua_settop(L,1);
 	if (!lua_isnil(L,1))
 		luaL_checktype(L, 1, LUA_TFUNCTION);
@@ -2563,7 +2619,7 @@ static int savestate_loadscriptdata(lua_State *L) {
 //
 //   Gets the frame counter
 int emu_framecount(lua_State *L) {
-		
+
 	lua_pushinteger(L, FCEUMOV_GetFrame());
 	return 1;
 }
@@ -2587,6 +2643,15 @@ int emu_lagged (lua_State *L) {
 	return 1;
 }
 
+//emu_setlagflag(bool value)
+//
+//Returns true if the game is currently on a lag frame
+int emu_setlagflag(lua_State *L)
+{
+	FCEUI_SetLagFlag(lua_toboolean(L, 1) == 1);
+	return 0;
+}
+
 // boolean emu.emulating()
 int emu_emulating(lua_State *L) {
 	lua_pushboolean(L, GameInfo != NULL);
@@ -2595,12 +2660,15 @@ int emu_emulating(lua_State *L) {
 
 // string movie.mode()
 //
-//   "record", "playback", "finished", or nil
-int movie_mode(lua_State *L) {
-	if (FCEUMOV_IsRecording())
+// Returns "taseditor", "record", "playback", "finished" or nil
+int movie_mode(lua_State *L)
+{
+	if (FCEUMOV_Mode(MOVIEMODE_TASEDITOR))
+		lua_pushstring(L, "taseditor");
+	else if (FCEUMOV_IsRecording())
 		lua_pushstring(L, "record");
 	else if (FCEUMOV_IsFinished())
-		lua_pushstring(L, "finished"); //Note: this comes before plaback since playback checks for finished as well
+		lua_pushstring(L, "finished"); //Note: this comes before playback since playback checks for finished as well
 	else if (FCEUMOV_IsPlaying())
 		lua_pushstring(L, "playback");
 	else
@@ -2623,7 +2691,7 @@ static int movie_rerecordcounting(lua_State *L) {
 static int movie_stop(lua_State *L) {
 	if (!FCEUMOV_IsRecording() && !FCEUMOV_IsPlaying())
 		luaL_error(L, "no movie");
-	
+
 	FCEUI_StopMovie();
 	return 0;
 
@@ -2657,11 +2725,11 @@ int movie_isplaying (lua_State *L) {
 //
 //returns the rerecord count of the current movie
 static int movie_rerecordcount (lua_State *L) {
-	if (!FCEUMOV_IsRecording() && !FCEUMOV_IsPlaying())
+	if (!FCEUMOV_IsRecording() && !FCEUMOV_IsPlaying() && !FCEUMOV_Mode(MOVIEMODE_TASEDITOR))
 		luaL_error(L, "No movie loaded.");
 
 	lua_pushinteger(L, FCEUI_GetMovieRerecordCount());
-	
+
 	return 1;
 }
 
@@ -2670,7 +2738,7 @@ static int movie_rerecordcount (lua_State *L) {
 //returns an int value representing the total length of the current movie loaded
 
 static int movie_getlength (lua_State *L) {
-	if (!FCEUMOV_IsRecording() && !FCEUMOV_IsPlaying())
+	if (!FCEUMOV_IsRecording() && !FCEUMOV_IsPlaying() && !FCEUMOV_Mode(MOVIEMODE_TASEDITOR))
 		luaL_error(L, "No movie loaded.");
 
 	lua_pushinteger(L, FCEUI_GetMovieLength());
@@ -2693,7 +2761,7 @@ static int movie_getreadonly (lua_State *L) {
 static int movie_setreadonly (lua_State *L) {
 	bool which = (lua_toboolean( L, 1 ) == 1);
 	FCEUI_SetMovieToggleReadOnly(which);
-	
+
 	return 0;
 }
 
@@ -2702,9 +2770,9 @@ static int movie_setreadonly (lua_State *L) {
 //returns the filename of the movie loaded
 static int movie_getname (lua_State *L) {
 
-	if (!FCEUMOV_IsRecording() && !FCEUMOV_IsPlaying())
+	if (!FCEUMOV_IsRecording() && !FCEUMOV_IsPlaying() && !FCEUMOV_Mode(MOVIEMODE_TASEDITOR))
 		luaL_error(L, "No movie loaded.");
-	
+
 	std::string name = FCEUI_GetMovieName();
 	lua_pushstring(L, name.c_str());
 	return 1;
@@ -2714,10 +2782,10 @@ static int movie_getname (lua_State *L) {
 //
 //returns the filename of movie loaded with no path
 static int movie_getfilename (lua_State *L) {
-	
-	if (!FCEUMOV_IsRecording() && !FCEUMOV_IsPlaying())
+
+	if (!FCEUMOV_IsRecording() && !FCEUMOV_IsPlaying() && !FCEUMOV_Mode(MOVIEMODE_TASEDITOR))
 		luaL_error(L, "No movie loaded.");
-	
+
 	std::string name = FCEUI_GetMovieName();
 	int x =  name.find_last_of("/\\") + 1;
 	if (x)
@@ -2908,9 +2976,9 @@ static void gui_drawline_internal(int x1, int y1, int x2, int y2, bool lastPixel
 // draw a rect on gui_data
 static void gui_drawbox_internal(int x1, int y1, int x2, int y2, uint32 colour) {
 
-	if (x1 > x2) 
+	if (x1 > x2)
 		swap<int>(x1, x2);
-	if (y1 > y2) 
+	if (y1 > y2)
 		swap<int>(y1, y2);
 	if (x1 < 0)
 		x1 = -1;
@@ -3074,7 +3142,7 @@ static inline bool str2colour(uint32 *colour, lua_State *L, const char *str) {
 			luaL_error(L, "palettes range from P00 to P7F");
 			return false;
 		}
-		
+
 		FCEUD_GetPalette(palette + 0x80, &tr, &tg, &tb);
 		// Feeding it RGBA, because it will spit out the right value for me
 		*colour = LUA_BUILD_PIXEL(tr, tg, tb, 0xFF);
@@ -3198,11 +3266,11 @@ static int gui_pixel(lua_State *L) {
 	return 0;
 }
 
-// Usage: 
+// Usage:
 // local r,g,b,a = gui.getpixel(255, 223)
 // Gets the LUA set pixel color
 static int gui_getpixel(lua_State *L) {
-	
+
 	int x = luaL_checkinteger(L, 1);
 	int y = luaL_checkinteger(L,2);
 
@@ -3220,9 +3288,9 @@ static int gui_getpixel(lua_State *L) {
 		lua_pushinteger(L, 0);
 		return 4;
 	}
-	
+
 	//uint8 *dst = (uint8*) &gui_data[(y*LUA_SCREEN_WIDTH+x)*4];
-	
+
 	//uint32 color = *(uint32*) &gui_data[(y*LUA_SCREEN_WIDTH+x)*4];
 
 	LUA_DECOMPOSE_PIXEL(*(uint32*) &gui_data[(y*LUA_SCREEN_WIDTH+x)*4], a, r, g, b);
@@ -3235,12 +3303,12 @@ static int gui_getpixel(lua_State *L) {
 
 }
 
-// Usage: 
+// Usage:
 // local r,g,b,palette = gui.getpixel(255, 255)
 // Gets the screen pixel color
 // Palette will be 254 on error
 static int emu_getscreenpixel(lua_State *L) {
-	
+
 	int x = luaL_checkinteger(L, 1);
 	int y = luaL_checkinteger(L,2);
 	bool getemuscreen = (lua_toboolean(L,3) == 1);
@@ -3257,7 +3325,7 @@ static int emu_getscreenpixel(lua_State *L) {
 		lua_pushinteger(L, 254);
 		return 4;
 	}
-	
+
 	if (!XBuf) {
 		lua_pushinteger(L, 0);
 		lua_pushinteger(L, 0);
@@ -3265,7 +3333,7 @@ static int emu_getscreenpixel(lua_State *L) {
 		lua_pushinteger(L, 254);
 		return 4;
 	}
-	
+
 	uint32 pixelinfo = GetScreenPixel(x,y,getemuscreen);
 
 	LUA_DECOMPOSE_PIXEL(pixelinfo, palette, r, g, b);
@@ -3312,9 +3380,9 @@ static int gui_box(lua_State *L) {
 	fillcolor = gui_optcolour(L,5,LUA_BUILD_PIXEL(63, 255, 255, 255));
 	outlinecolor = gui_optcolour(L,6,LUA_BUILD_PIXEL(255, LUA_PIXEL_R(fillcolor), LUA_PIXEL_G(fillcolor), LUA_PIXEL_B(fillcolor)));
 
-	if (x1 > x2) 
+	if (x1 > x2)
 		std::swap(x1, x2);
-	if (y1 > y2) 
+	if (y1 > y2)
 		std::swap(y1, y2);
 
 	gui_prepare();
@@ -3369,7 +3437,7 @@ static int gui_parsecolor(lua_State *L)
 // Causes FCEUX to write a screenshot to a file based on a received filename, caution: will overwrite existing screenshot files
 //
 // Unconditionally retrns 1; any failure in taking a screenshot would be reported on-screen
-// from the function ReallySnap(). 
+// from the function ReallySnap().
 static int gui_savescreenshotas(lua_State *L) {
 	const char* name = NULL;
 	size_t l;
@@ -3386,10 +3454,10 @@ static int gui_savescreenshotas(lua_State *L) {
 
 // gui.savescreenshot()
 //
-// Causes FCEUX to write a screenshot to a file as if the user pressed the associated hotkey. 
+// Causes FCEUX to write a screenshot to a file as if the user pressed the associated hotkey.
 //
 // Unconditionally retrns 1; any failure in taking a screenshot would be reported on-screen
-// from the function ReallySnap(). 
+// from the function ReallySnap().
 static int gui_savescreenshot(lua_State *L) {
 	FCEUI_SaveSnapshot();
 	return 1;
@@ -3430,7 +3498,7 @@ static int gui_gdscreenshot(lua_State *L) {
 
 	for (int y=0; y < height; y++) {
 		for (int x=0; x < width; x++) {
-			uint8 index = XBuf[(y+8)*256 + x];
+			uint8 index = XBuf[(y)*256 + x];
 
 			// Write A,R,G,B (alpha=0 for us):
 			*ptr = 0;
@@ -3461,7 +3529,7 @@ static int gui_setopacity(lua_State *L) {
 
 // gui.transparency(int strength)
 //
-//  0 = solid, 
+//  0 = solid,
 static int gui_transparency(lua_State *L) {
 	double trans = luaL_checknumber(L,1);
 	transparencyModifier = (int) ((4.0 - trans) / 4.0 * 255);
@@ -3473,7 +3541,7 @@ static int gui_transparency(lua_State *L) {
 
 static const uint32 Small_Font_Data[] =
 {
-	0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,			// 32	 
+	0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,			// 32
 	0x00000000, 0x00000300, 0x00000400, 0x00000500, 0x00000000, 0x00000700, 0x00000000,			// 33	!
 	0x00000000, 0x00040002, 0x00050003, 0x00000000, 0x00000000, 0x00000000, 0x00000000,			// 34	"
 	0x00000000, 0x00040002, 0x00050403, 0x00060004, 0x00070605, 0x00080006, 0x00000000,			// 35	#
@@ -4081,30 +4149,31 @@ static int gui_register(lua_State *L) {
 
 	// First set up the stack.
 	lua_settop(L,1);
-	
+
 	// Verify the validity of the entry
 	if (!lua_isnil(L,1))
 		luaL_checktype(L, 1, LUA_TFUNCTION);
 
 	// Get the old value
 	lua_getfield(L, LUA_REGISTRYINDEX, guiCallbackTable);
-	
+
 	// Save the new value
 	lua_pushvalue(L,1);
 	lua_setfield(L, LUA_REGISTRYINDEX, guiCallbackTable);
-	
+
 	// The old value is on top of the stack. Return it.
 	return 1;
 
 }
 
+// table sound.get()
 static int sound_get(lua_State *L)
-{	
+{
 	extern ENVUNIT EnvUnits[3];
 	extern int CheckFreq(uint32 cf, uint8 sr);
 	extern int32 curfreq[2];
 	extern uint8 PSG[0x10];
-	extern int32 lengthcount[4]; 
+	extern int32 lengthcount[4];
 	extern uint8 TriCount;
 	extern const uint32 *NoiseFreqTable;
 	extern int32 DMCPeriod;
@@ -4241,6 +4310,307 @@ static int sound_get(lua_State *L)
 	return 1;
 }
 
+// TAS Editor functions library
+
+// bool taseditor.registerauto()
+static int taseditor_registerauto(lua_State *L)
+{
+	if (!lua_isnil(L,1))
+		luaL_checktype(L, 1, LUA_TFUNCTION);
+	lua_settop(L,1);
+	lua_getfield(L, LUA_REGISTRYINDEX, luaCallIDStrings[LUACALL_TASEDITOR_AUTO]);
+	lua_insert(L,1);
+	lua_setfield(L, LUA_REGISTRYINDEX, luaCallIDStrings[LUACALL_TASEDITOR_AUTO]);
+	//StopScriptIfFinished(luaStateToUIDMap[L]);
+	return 1;
+}
+
+// bool taseditor.registermanual(string caption)
+static int taseditor_registermanual(lua_State *L)
+{
+	if (!lua_isnil(L,1))
+		luaL_checktype(L, 1, LUA_TFUNCTION);
+
+	const char* caption = NULL;
+	if (!lua_isnil(L, 2))
+		caption = lua_tostring(L, 2);
+
+	lua_settop(L,1);
+	lua_getfield(L, LUA_REGISTRYINDEX, luaCallIDStrings[LUACALL_TASEDITOR_MANUAL]);
+	lua_insert(L,1);
+	lua_setfield(L, LUA_REGISTRYINDEX, luaCallIDStrings[LUACALL_TASEDITOR_MANUAL]);
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	taseditor_lua.EnableRunFunction(caption);
+#endif
+	return 1;
+}
+
+// bool taseditor.engaged()
+static int taseditor_engaged(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	lua_pushboolean(L, taseditor_lua.engaged());
+#else
+	lua_pushboolean(L, false);
+#endif
+	return 1;
+}
+
+// bool taseditor.markedframe(int frame)
+static int taseditor_markedframe(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	lua_pushboolean(L, taseditor_lua.markedframe(luaL_checkinteger(L, 1)));
+#else
+	lua_pushboolean(L, false);
+#endif
+	return 1;
+}
+
+// int taseditor.getmarker(int frame)
+static int taseditor_getmarker(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	lua_pushinteger(L, taseditor_lua.getmarker(luaL_checkinteger(L, 1)));
+#else
+	lua_pushinteger(L, -1);
+#endif
+	return 1;
+}
+
+// int taseditor.setmarker(int frame)
+static int taseditor_setmarker(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	lua_pushinteger(L, taseditor_lua.setmarker(luaL_checkinteger(L, 1)));
+#else
+	lua_pushinteger(L, -1);
+#endif
+	return 1;
+}
+
+// taseditor.removemarker(int frame)
+static int taseditor_removemarker(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	taseditor_lua.removemarker(luaL_checkinteger(L, 1));
+#endif
+	return 0;
+}
+
+// string taseditor.getnote(int index)
+static int taseditor_getnote(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	lua_pushstring(L, taseditor_lua.getnote(luaL_checkinteger(L, 1)));
+#else
+	lua_pushnil(L);
+#endif
+	return 1;
+}
+
+// taseditor.setnote(int index, string newtext)
+static int taseditor_setnote(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	taseditor_lua.setnote(luaL_checkinteger(L, 1), luaL_checkstring(L, 2));
+#endif
+	return 0;
+}
+
+// int taseditor.getcurrentbranch()
+static int taseditor_getcurrentbranch(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	lua_pushinteger(L, taseditor_lua.getcurrentbranch());
+#else
+	lua_pushinteger(L, -1);
+#endif
+	return 1;
+}
+
+// string taseditor.getrecordermode()
+static int taseditor_getrecordermode(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	lua_pushstring(L, taseditor_lua.getrecordermode());
+#else
+	lua_pushnil(L);
+#endif
+	return 1;
+}
+
+// int taseditor.getsuperimpose()
+static int taseditor_getsuperimpose(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	lua_pushinteger(L, taseditor_lua.getsuperimpose());
+#else
+	lua_pushinteger(L, -1);
+#endif
+	return 1;
+}
+
+// int taseditor.getlostplayback()
+static int taseditor_getlostplayback(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	lua_pushinteger(L, taseditor_lua.getlostplayback());
+#else
+	lua_pushinteger(L, -1);
+#endif
+	return 1;
+}
+
+// int taseditor.getplaybacktarget()
+static int taseditor_getplaybacktarget(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	lua_pushinteger(L, taseditor_lua.getplaybacktarget());
+#else
+	lua_pushinteger(L, -1);
+#endif
+	return 1;
+}
+
+// taseditor.setplayback(int frame)
+static int taseditor_setplayback(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	taseditor_lua.setplayback(luaL_checkinteger(L, 1));
+#endif
+	return 0;
+}
+
+// taseditor.stopseeking()
+static int taseditor_stopseeking(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	taseditor_lua.stopseeking();
+#endif
+	return 0;
+}
+
+// table taseditor.getselection()
+static int taseditor_getselection(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	// create temp vector and provide its reference to TAS Editor for filling the vector with data
+	std::vector<int> cur_set;
+	taseditor_lua.getselection(cur_set);
+	int size = cur_set.size();
+	if (size)
+	{
+		lua_createtable(L, size, 0);
+		for (int i = 0; i < size; ++i)
+		{
+			lua_pushinteger(L, cur_set[i]);
+			lua_rawseti(L, -2, i + 1);
+		}
+	} else
+	{
+		lua_pushnil(L);
+	}
+#else
+	lua_pushnil(L);
+#endif
+	return 1;
+}
+
+// taseditor.setselection(table new_set)
+static int taseditor_setselection(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	std::vector<int> cur_set;
+	// retrieve new_set data from table to vector
+	if (!lua_isnil(L, 1))
+	{
+		luaL_checktype(L, 1, LUA_TTABLE);
+		int max_index = luaL_getn(L, 1);
+		int i = 1;
+		while (i <= max_index)
+		{
+			lua_rawgeti(L, 1, i);
+			cur_set.push_back(lua_tonumber(L, -1));
+			lua_pop(L, 1);
+			i++;
+		}
+	}
+	// and provide its reference to TAS Editor for changing selection
+	taseditor_lua.setselection(cur_set);
+#endif
+	return 0;
+}
+
+// int taseditor.getinput(int frame, int joypad)
+static int taseditor_getinput(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	lua_pushinteger(L, taseditor_lua.getinput(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2)));
+#else
+	lua_pushinteger(L, -1);
+#endif
+	return 1;
+}
+
+// taseditor.submitinputchange(int frame, int joypad, int input)
+static int taseditor_submitinputchange(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	taseditor_lua.submitinputchange(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2), luaL_checkinteger(L, 3));
+#endif
+	return 0;
+}
+
+// taseditor.submitinsertframes(int frame, int joypad, int input)
+static int taseditor_submitinsertframes(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	taseditor_lua.submitinsertframes(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2));
+#endif
+	return 0;
+}
+
+// taseditor.submitdeleteframes(int frame, int joypad, int input)
+static int taseditor_submitdeleteframes(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	taseditor_lua.submitdeleteframes(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2));
+#endif
+	return 0;
+}
+
+// int taseditor.applyinputchanges([string name])
+static int taseditor_applyinputchanges(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	if (lua_isnil(L, 1))
+	{
+		lua_pushinteger(L, taseditor_lua.applyinputchanges(""));
+	} else
+	{
+		const char* name = lua_tostring(L, 1);
+		if (name)
+			lua_pushinteger(L, taseditor_lua.applyinputchanges(name));
+		else
+			lua_pushinteger(L, taseditor_lua.applyinputchanges(""));
+	}
+#else
+	lua_pushinteger(L, -1);
+#endif
+	return 1;
+}
+
+// taseditor.clearinputchanges()
+static int taseditor_clearinputchanges(lua_State *L)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	taseditor_lua.clearinputchanges();
+#endif
+	return 0;
+}
+
+
 static int doPopup(lua_State *L, const char* deftype, const char* deficon) {
 	const char *str = luaL_checkstring(L, 1);
 	const char* type = lua_type(L,2) == LUA_TSTRING ? lua_tostring(L,2) : deftype;
@@ -4310,35 +4680,35 @@ static int doPopup(lua_State *L, const char* deftype, const char* deficon) {
 		return luaL_error(L, "invalid popup type \"%s\"", type);
 
 	// Can we find a copy of xmessage? Search the path.
-	
+
 	char *path = strdup(getenv("PATH"));
 
 	char *current = path;
-	
+
 	char *colon;
 
 	int found = 0;
 
 	while (current) {
 		colon = strchr(current, ':');
-		
+
 		// Clip off the colon.
 		*colon++ = 0;
-		
+
 		int len = strlen(current);
 		char *filename = (char*)FCEU_dmalloc(len + 12); // always give excess
 		snprintf(filename, len+12, "%s/xmessage", current);
-		
+
 		if (access(filename, X_OK) == 0) {
 			free(filename);
 			found = 1;
 			break;
 		}
-		
+
 		// Failed, move on.
 		current = colon;
 		free(filename);
-		
+
 	}
 
 	free(path);
@@ -4349,13 +4719,13 @@ static int doPopup(lua_State *L, const char* deftype, const char* deficon) {
 
 	pid = fork();
 	if (pid == 0) {// I'm the virgin sacrifice
-	
+
 		// I'm gonna be dead in a matter of microseconds anyways, so wasted memory doesn't matter to me.
 		// Go ahead and abuse strdup.
 		char * parameters[] = {"xmessage", "-buttons", t, strdup(str), NULL};
 
 		execvp("xmessage", parameters);
-		
+
 		// Aw shitty
 		perror("exec xmessage");
 		exit(1);
@@ -4368,13 +4738,13 @@ static int doPopup(lua_State *L, const char* deftype, const char* deficon) {
 		int res = waitpid(pid, &r, 0);
 		if (res < 0) // wtf?
 			goto use_console;
-		
+
 		// The return value gets copmlicated...
 		if (!WIFEXITED(r)) {
 			luaL_error(L, "don't screw with my xmessage process!");
 		}
 		r = WEXITSTATUS(r);
-		
+
 		// We assume it's worked.
 		if (r == 0)
 		{
@@ -4392,7 +4762,7 @@ static int doPopup(lua_State *L, const char* deftype, const char* deficon) {
 			lua_pushstring(L, "cancel");
 			return 1;
 		}
-		
+
 		// Wtf?
 		return luaL_error(L, "popup failed due to unknown results involving xmessage (%d)", r);
 	}
@@ -4426,7 +4796,7 @@ use_console:
 		}
 		fprintf(stderr, "(%s): ", t);
 		fgets(buffer, sizeof(buffer), stdin);
-		
+
 		// Check if the option is in the list
 		if (strchr(t, tolower(buffer[0]))) {
 			switch (tolower(buffer[0])) {
@@ -4441,12 +4811,12 @@ use_console:
 				return 1;
 			default:
 				luaL_error(L, "internal logic error in console based prompts for gui.popup");
-			
+
 			}
 		}
-		
+
 		// We fell through, so we assume the user answered wrong and prompt again.
-	
+
 	}
 
 	// Nothing here, since the only way out is in the loop.
@@ -4710,7 +5080,7 @@ static int bitbit(lua_State *L)
 
 // The function called periodically to ensure Lua doesn't run amok.
 static void FCEU_LuaHookFunction(lua_State *L, lua_Debug *dbg) {
-	
+
 	if (numTries-- == 0) {
 
 		int kill = 0;
@@ -4719,7 +5089,7 @@ static void FCEU_LuaHookFunction(lua_State *L, lua_Debug *dbg) {
 		// Uh oh
                 //StopSound(); //mbg merge 7/23/08
 		int ret = MessageBox(hAppWnd, "The Lua script running has been running a long time. It may have gone crazy. Kill it?\n\n(No = don't check anymore either)", "Lua Script Gone Nuts?", MB_YESNO);
-		
+
 		if (ret == IDYES) {
 			kill = 1;
 		}
@@ -4734,7 +5104,7 @@ static void FCEU_LuaHookFunction(lua_State *L, lua_Debug *dbg) {
 				kill = 1;
 				break;
 			}
-			
+
 			if (buffer[0] == 'n' || buffer[0] == 'N')
 				break;
 		}
@@ -4748,7 +5118,7 @@ static void FCEU_LuaHookFunction(lua_State *L, lua_Debug *dbg) {
 		// else, kill the debug hook.
 		lua_sethook(L, NULL, 0, 0);
 	}
-	
+
 
 }
 
@@ -4802,7 +5172,7 @@ static int emu_exec_time(lua_State *L)
 	SetEvent(goEvent);
 	//wait for the lua thread to finish, but no more than the specified amount of time
 	WaitForSingleObject(readyEvent,count);
-	
+
 	//kill lua (if it hasnt already been killed)
 	lua_sethook(L, emu_exec_time_hook, LUA_MASKCALL | LUA_MASKRET | LUA_MASKCOUNT, 1);
 
@@ -4811,7 +5181,7 @@ static int emu_exec_time(lua_State *L)
 
 	//clear the lua thread-killer
 	lua_sethook(L, NULL, 0, 0);
-	
+
 	CloseHandle(readyEvent);
 	CloseHandle(goEvent);
 	CloseHandle(thread);
@@ -4822,13 +5192,14 @@ static int emu_exec_time(lua_State *L)
 #else
 static int emu_exec_time(lua_State *L) { return 0; }
 #endif
-  
+
 static const struct luaL_reg emulib [] = {
 
 	{"poweron", emu_poweron},
 	{"softreset", emu_softreset},
 	{"speedmode", emu_speedmode},
 	{"frameadvance", emu_frameadvance},
+	{"paused", emu_paused},
 	{"pause", emu_pause},
 	{"unpause", emu_unpause},
 	{"exec_count", emu_exec_count},
@@ -4838,6 +5209,7 @@ static const struct luaL_reg emulib [] = {
 	{"framecount", emu_framecount},
 	{"lagcount", emu_lagcount},
 	{"lagged", emu_lagged},
+	{"setlagflag", emu_setlagflag},
 	{"emulating", emu_emulating},
 	{"registerbefore", emu_registerbefore},
 	{"registerafter", emu_registerafter},
@@ -4872,7 +5244,7 @@ static const struct luaL_reg memorylib [] = {
 	{"writebyte", memory_writebyte},
 	{"getregister", memory_getregister},
 	{"setregister", memory_setregister},
-	
+
 	// memory hooks
 	{"registerwrite", memory_registerwrite},
 	//{"registerread", memory_registerread}, TODO
@@ -4889,12 +5261,14 @@ static const struct luaL_reg joypadlib[] = {
 	{"get", joypad_get},
 	{"getdown", joypad_getdown},
 	{"getup", joypad_getup},
+	{"getimmediate", joypad_getimmediate},
 	{"set", joypad_set},
 	// alternative names
 	{"read", joypad_get},
 	{"write", joypad_set},
 	{"readdown", joypad_getdown},
 	{"readup", joypad_getup},
+	{"readimmediate", joypad_getimmediate},
 	{NULL,NULL}
 };
 
@@ -4960,7 +5334,7 @@ static const struct luaL_reg movielib[] = {
 
 
 static const struct luaL_reg guilib[] = {
-	
+
 	{"pixel", gui_pixel},
 	{"getpixel", gui_getpixel},
 	{"line", gui_line},
@@ -4992,8 +5366,37 @@ static const struct luaL_reg guilib[] = {
 };
 
 static const struct luaL_reg soundlib[] = {
-	
+
 	{"get", sound_get},
+	{NULL,NULL}
+};
+
+static const struct luaL_reg taseditorlib[] = {
+
+	{"registerauto", taseditor_registerauto},
+	{"registermanual", taseditor_registermanual},
+	{"engaged", taseditor_engaged},
+	{"markedframe", taseditor_markedframe},
+	{"getmarker", taseditor_getmarker},
+	{"setmarker", taseditor_setmarker},
+	{"removemarker", taseditor_removemarker},
+	{"getnote", taseditor_getnote},
+	{"setnote", taseditor_setnote},
+	{"getcurrentbranch", taseditor_getcurrentbranch},
+	{"getrecordermode", taseditor_getrecordermode},
+	{"getsuperimpose", taseditor_getsuperimpose},
+	{"getlostplayback", taseditor_getlostplayback},
+	{"getplaybacktarget", taseditor_getplaybacktarget},
+	{"setplayback", taseditor_setplayback},
+	{"stopseeking", taseditor_stopseeking},
+	{"getselection", taseditor_getselection},
+	{"setselection", taseditor_setselection},
+	{"getinput", taseditor_getinput},
+	{"submitinputchange", taseditor_submitinputchange},
+	{"submitinsertframes", taseditor_submitinsertframes},
+	{"submitdeleteframes", taseditor_submitdeleteframes},
+	{"applyinputchanges", taseditor_applyinputchanges},
+	{"clearinputchanges", taseditor_clearinputchanges},
 	{NULL,NULL}
 };
 
@@ -5016,9 +5419,9 @@ void CallExitFunction() {
 		HandleCallbackError(L);
 }
 
-void FCEU_LuaFrameBoundary() {
-
-//	printf("Lua Frame\n");
+void FCEU_LuaFrameBoundary()
+{
+	//printf("Lua Frame\n");
 
 	// HA!
 	if (!L || !luaRunning)
@@ -5027,7 +5430,7 @@ void FCEU_LuaFrameBoundary() {
 	// Our function needs calling
 	lua_settop(L,0);
 	lua_getfield(L, LUA_REGISTRYINDEX, frameAdvanceThread);
-	lua_State *thread = lua_tothread(L,1);	
+	lua_State *thread = lua_tothread(L,1);
 
 	// Lua calling C must know that we're busy inside a frame boundary
 	frameBoundary = TRUE;
@@ -5035,7 +5438,7 @@ void FCEU_LuaFrameBoundary() {
 
 	numTries = 1000;
 	int result = lua_resume(thread, 0);
-	
+
 	if (result == LUA_YIELD) {
 		// Okay, we're fine with that.
 	} else if (result != 0) {
@@ -5043,7 +5446,7 @@ void FCEU_LuaFrameBoundary() {
 		FCEU_LuaOnStop();
 		lua_pushnil(L);
 		lua_setfield(L, LUA_REGISTRYINDEX, frameAdvanceThread);
-		
+
 		// Error?
 #if defined(WIN32) && !defined(DINGUX_ON_WIN32)
                 //StopSound();//StopSound(); //mbg merge 7/23/08
@@ -5096,13 +5499,14 @@ int FCEU_LoadLuaCode(const char *filename, const char *arg) {
 	luaexiterrorcount = 8;
 
 	if (!L) {
-		
+
 		L = lua_open();
 		luaL_openlibs(L);
 		#if defined( WIN32) && !defined(NEED_MINGW_HACKS)
 		iuplua_open(L);
 		iupcontrolslua_open(L);
-		
+		luaopen_winapi(L);
+
 		//luasocket - yeah, have to open this in a weird way
 		lua_pushcfunction(L,luaopen_socket_core);
 		lua_setglobal(L,"tmp");
@@ -5123,6 +5527,7 @@ int FCEU_LoadLuaCode(const char *filename, const char *arg) {
 		luaL_register(L, "movie", movielib);
 		luaL_register(L, "gui", guilib);
 		luaL_register(L, "sound", soundlib);
+		luaL_register(L, "taseditor", taseditorlib);
 		luaL_register(L, "bit", bit_funcs); // LuaBitOp library
 		lua_settop(L, 0);		// clean the stack, because each call to luaL_register leaves a table on top
 
@@ -5162,8 +5567,8 @@ int FCEU_LoadLuaCode(const char *filename, const char *arg) {
 	// We make our thread NOW because we want it at the bottom of the stack.
 	// If all goes wrong, we let the garbage collector remove it.
 	lua_State *thread = lua_newthread(L);
-	
-	// Load the data	
+
+	// Load the data
 	int result = luaL_loadfile(L,filename);
 
 	if (result) {
@@ -5182,13 +5587,13 @@ int FCEU_LoadLuaCode(const char *filename, const char *arg) {
 #if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	AddRecentLuaFile(filename); //Add the filename to our recent lua menu
 #endif
-	
+
 	// Get our function into it
 	lua_xmove(L, thread, 1);
-	
+
 	// Save the thread to the registry. This is why I make the thread FIRST.
 	lua_setfield(L, LUA_REGISTRYINDEX, frameAdvanceThread);
-	
+
 
 	// Initialize settings
 	luaRunning = TRUE;
@@ -5334,21 +5739,20 @@ int FCEU_LuaRerecordCountSkip() {
 	return L && luaRunning && skipRerecords;
 }
 
-
 /**
  * Given an 8-bit screen with the indicated resolution,
  * draw the current GUI onto it.
  *
  * Currently we only support 256x* resolutions.
  */
-void FCEU_LuaGui(uint8 *XBuf) {
-
+void FCEU_LuaGui(uint8 *XBuf)
+{
 	if (!L/* || !luaRunning*/)
 		return;
 
 	// First, check if we're being called by anybody
 	lua_getfield(L, LUA_REGISTRYINDEX, guiCallbackTable);
-	
+
 	if (lua_isfunction(L, -1)) {
 		// We call it now
 		numTries = 1000;
@@ -5363,7 +5767,7 @@ void FCEU_LuaGui(uint8 *XBuf) {
 			// This is grounds for trashing the function
 			lua_pushnil(L);
 			lua_setfield(L, LUA_REGISTRYINDEX, guiCallbackTable);
-		
+
 		}
 	}
 
@@ -5373,14 +5777,24 @@ void FCEU_LuaGui(uint8 *XBuf) {
 	if (gui_used == GUI_CLEAR)
 		return;
 
+	if (gui_used == GUI_USED_SINCE_LAST_FRAME && !FCEUI_EmulationPaused())
+	{
+		memset(gui_data, 0, LUA_SCREEN_WIDTH*LUA_SCREEN_HEIGHT*4);
+		gui_used = GUI_CLEAR;
+		return;
+	}
+
 	gui_used = GUI_USED_SINCE_LAST_FRAME;
 
 	int x, y;
 
-	for (y = 0; y < LUA_SCREEN_HEIGHT; y++) {
-		for (x=0; x < LUA_SCREEN_WIDTH; x++) {
+	for (y = 0; y < LUA_SCREEN_HEIGHT; y++)
+	{
+		for (x=0; x < LUA_SCREEN_WIDTH; x++)
+		{
 			const uint8 gui_alpha = gui_data[(y*LUA_SCREEN_WIDTH+x)*4+3];
-			if (gui_alpha == 0) {
+			if (gui_alpha == 0)
+			{
 				// do nothing
 				continue;
 			}
@@ -5399,7 +5813,7 @@ void FCEU_LuaGui(uint8 *XBuf) {
 			else {
 				// alpha-blending
 				uint8 scr_red, scr_green, scr_blue;
-				FCEUD_GetPalette(XBuf[(y+8)*256+x], &scr_red, &scr_green, &scr_blue);
+				FCEUD_GetPalette(XBuf[(y)*256+x], &scr_red, &scr_green, &scr_blue);
 				r = (((int) gui_red   - scr_red)   * gui_alpha / 255 + scr_red)   & 255;
 				g = (((int) gui_green - scr_green) * gui_alpha / 255 + scr_green) & 255;
 				b = (((int) gui_blue  - scr_blue)  * gui_alpha / 255 + scr_blue)  & 255;

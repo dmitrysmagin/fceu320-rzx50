@@ -15,7 +15,7 @@
 *
 * You should have received a copy of the GNU General Public License
 * along with this program; if not, write to the Free Software
-* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "resource.h"
@@ -24,9 +24,9 @@
 //internal variables
 int pauseAfterPlayback = 0;		//Flag for pausing emulator when movie is finished
 int closeFinishedMovie = 0;		//Flag for clossing movie when it is finished
+int suggestReadOnlyReplay = 1;
 
 //external
-extern int status_icon;		//In main.cpp - For displaying movie status icons (play,record,pause)
 extern bool movieSubtitles; //In fceu.cpp - Toggle for displaying movie subtitles
 extern bool subtitlesOnAVI; //In movie.cpp - Toggle for putting movie subtitles in an AVI
 extern bool autoMovieBackup;//In fceu.cpp - Toggle that determines if movies should be backed up automatically before altering them
@@ -37,8 +37,8 @@ void UpdateCheckBoxes(HWND hwndDlg)
 {
 	CheckDlgButton(hwndDlg, IDC_MOVIE_PAUSEAFTERPLAYBACK, pauseAfterPlayback ? BST_CHECKED : BST_UNCHECKED);
 	CheckDlgButton(hwndDlg, IDC_MOVIE_CLOSEAFTERPLAYBACK, closeFinishedMovie ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hwndDlg, IDC_MOVIE_SUGGEST_READONLY, suggestReadOnlyReplay ? BST_CHECKED : BST_UNCHECKED);
 	CheckDlgButton(hwndDlg, IDC_MOVIE_BINDSAVESTATES, bindSavestate ? BST_CHECKED : BST_UNCHECKED);
-	CheckDlgButton(hwndDlg, IDC_MOVIE_DISPLAYSTATUSICON, status_icon ? BST_CHECKED : BST_UNCHECKED);
 	CheckDlgButton(hwndDlg, IDC_MOVIE_DISPLAYSUBTITLES, movieSubtitles ? BST_CHECKED : BST_UNCHECKED);
 	CheckDlgButton(hwndDlg, IDC_MOVIE_SUBTITLESINAVI, subtitlesOnAVI ? BST_CHECKED : BST_UNCHECKED);
 	CheckDlgButton(hwndDlg, IDC_MOVIE_AUTOBACKUP, autoMovieBackup ? BST_CHECKED : BST_UNCHECKED);
@@ -81,12 +81,12 @@ BOOL CALLBACK MovieOptionsCallB(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 						closeFinishedMovie = closeFinishedMovie?0:1;
 						break;
 
-					case IDC_MOVIE_BINDSAVESTATES:
-						bindSavestate ^= 1;
+					case IDC_MOVIE_SUGGEST_READONLY:
+						suggestReadOnlyReplay = suggestReadOnlyReplay?0:1;
 						break;
 
-					case IDC_MOVIE_DISPLAYSTATUSICON:
-						status_icon = status_icon?0:1;
+					case IDC_MOVIE_BINDSAVESTATES:
+						bindSavestate ^= 1;
 						break;
 
 					case IDC_MOVIE_DISPLAYSUBTITLES:

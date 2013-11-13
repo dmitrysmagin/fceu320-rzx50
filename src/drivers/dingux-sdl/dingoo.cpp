@@ -529,8 +529,7 @@ int FCEUD_LoadMovie(const char *name, char *romname) {
 		g_config->getOption("SDL.PauseFrame", &pauseframe);
 		g_config->setOption("SDL.PauseFrame", 0);
 		FCEUI_printf("Playing back movie located at %s\n", s.c_str());
-		FCEUI_LoadMovie(s.c_str(), false, false, pauseframe ? pauseframe
-				: false);
+		FCEUI_LoadMovie(s.c_str(), false, pauseframe ? pauseframe : false);
 	} else {
 		// Must be a rom file ...
 		return 0;
@@ -798,8 +797,7 @@ int main(int argc, char *argv[]) {
 			g_config->getOption("SDL.PauseFrame", &pauseframe);
 			g_config->setOption("SDL.PauseFrame", 0);
 			FCEUI_printf("Playing back movie located at %s\n", s.c_str());
-			FCEUI_LoadMovie(s.c_str(), false, false, pauseframe ? pauseframe
-					: false);
+			FCEUI_LoadMovie(s.c_str(), false, pauseframe ? pauseframe : false);
 		} else
 			FCEUI_printf("Sorry, I don't know how to play back %s\n", s.c_str());
 	}
@@ -928,3 +926,11 @@ void FCEUI_FDSFlip(void)
         FDSSwitchRequested = 1;
 }
 
+bool enableHUDrecording = false;
+bool FCEUI_AviEnableHUDrecording()
+{
+	if (enableHUDrecording)
+		return true;
+
+	return false;
+}

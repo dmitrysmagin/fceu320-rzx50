@@ -44,6 +44,7 @@ static struct
 	{ EMUCMD_LOAD_STATE, 				SCAN_P, }, //most people use the loadslotx / savestlotx style system which requires hogging all th F Keys.
 	{ EMUCMD_MOVIE_FRAME_DISPLAY_TOGGLE, 	SCAN_PERIOD, },
 	{ EMUCMD_MOVIE_INPUT_DISPLAY_TOGGLE, 	SCAN_COMMA, },
+	{ EMUCMD_MISC_DISPLAY_LAGCOUNTER_TOGGLE, 	SCAN_SLASH, },
 	{ EMUCMD_MOVIE_READONLY_TOGGLE, 	SCAN_Q, },
 	{ EMUCMD_SAVE_STATE_SLOT_0, 		SCAN_F10 | CMD_KEY_SHIFT, },
 	{ EMUCMD_SAVE_STATE_SLOT_1, 		SCAN_F1 | CMD_KEY_SHIFT, },
@@ -69,9 +70,15 @@ static struct
 	{ EMUCMD_SCRIPT_RELOAD,				SCAN_L | CMD_KEY_SHIFT,		},
 	{ EMUCMD_OPENROM,					SCAN_O | CMD_KEY_CTRL,	    },
 	{ EMUCMD_CLOSEROM,					SCAN_W | CMD_KEY_CTRL,		},
-  { EMUCMD_RELOADROM,					SCAN_R | CMD_KEY_CTRL  | CMD_KEY_SHIFT ,		},
-	{ EMUCMD_MISC_UNDOREDOSAVESTATE,	SCAN_Z | CMD_KEY_CTRL,		},
-	{ EMUCMD_MISC_TOGGLEFULLSCREEN,		SCAN_ENTER | CMD_KEY_ALT,	},
+	{ EMUCMD_RELOAD,					SCAN_F1 | CMD_KEY_CTRL ,	},
+	{ EMUCMD_MISC_UNDOREDOSAVESTATE,	SCAN_Z | CMD_KEY_CTRL, },
+	{ EMUCMD_MISC_TOGGLEFULLSCREEN,		SCAN_ENTER | CMD_KEY_ALT, },
+	{ EMUCMD_RERECORD_DISPLAY_TOGGLE,	SCAN_M,	},
+	{ EMUCMD_TASEDITOR_REWIND,			SCAN_BACKSPACE, },
+	{ EMUCMD_TASEDITOR_RESTORE_PLAYBACK,	SCAN_SPACE,	},
+	{ EMUCMD_TASEDITOR_CANCEL_SEEKING,	SCAN_ESCAPE, },
+	{ EMUCMD_TASEDITOR_SWITCH_AUTORESTORING,	SCAN_SPACE | CMD_KEY_CTRL, },
+	{ EMUCMD_TASEDITOR_SWITCH_MULTITRACKING,	SCAN_W, },
 };
 
 #define NUM_DEFAULT_MAPPINGS		(sizeof(DefaultCommandMapping)/sizeof(DefaultCommandMapping[0]))
@@ -448,7 +455,9 @@ void PopulateConflictTable(int* conflictTable)
 		for(unsigned int j = i + 1; j < EMUCMD_MAX; ++j)
 		{
 			if(FCEUD_CommandMapping[i] &&
-				FCEUD_CommandMapping[i] == FCEUD_CommandMapping[j])
+				FCEUD_CommandMapping[i] == FCEUD_CommandMapping[j] &&
+				 // AnS: added the condition that both commands must have the same EMUCMDFLAG_TASEDITOR, or else they are not considered conflicting
+				 (FCEUI_CommandTable[i].flags & EMUCMDFLAG_TASEDITOR) == (FCEUI_CommandTable[j].flags & EMUCMDFLAG_TASEDITOR))
 			{
 				conflictTable[i] = 1;
 				conflictTable[j] = 1;
@@ -564,7 +573,7 @@ HWND InitializeListView(HWND hwndDlg)
 	lv.mask = LVCF_FMT | LVCF_TEXT | LVCF_WIDTH;
 	lv.fmt = LVCFMT_LEFT;
 	lv.pszText = "Type";
-	lv.cx = 40;
+	lv.cx = 80;
 
 	SendMessage(hwndListView, LVM_INSERTCOLUMN, (WPARAM)0, (LPARAM)&lv);
 
@@ -572,7 +581,7 @@ HWND InitializeListView(HWND hwndDlg)
 	lv.mask = LVCF_FMT | LVCF_TEXT | LVCF_WIDTH;
 	lv.fmt = LVCFMT_LEFT;
 	lv.pszText = "Command";
-	lv.cx = 180;
+	lv.cx = 240;
 
 	SendMessage(hwndListView, LVM_INSERTCOLUMN, (WPARAM)1, (LPARAM)&lv);
 

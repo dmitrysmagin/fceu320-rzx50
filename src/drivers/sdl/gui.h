@@ -22,8 +22,9 @@
 #define GTK
 #include <gtk/gtk.h>
 extern GtkWidget* MainWindow;
-extern GtkWidget* socket;
+extern GtkWidget* evbox;
 extern GtkRadioAction* stateSlot;
+extern int GtkMouseData[3];
 int InitGTKSubsystem(int argc, char** argv);
 void pushOutputToGTK(const char* str);
 void showGui(bool b);

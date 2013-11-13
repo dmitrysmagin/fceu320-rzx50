@@ -1,4 +1,269 @@
---- FCEUX 2.1.5 Release ---
+24-Nov-2012 - AnS - when the New PPU is on, it displays "(NewPPU)" in the window caption
+20-Nov-2012 - AnS - Taseditor: added "Ungreenzone" item to context menu; added "Config->Enable Greenzoning"
+13-Nov-2012 - AnS - Taseditor: changed fm3 format to version 3
+10-Nov-2012 - AnS - win32 hotkeys mapping: added the condition that both commands must have the same EMUCMDFLAG_TASEDITOR, or else they are not considered conflicting
+10-Nov-2012 - AnS - win32 hotkeys: disallow unwanted hits of e.g. F1 after pressing Shift+F1 and quickly releasing Shift
+05-Nov-2012 - zeromus - support mapper 028
+05-Nov-2012 - AnS - Taseditor: fixed lag adjustments when dealing with previously unknown lag state
+30-Oct-2012 - zeromus - default stack pointer to $FD instead of $FF
+29-Oct-2012 - CaH4e3 - mapper 252 added
+29-Oct-2012 - AnS - Taseditor: update RAM Search and RAM Watch when jumping causes game state to change
+21-Oct-2012 - CaH4e3 - sync mappers with fceu-mm
+30-Sep-2012 - AnS - added "(Europe)" and "(PAL)" strings to region detection
+28-Sep-2012 - AnS - Hexeditor: Ctrl+F opens Find dialog
+28-Sep-2012 - AnS - Hexeditor: display 0x5000-0x5FFF contents
+28-Sep-2012 - AnS - Tracer: fixed crash when logging undefined opcodes
+26-Sep-2012 - AnS - Debugger: "Name" button in Bookmarks, total revamp of Bookmarks
+26-Sep-2012 - AnS - Debugger: single click on any address copies this address to the "Seek To" field and "Bookmark Add" field
+26-Sep-2012 - AnS - Fixed replay engine bug that doubles the last input of the movie
+26-Sep-2012 - AnS - Tracer: "RTS" instructions now output the subroutine address/name
+23-Sep-2012 - AnS - Lua: clear previous frame drawings at the beginning of every frame
+23-Sep-2012 - AnS - Debugger: fixed mouseover when using Symbolic debug; mouseover works for the disassembly window too
+23-Sep-2012 - CaH4e3 - CDLogger: Now can log VROM access (CHR banks of the ROM) when NewPPU is enabled
+22-Sep-2012 - AnS - Tracer: added "Symbolic trace", "Log current Frame number", "Log emulator messages", "Log breakpoint hits" options
+11-Sep-2012 - AnS - new Lua function: emu.setlagflag()
+11-Sep-2012 - AnS - Debugger: deleting a breakpoint leaves selection in the Breakpoints list
+06-Sep-2012 - AnS - added "Use Custom Palette" checkbox to Palette config
+06-Sep-2012 - AnS - Debugger: special strings (NMI/IRQ/etc) can be also used in "Seek To" field and Bookmarks
+01-Sep-2012 - AnS - fixed movie savestates logic, loading post-movie savestates is not allowed in read-only
+31-Aug-2012 - zeromus - update mapper 156 from fceu-mm sources
+30-Aug-2012 - AnS - fixed savestates filenaming bug when working with a movie
+29-Aug-2012 - AnS - added "Force Grayscale" checkbox to Palette config
+26-Aug-2012 - AnS - Taseditor: History Log highlights items related to current item
+25-Aug-2012 - AnS - Taseditor: fixed AdjustLag feature and changed fm3 version to v2
+22-Aug-2012 - AnS - added "Clear" button to Message Log
+20-Aug-2012 - AnS - "Switch fullscreen by double-click" option in GUI config
+20-Aug-2012 - AnS - "Hide mouse cursor" and "Use console BG color for empty areas" options
+20-Aug-2012 - AnS - total revamp of Video config stuff, Best Fit also works for fullscreen mode
+19-Aug-2012 - AnS - win32: "Maintain aspect ratio (best fit)" option in Video config
+12-Aug-2012 - AnS - Debugger: "Display ROM offsets" option
+12-Aug-2012 - AnS - Debugger: double-click breakpoint also adds current bank number to breakpoint condition
+12-Aug-2012 - AnS - Added FPS display to Win32 port (Config->Display->FPS)
+10-Aug-2012 - prg - gtk: reset video on video dialog close
+10-Aug-2012 - prg - gtk: add gui option for showfps
+10-Aug-2012 - prg - sdl: add runtime option for controling drawing fps (SDL.ShowFPS)
+10-Aug-2012 - prg - core: move showfps from build option to runtime option
+10-Aug-2012 - prg - sdl: fix and enable SHOWFPS build option (TODO: make runtime option)
+10-Aug-2012 - AnS - Debugger: "Address Bookmark Add" field follows disassembly window scrolling position
+08-Aug-2012 - AnS - Taseditor: frame counter display is auto-on when Taseditor launches
+08-Aug-2012 - AnS - Debugger: improved stack display
+08-Aug-2012 - AnS - Debugger: doubleclick on the disassembly prompts "Add Execute breakpoint" dialog
+08-Aug-2012 - AnS - Debugger: fixed RAM peek by a rightclick on left pane
+08-Aug-2012 - AnS - Debugger: ">" points at current line in disassembly
+08-Aug-2012 - AnS - Debugger: show the number of breakpoints (enabled and total) above the breakpoints list
+06-Aug-2012 - CaH4e3 - fixed bug when loading UNF games (#525 )
+06-Aug-2012 - AnS - Tracer also updates its window when user pauses the game, not just when Debugger snaps
+06-Aug-2012 - AnS - Tracer: added "Use Stack Pointer for code tabbing" option and added "To the left from disassembly text" option
+05-Aug-2012 - AnS - Debugger: .DEB file now also stores the state of "Break on Bad Opcode" and "Break when exceed" checkboxes/editfields
+05-Aug-2012 - AnS - Debugger: added "CPU cycles" and "Instructions" counters (request #527) and added "Break when exceed" breakpoints
+05-Aug-2012 - AnS - Debugger: window layout cleanup
+06-Aug-2012 - prg - gtk: added hotkey gui config
+04-Aug-2012 - prg - all: updated FSF address
+04-Aug-2012 - prg - sdl: added SDL.Input.EnableOppositeDirectional option.  allows/disallows simultaneous right+left / up+down.
+03-Aug-2012 - AnS - Debugger: highlighting breakpoint item in BPs list when it's triggered
+03-Aug-2012 - AnS - Debugger: allow Frame Advancing when Debugger is in breakpoint state
+03-Aug-2012 - AnS - Debugger: don't update Debugger window at the beginning of Step command (it will update at at the end of Step) - fixes #528
+25-Jul-2012 - AnS - Taseditor: auto-starting Note editing when creating Marker by double-click
+19-Jul-2012 - AnS - Taseditor: Lua registermanual allows changing the "Run function" button caption; Markers are always restored when deploying Bookmarks
+01-Jul-2012 - AnS - new hotkey "Run Manual Lua function"
+24-Jun-2012 - AnS - Taseditor: drawing selected_slot border in Branches Tree
+24-Jun-2012 - zeromus - add ability for CNROM games to choose whether they have bus conflicts (fixes Colorful Dragon (Unl) (Sachen), since it flakes out if bus conflicts are emulated)
+23-Jun-2012 - zeromus - add m116 from fceu-mm; fix mapper 178 big PRG support
+20-Jun-2012 - zeromus - fix savestate engine to throw errors when a buggy SFORMAT is passed to AddExState, and fix those errors in m015 and m253
+19-Jun-2012 - AnS - added TASEDITOR type of hotkeys
+19-Jun-2012 - AnS - Taseditor: 2 new hotkeys: "Switch Auto-restoring" (Ctrl+Spacebar), "Switch current Multitracking mode" (W)
+16-Jun-2012 - AnS - Taseditor: drawing patterns with Alt held; no more row_last_clicked
+15-Jun-2012 - AnS - Taseditor: added "rewatch from Selection to Playback" feature for Ctrl+middle click action
+14-Jun-2012 - AnS - Taseditor: combining consecutive AdjustLag operations
+13-Jun-2012 - AnS - Taseditor: truncated Greenzone is drawn by pale colors, not just white
+12-Jun-2012 - AnS - Taseditor: "Auto-adjust Input due to lag" checkbox
+11-Jun-2012 - AnS - Taseditor: green arrow doesn't disappear when Playback cursor goes through it
+11-Jun-2012 - AnS - Taseditor: changed icons column in Piano Roll, now can show both Bookmark and arrow
+09-Jun-2012 - zeromus - win32-support funny languages for opening roms, through drag&drop, at least
+06-Jun-2012 - AnS - Taseditor: small fix for Branches Tree - among bookmarks with equal jump_frame the cursor must be pointing at current branch
+06-Jun-2012 - zeromus - support mapper 176. mapper 176 no longer maps to BMCFK23C. BMCFK23C is still accessible through crc or unif? test case would be welcome. it is unclear to me why mapper 176 control was removed from 176.cpp and given to BMCFK23C
+06-Jun-2012 - AnS - Taseditor: autosave works only when project has a filename
+26-May-2012 - AnS - Taseditor: Ctrl+Space accelerator = toggle "Auto-restore last position" checkbox; remapped "Restore Playback" hotkey to Spacebar; "Restore Playback" also pauses seeking; mid-click = "Restore Playback" when possible
+08-May-2012 - AnS - Taseditor: changed "lost_position" logic
+01-May-2012 - AnS - Lua functions emu.pause() and emu.unpause() don't yield and don't reset emulator speed anymore
+30-Apr-2012 - AnS - Taseditor: Ctrl + mid click = run to Selection cursor; Shift + mid click = run to nearest Marker
+26-Apr-2012 - AnS - Taseditor: fixed filename logic when user creates project from an fm2 or a corrupted fm3
+23-Apr-2012 - AnS - Taseditor: menus overhaul
+19-Apr-2012 - AnS - RAM Watch: fixed loading Data Size and Data Type from a .wch, now corrupted .wch won't crash
+17-Apr-2012 - zeromus - fix bug in mapper 164 savestates which caused wram to be lost, also make mapper 164 sram work
+17-Apr-2012 - AnS - Taseditor: gradual History Log autocompression when idle
+14-Apr-2012 - zeromus - add hash database entry for Rasaaru Ishii no Childs Quest (J), whose extant roms specify both the wrong mapper and the wrong mirroring
+14-Apr-2012 - zeromus - change mapper 12 (mmc3 variant) to specify MMC3A chip version
+14-Apr-2012 - AnS - Taseditor: rightclicks in Branches Tree
+14-Apr-2012 - AnS - "Play Movie" dialog doesn't search in fceux root folder anymore
+10-Apr-2012 - AnS - bold items in some context menus
+10-Apr-2012 - zeromus - fix mapper 115 (actually to fix mapper 248 for Bao Qing Tian)
+09-Apr-2012 - zeromus - remove vram protection from mapper 227
+09-Apr-2012 - AnS - Taseditor: all GUI buttons fire off at mousedown; disabled Spacebar and enabled Middle mouse button on GUI buttons
+09-Apr-2012 - AnS - Taseditor: clicks in Branches Tree
+07-Apr-2012 - AnS - Taseditor: version data in fm3
+07-Apr-2012 - AnS - Taseditor: much better way of calculating Branches Tree; hinting full timelines; miniarrow showing current Playback cursor position in Branches Tree; "Bookmark#" modtype, undo/redo works for Bookmarks
+07-Apr-2012 - AnS - Taseditor: applying PAL and PPU flags when loading projects
+05-Apr-2012 - zeromus - fix mapper 242 (dragon quest 8 UNL)
+26-Mar-2012 - AnS - Taseditor: Alt+Wheel = jump across gaps in Input/Markers
+25-Mar-2012 - AnS - returned default mapping of Frame Advance hotkey to Backslash
+25-Mar-2012 - AnS - Taseditor: BookmarksList clicks apply on buttonup only
+22-Mar-2012 - AnS - Config->Combine consecutive Recordings/Draws
+18-Mar-2012 - AnS - new hotkey "Cancel Seeking (TAS Editor)" (Esc)
+18-Mar-2012 - AnS - Taseditor: Config->Autopause at the end of Movie
+17-Mar-2012 - CaH4e3 - varous bugfixes, xstring trimming functions logic bugs, etc
+17-Mar-2012 - AnS - Taseditor: showing row_last_clicked when Shift or Alt is held
+17-Mar-2012 - AnS - Taseditor: no more "allow keys in Piano Roll"; new accelerators: Ctrl + arrows, Shift + arrows, Home/End/Page Up/Page Down, Ctrl + Home/End, Shift + Home/End
+17-Mar-2012 - AnS - Taseditor: selection by dragging from Frame#
+17-Mar-2012 - AnS - Taseditor: set/pick Markers by doubleclick, throw Markers away
+14-Mar-2012 - AnS - Taseditor: drawing input; holding Shift when drawing
+14-Mar-2012 - AnS - Taseditor: fixed known WinXP bug with scrollbar arrows
+14-Mar-2012 - AnS - Taseditor: moving Markers by drag'n'drop, "Marker Drag" and "Marker Swap" operations
+14-Mar-2012 - AnS - Taseditor: dragging blue arrow (moving Playback cursor)
+14-Mar-2012 - AnS - Taseditor: observing Piano Roll by dragging cursor outside
+11-Mar-2012 - AnS - Taseditor: double-tapping Shift/Ctrl scrolls Piano Roll to respective cursor
+09-Mar-2012 - AnS - Taseditor: Config->Deselect on doubleclick
+09-Mar-2012 - AnS - Taseditor: checking ROM checksum when saving/loading projects
+09-Mar-2012 - AnS - Taseditor: TAS Editor can have mouse wheel input even when keyboard focus is on FCEUX window
+09-Mar-2012 - AnS - disabled FCEUX context menu when TAS Editor is engaged
+06-mar-2012 - prg - fceux no longer segfaults when opening gamepadconfig with GTK < 2.24 - a message is printed to the console
+06-mar-2012 - prg - supports loading of configuration files in $FCEUXDIR/cfg.d/*
+01-Mar-2012 - AnS - Taseditor: changing history size doesn't reset history
+28-feb-2012 - AnS - Taseditor: "Deselect" option in menus
+26-feb-2012 - AnS - Small save/load state speedup, noticeable only in TAS Editor or lua bots
+21-feb-2012 - AnS - Taseditor: header lights on mouseover
+21-feb-2012 - AnS - Taseditor: registering click at buttondown; Alt+click on input = set pattern
+20-feb-2012 - AnS - Taseditor: Right button + wheel = Playback rewind/forward; Shift/Ctrl + wheel = jump via Markers with Playback/Selection cursor
+20-feb-2012 - AnS - Taseditor: middle button pauses/unpauses emulation
+18-feb-2012 - AnS - PATTERNS menu, loading data from "tools\taseditor_patterns.txt"
+18-feb-2012 - AnS - "Use pattern" checkbox in Recorder; Config->ColumnSet Pattern skips Lag
+18-feb-2012 - AnS - Taseditor: "Frame#" lights when Alt key is being held, not entering menu by Alt
+18-feb-2012 - AnS - Changed some checkboxes to radiobuttons in FCEUX menu
+13-feb-2012 - AnS - Taseditor: when clicking text fields, Piano Roll scrolls to corresponding Marker, not to cursor
+13-feb-2012 - AnS - Replay dialog speedup, now movie is not loaded into memory when checking md5
+06-feb-2012 - AnS - new Lua scripts: SoundDisplay.lua, TrackNoise.lua
+06-feb-2012 - AnS - refined Recording, now can safely record commands (Power, Reset, Insert, Switch)
+02-feb-2012 - AnS - uploaded HelpNDoc3 project file
+02-feb-2012 - AnS - added Lua scripts demonstrating some TAS Editor library functions
+02-feb-2012 - AnS - new Lua function in TAS Editor library: getsuperimpose()
+02-feb-2012 - AnS - new Lua function in Joypad library: getimmediate()
+30-jan-2012 - AnS - Taseditor: 9 new Lua functions in TAS Editor library
+30-jan-2012 - AnS - Taseditor: Added "Restore Playback (TAS Editor)" hotkey (Enter by default)
+30-jan-2012 - AnS - Taseditor: Help->Show Tooltips
+30-jan-2012 - AnS - Taseditor: quicksave/quickload hotkeys save/load current branch
+23-jan-2012 - prg - sdl: pause will now show/ungrab cursor in fullscreen.  this can be disabled with the SDL.NoFullscreenCursor option
+12-jan-2012 - AnS - Tasedit: File->New Project, INPUT_TYPE_1P
+12-jan-2012 - AnS - Tasedit: resizing TAS Editor window
+08-jan-2012 - prg - sdl: switched advance one frame key from "\" to "`"
+08-jan-2012 - AnS - changed default mapping of Frame Advance to Tilde
+08-jan-2012 - AnS - fixed recording bug where "length" tag appeared in fm2s
+08-jan-2012 - AnS - Tasedit: Lua panel; 5 new Lua functions
+08-jan-2012 - AnS - Tasedit: refactoring; Config->Silent autosave
+04-jan-2012 - AnS - Tasedit: colored marker captions; pale yellow and bright yellow when "Bind Markers" is off/on
+27-dec-2011 - AnS - Tasedit: "About" window
+27-dec-2011 - AnS - Tasedit: searching Markers with similar Notes ("Similar" and "More" buttons)
+26-dec-2011 - AnS - Tasedit: Find Note dialog (Ctrl-F)
+26-dec-2011 - AnS - new Lua functions (TAS Editor library)
+19-dec-2011 - AnS - Tasedit: listview header lights
+19-dec-2011 - AnS - Tasedit: Recording checkbox instead of radiobutton; Config->Use Input keys for ColumnSet
+19-dec-2011 - AnS - Tasedit: Export dialog: "Convert Marker Notes to Movie Subtitles"
+16-dec-2011 - AnS - Tasedit: new accelerators: Ctrl-PgUp/Ctrl-PgDn/Shift-PgUp/Shift-PgDn; Config->Allow keyboard controls in Listview
+16-dec-2011 - AnS - Tasedit: View->Display Branch Tooltips
+16-dec-2011 - AnS - Tasedit: Markers notes; View->Follow Marker Note context
+16-dec-2011 - AnS - changed ".tas" extension to ".fm3"
+10-dec-2011 - AnS - loading TAS Editor projects by drag-n-drop
+10-dec-2011 - AnS - Tasedit: File->Save Compact dialog
+09-dec-2011 - AnS - Replaying TAS Editor project files in FCEUX (win32 and SDL)
+07-dec-2011 - AnS - disabled changing PPU/PAL/input_type when Taseditor is engaged
+07-dec-2011 - AnS - Tasedit: File->Recent projects
+07-dec-2011 - AnS - enhanced Reload hotkey (Ctrl-F1), now it loads last ROM or last TAS Editor project
+05-dec-2011 - AnS - Tasedit: Import input, Export to FM2
+04-dec-2011 - AnS - Tasedit: branches autofind best parent, "Set Marker"/"Remove marker" in context menu, checking clipboard at selection.init() and retrieving info
+29-nov-2011 - AnS - Tasedit: MsgBox about not working with movies starting from savestate
+26-nov-2011 - aquanull - win32: fixed graphic-tearing WITH vertical sync enabled in windowed mode. It used to wait for V-Blank too early so that the V-Blank would end too soon before the blitting could be finished.
+26-nov-2011 - AnS - Fixed crash when using machine with no sound card
+26-nov-2011 - zeromus - Fixed wrong default palette entry
+25-nov-2011 - zeromus - add nestopia palette files
+25-nov-2011 - AnS - Tasedit: selection << and >>, Turbo Seek checkbox, PasteInsert, Config->Superimpose affects copy/paste, Editing info texts
+23-nov-2011 - zeromus - fix [3441099] printf bug in SwapSaveState()
+21-nov-2011 - AnS - Tasedit: multitrack recording, "Superimpose" checkbox, Config->Use 1P keys for all single recordings, Config->Combine consecutive Recordings
+19-nov-2011 - AnS - Tasedit: selection strobe, soft reset and power switch messages, messages when saving/loading Branches
+17-nov-2011 - AnS - Tasedit: selection history, undo/redo, Reselect Clipboard, saving/loading selection history to .tas
+17-nov-2011 - AnS - Tasedit: input hotchanges
+14-nov-2011 - zeromus - straighten out bandai m159/m016 handling and add valid null-EEPROM emulation to get those games booting.
+12-nov-2011 - adelikat - win32 - cheat search - slight GUI tweak
+12-nov-2011 - AnS - Tasedit: project autosaving
+10-nov-2011 - AnS - Tasedit: Branches show saved screenshot on mouseover (alpha-fade popup window)
+7-nov-2011 - AnS - Tasedit: Drawing Branches Tree (using GDI), animations, transitions, mouseover
+04-nov-2011 - prg318 - gtk: added option for frameskipping and made label case consistent in gui
+1-nov-2011 - zeromus - debugger - fix mysterious out of bounds condition while editing breakpoints
+31-oct-2011 - zeromus - add winapi lua library
+31-oct-2011 - zeromus - fix newppu bug; chr ram was not getting initialized to anything
+28-oct-2011 - AnS - Switching Tasedit Bg input on/off when Tasedit gets/loses focus
+27-oct-2011 - AnS - "Toggle Rerecord Display" hotkey (M), "Play Movie From Beginning" hotkey also works in Tasedit
+27-oct-2011 - AnS - Tasedit: Bookmarks/Branches
+23-oct-2011 - prg318 - sdl: fix a bug where alt key would get "stuck" when alt tabbing to window
+21-oct-2011 - AnS - Tasedit: gradual greenzone cleaning
+19-oct-2011 - prg318 - scons: "scons install" now installs auxlib and manpage
+19-oct-2011 - prg318 - scons: added --prefix option to build system and improved "install" target
+18-oct-2011 - prg318 - sdl: new hotkeys added - statestatenext savestateprev - useful for scrolling through savestates on a gamepad.  mapped to pgup and pgdown by default
+18-oct-2011 - prg318 - gtk: new video option for double buffering and ClipSides
+18-oct-2011 - prg318 - sdl: GTK3 support is now functional.  Set GTK3 to 1 in the SConstruct to try it out.
+18-oct-2011 - prg318 - no longer use depreciated gtk2 functions
+18-oct-2011 - prg318 - getSDLKey tool added to assist in remapping hotkeys
+17-oct-2011 - prg318 - some segfaults fixed, also fixed some build errors
+17-oct-2011 - prg318 - sdl netplay fixed
+15-oct-2011 - zeromus - don't lose cheat compare value when toggle cheat enables through UI
+14-oct-2011 - AnS - added rewind hotkey (~), works only in Taseditor
+14-oct-2011 - AnS - Tasedit: execute lua functions when jumping inside greenzone
+13-oct-2011 - AnS - Tasedit: major refactoring
+9-oct-2011 - AnS - Tasedit: input history, undo, redo; greenzone reduces only from the point where actual differences were found
+07-oct-2011 - prg318 - sdl: fixed some issues with --nogui .  "--nogui" no longer requires an argument and can be used like this "$ fceux --nogui rom.nes"
+07-oct-2011 - prg318 - gtk: support mouseclicks (ie zapper)
+03-oct-2011 - AnS - Tasedit: Clone Frame(s)
+02-oct-2011 - AnS - Tasedit: Markers
+30-sept-2011 - AnS - logging all display messages to Message Log
+30-sept-2011 - AnS - Tasedit: special method of inserting frames; progressbar updating when loading/saving large projects; moved "Follow cursor" checkbox from View menu to main TASEdit window
+30-sept-2011 - AnS - Tasedit: View->Show dot in empty cells; ClearFrames (Del), Cut operation clears frames instead of deleting; checking unsaved project on Exit and Open project
+28-sept-2011 - CaH4e3 - resetexstate crash fix
+27-sept-2011 - AnS - Fixed old bug with "Play Movie From Beginning"
+26-sept-2011 - AnS - added support for "Enable HUD recording" option to SDL version
+25-sept-2011 - AnS - Tasedit: progressbar; holding "<" and ">" buttons
+25-sept-2011 - zeromus - newppu-fix bug in scroll reg logic causing mis-scrolls in p'radikus conflict
+24-sept-2011 - CaH4e3 - latest mapper changes; code/data logger now can log data access from the RAM code; the new button to save unused data to the code/data logger
+24-sept-2011 - AnS - Tasedit: changed control scheme to single click instead of double click
+23-sept-2011 - AnS - File->AVI/Wav->Enable HUD recording
+23-sept-2011 - AnS - moved "Display movie status icon" from Config->Movie options to Config->Display
+23-sept-2011 - AnS - Config->Display->Rerecord counter; no more TweakCount
+23-sept-2011 - AnS - Config->Movie options->Always suggest Read-Only replay (for Replay dialog)
+22-sept-2011 - AnS - deleted "Lag Counter Reset" hotkey; added "Open TAS Edit" hotkey
+22-sept-2011 - AnS - fixed long "savestate" messages containing path
+22-sept-2011 - AnS - Tasedit: auto clear "Disable speed throttling" and "Run in background", auto set "Set high-priority thread" when entering TASEdit; FCEUX runs in bg when TASEdit has focus; Config->"Mute Turbo" check
+19-sept-2011 - AnS - Tasedit: accelerator table; Config->"Set greenzone capacity"; pauseframe is shown by flashing color
+18-sept-2011 - zeromus - datalatch mapper-fix bug where wramless games would be able to do something mysterious to unmapped host emulator memory
+17-sept-2011 - AnS - Tasedit: forced read-only behaviour when seeking or holding turbo
+17-sept-2011 - AnS - Tasedit: "Auto-restore last position" checkbox in playback controls
+17-sept-2011 - AnS - Tasedit: fixed item drawing method, no more flicker and slowdowns
+12-sept-2011 - prg318 - sdl: rename InputType to CurInputType due to variable of same name in src/movie.h
+12-sept-2011 - AnS - Tasedit: rewrote project save/load functions, various bugfixes
+6-sept-2011 - AnS - Tasedit: red lines for lag frames
+6-sept-2011 - AnS - fixed bug when trying to open Replay dialog without having ROM loaded
+3-sept-2011 - AnS - Tasedit: tweaks and bugfixes
+3-sept-2011 - CaH4e3 - fixed bus conflict emulation, no kage no densetsu bug anymore
+31-Aug-2011 - AnS - Tasedit: Added 4 pads support; also now current frame is shown by blue line; minor cleanups
+30-Aug-2011 - mart0258 - Ram Search updates list when emulator is paused (on Power, or when resetting search)
+25-Aug-2011 - zeromus - win32: fix context menus to use rightclicks in context menus correctly
+19-Aug-2011 - CaH4e3 - PAL/NTSC noise fixed
+18-Jul-2011 - zeromus - slightly improve hud text rendering wrapping
+16-Jul-2011 - adelikat - Add Button Count lua script written by Brandon Evans
+15-Jul-2011 - prg318 - sdl: patch to resolve 'XKeysymToString' complication errors on debian sid and osx (thanks antonio ospite!)
+6-Jul-2011 - plombo - sdl: fixed --nogui option and removed SDL.NoGUI from fceux.cfg
+5-Jul-2011 - FatRatKnight - Lua console now gets the proper file path when selecting a file from the recent menu.
+
+---r2206 - FCEUX 2.1.5 Released---
+---June 21 2011---
+
+16-Jun-2011 - zeromus - win32: poll hotkeys while no rom is loaded
 1-jun-2011 - prg318 - sdl - print usage when --help is passed even if SDL fails
 plombo - added stock icons to menu items
 plombo - added new gamepad configuration dialog
@@ -32,8 +297,9 @@ plombo - added new gamepad configuration dialog
 06-june-2010 - FatRatKnight - Added a return value to gui.text: The X position where the function would paint the next character.
 02-june-2010 - adelikat - Win32 - Movie Options Dialog - Fix so Full Savestate Load checkbox is updated on load
 
----r1984 - FCEUX 2.1.4a Release---
+---r1984 - FCEUX 2.1.4a Released---
 ---June 1 2010---
+
 01-june-2010 - zeromus - fix crash bug in fcm convert
 01-june-2010 - adelikat - fix logic error in read-only loadstate of movies, should not improperly report savestate after movie errors
 

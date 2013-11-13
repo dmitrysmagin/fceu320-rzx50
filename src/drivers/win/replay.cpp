@@ -7,7 +7,7 @@
 #include "archive.h"
 #include "utils/xstring.h"
 
-static const char* fm2ext[] = {"fm2",0};
+static const char* fm2ext[] = { "fm2", "fm3", 0};
 
 int MetaPosX,MetaPosY;
 
@@ -278,7 +278,6 @@ void UpdateReplayDialog(HWND hwndDlg)
 		SetWindowText(GetDlgItem(hwndDlg,IDC_LABEL_CURRCHECKSUM),md5_asciistr(GameInfo->MD5));
 		SetDlgItemText(hwndDlg,IDC_EDIT_STOPFRAME,""); stopframeWasEditedByUser=false;
 		EnableWindow(GetDlgItem(hwndDlg,IDC_CHECK_READONLY),FALSE);
-		SendDlgItemMessage(hwndDlg,IDC_CHECK_READONLY,BM_SETCHECK,BST_UNCHECKED,0);
 		EnableWindow(GetDlgItem(hwndDlg,IDOK),FALSE);
 	}
 }
@@ -503,27 +502,16 @@ BOOL CALLBACK ReplayDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 	{
 	case WM_INITDIALOG:
 		{
-			bool tasedit = lParam?true:false;
-
-			//some of the controls are illogical with tasedit
-			//remove them, and rename the window
-			if(tasedit)
-			{
-				SetWindowText(hwndDlg,"Load TasEdit Movie");
-				ShowWindow(GetDlgItem(hwndDlg,IDC_CHECK_READONLY),SW_HIDE);
-				ShowWindow(GetDlgItem(hwndDlg,IDC_CHECK_STOPMOVIE),SW_HIDE);
-				ShowWindow(GetDlgItem(hwndDlg,IDC_EDIT_STOPFRAME),SW_HIDE);
-			}
-			
 			SendDlgItemMessage(hwndDlg, IDC_CHECK_READONLY, BM_SETCHECK, replayReadOnlySetting?BST_CHECKED:BST_UNCHECKED, 0);
 			SendDlgItemMessage(hwndDlg, IDC_CHECK_STOPMOVIE,BM_SETCHECK, BST_UNCHECKED, 0);
 
-			char* findGlob[2] = {strdup(FCEU_MakeFName(FCEUMKF_MOVIEGLOB, 0, 0).c_str()),
-								 strdup(FCEU_MakeFName(FCEUMKF_MOVIEGLOB2, 0, 0).c_str())};
+#define NUM_OF_MOVIEGLOB_PATHS 1
+
+			char* findGlob[NUM_OF_MOVIEGLOB_PATHS] = {strdup(FCEU_MakeFName(FCEUMKF_MOVIEGLOB, 0, 0).c_str())};
 
 			int items=0;
 
-			for(int j=0;j<2;j++)
+			for(int j = 0;j < NUM_OF_MOVIEGLOB_PATHS; j++)
 			{
 				char* temp=0;
 				do {
@@ -537,10 +525,7 @@ BOOL CALLBACK ReplayDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 //					findGlob[j][i] = tolower(findGlob[j][i]);
 			}
 
-//			FCEU_PrintError(findGlob[0]);
-//			FCEU_PrintError(findGlob[1]);
-
-			for(int j=0;j<2;j++)
+			for(int j = 0;j < NUM_OF_MOVIEGLOB_PATHS; j++)
 			{
 				// if the two directories are the same, only look through one of them to avoid adding everything twice
 				if(j==1 && !strnicmp(findGlob[0],findGlob[1],MAX(strlen(findGlob[0]),strlen(findGlob[1]))-6))
@@ -565,15 +550,16 @@ BOOL CALLBACK ReplayDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 
 						//TODO - a big copy/pasted block below. factor out extension extractor or use another one
 
-						// filter out everything that's not an extension we like *.fm2
+						// filter out everything that's not an extension we like (*.fm2 and *.fm3)
 						// (because FindFirstFile is too dumb to do that)
 						{
 							std::string ext = getExtension(wfd.cFileName);
 							if(ext != "fm2")
-								if(ext != "zip")
-									if(ext != "rar")
-										if(ext != "7z")
-											continue;
+								if(ext != "fm3")
+									if(ext != "zip")
+										if(ext != "rar")
+											if(ext != "7z")
+												continue;
 						}
 
 						char filename [512];
@@ -583,18 +569,23 @@ BOOL CALLBACK ReplayDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 						SetCurrentDirectory(BaseDirectory.c_str());
 
 						ArchiveScanRecord asr = FCEUD_ScanArchive(filename);
-						if(!asr.isArchive()) {
+						if(!asr.isArchive())
+						{
 							FCEUFILE* fp = FCEU_fopen(filename,0,"rb",0);
-							fp->stream = fp->stream->memwrap();
-							if(fp) {
-								HandleScan(hwndDlg,fp ,items);
+							if(fp)
+							{
+								//fp->stream = fp->stream->memwrap(); - no need to load whole movie to memory! We only need to read movie header!
+								HandleScan(hwndDlg, fp, items);
 								delete fp;
 							}
-						} else {
+						} else
+						{
 							asr.files.FilterByExtension(fm2ext);
-							for(uint32 i=0;i<asr.files.size();i++) {
+							for(uint32 i=0;i<asr.files.size();i++)
+							{
 								FCEUFILE* fp = FCEU_fopen(filename,0,"rb",0,asr.files[i].index);
-								if(fp) {
+								if(fp)
+								{
 									HandleScan(hwndDlg,fp, items);
 									delete fp;
 								}
@@ -606,8 +597,8 @@ BOOL CALLBACK ReplayDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 				}
 			}
 
-			free(findGlob[0]);
-			free(findGlob[1]);
+			for(int j = 0; j < NUM_OF_MOVIEGLOB_PATHS; j++)
+				free(findGlob[j]);
 
 			if(items>0)
 				SendDlgItemMessage(hwndDlg, IDC_COMBO_FILENAME, CB_SETCURSEL, items-1, 0);
@@ -672,7 +663,7 @@ BOOL CALLBACK ReplayDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 							memset(&ofn, 0, sizeof(ofn));
 							ofn.lStructSize = sizeof(ofn);
 							ofn.hwndOwner = hwndDlg;
-							ofn.lpstrFilter = "FCEUX Movie Files (*.fm2)\0*.fm2\0Archive Files (*.zip,*.rar,*.7z)\0*.zip;*.rar;*.7z\0All Files (*.*)\0*.*\0\0";
+							ofn.lpstrFilter = "FCEUX Movie Files (*.fm2), TAS Editor Projects (*.fm3)\0*.fm2;*.fm3\0FCEUX Movie Files (*.fm2)\0*.fm2\0Archive Files (*.zip,*.rar,*.7z)\0*.zip;*.rar;*.7z\0All Files (*.*)\0*.*\0\0";
 							ofn.lpstrFile = szFile;
 							ofn.nMaxFile = sizeof(szFile);
 							ofn.lpstrInitialDir = pn;
@@ -787,11 +778,11 @@ static void UpdateRecordDialog(HWND hwndDlg)
 
 static void UpdateRecordDialogPath(HWND hwndDlg, const std::string &fname)
 {
-	char* baseMovieDir = strdup(FCEU_GetPath(FCEUMKF_MOVIE).c_str());
+	const std::string &baseMovieDir = FCEU_GetPath(FCEUMKF_MOVIE);
 	char* fn=0;
 
 	// display a shortened filename if the file exists in the base movie directory
-	if(!strncmp(fname.c_str(), baseMovieDir, strlen(baseMovieDir)))
+	if(!strncmp(fname.c_str(), baseMovieDir.c_str(), baseMovieDir.size()))
 	{
 		char szDrive[MAX_PATH]={0};
 		char szDirectory[MAX_PATH]={0};
@@ -954,6 +945,7 @@ static BOOL CALLBACK RecordDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
 //Show the record movie dialog and record a movie.
 void FCEUD_MovieRecordTo()
 {
+	if (!GameInfo) return;
 	static struct CreateMovieParameters p;
 	p.szFilename = strdup(FCEU_MakeFName(FCEUMKF_MOVIE,0,0).c_str());
 	if(p.recordFrom >= 2) p.recordFrom=1;
@@ -971,7 +963,7 @@ void FCEUD_MovieRecordTo()
 				if(loadStateFailed)
 				{
 					char str [1024];
-					sprintf(str, "Failed to load save state \"%s\".\nRecording from current state instead...", p.szSavestateFilename);
+					sprintf(str, "Failed to load save state \"%s\".\nRecording from current state instead...", p.szSavestateFilename.c_str());
 					FCEUD_PrintError(str);
 				}
 			}
@@ -984,15 +976,18 @@ void FCEUD_MovieRecordTo()
 }
 
 
-void Replay_LoadMovie(bool tasedit)
+void Replay_LoadMovie()
 {
-	replayReadOnlySetting = FCEUI_GetMovieToggleReadOnly();
+	if (suggestReadOnlyReplay)
+		replayReadOnlySetting = true;
+	else
+		replayReadOnlySetting = FCEUI_GetMovieToggleReadOnly();
 
-	char* fn = (char*)DialogBoxParam(fceu_hInstance, "IDD_REPLAYINP", hAppWnd, ReplayDialogProc, (LPARAM)(tasedit?1:0));
+	char* fn = (char*)DialogBoxParam(fceu_hInstance, "IDD_REPLAYINP", hAppWnd, ReplayDialogProc, 0);
 
 	if(fn)
 	{
-		FCEUI_LoadMovie(fn, replayReadOnlySetting, tasedit, replayStopFrameSetting);
+		FCEUI_LoadMovie(fn, replayReadOnlySetting, replayStopFrameSetting);
 
 		free(fn);
 
@@ -1007,5 +1002,5 @@ void Replay_LoadMovie(bool tasedit)
 /// Show movie replay dialog and replay the movie if necessary.
 void FCEUD_MovieReplayFrom()
 {
-	Replay_LoadMovie(false);
+	if (GameInfo) Replay_LoadMovie();
 }

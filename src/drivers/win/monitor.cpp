@@ -114,7 +114,7 @@ BOOL updateResults(HWND hwndDlg, int rule)
 		
 		if ( chosen_rules[i] == RULE_EXACT || chosen_rules[i] == RULE_EXACT_NOT )
 		{
-			SendDlgItemMessage( hwndDlg, RULE_INPUT_1 + i, WM_GETTEXT, sizeof(buff - 1), (LPARAM) input_buff );
+			SendDlgItemMessage( hwndDlg, RULE_INPUT_1 + i, WM_GETTEXT, sizeof(buff) - 1, (LPARAM) input_buff );
 			
 			unsigned int len = strlen(input_buff);
 			
@@ -200,7 +200,7 @@ void InitControls(HWND hwndDlg)
 	LOGFONT lf;
 	HFONT hFont = (HFONT)SendMessage(hwndDlg, WM_GETFONT, 0, 0);
 	GetObject(hFont, sizeof(LOGFONT), &lf);
-	strcpy(lf.lfFaceName,"Courier");
+	strcpy(lf.lfFaceName,"Courier New");
 	hNewFont = CreateFontIndirect(&lf);
 
 //	HFONT hFont = CreateFont(0, 0, 0, 0, FW_THIN, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, 0, PROOF_QUALITY, DEFAULT_PITCH | FF_MODERN, "Courier New" ); 

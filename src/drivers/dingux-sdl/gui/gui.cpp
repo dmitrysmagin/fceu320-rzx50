@@ -118,19 +118,30 @@ void update_battery()
 void load_preview() {
 	char sname[2048];
 	strcpy(sname, FCEU_MakeFName(FCEUMKF_STATE, g_slot, 0).c_str());
+	strcat(sname, ".preview");
+
 	FILE *fp = fopen(sname, "rb");
 	if (fp) {
-		// TODO - check the offset ... HARD-CODED VALUE IS EVIL!
-		// FCEUX 2.1.5 has compressed savestates, damn...
-		// TODO - a workaround, maybe with image saving...
-		// SaveSnapshot(name) in video.cpp
-		//fseek(fp, 0x159A, SEEK_SET);
-		//fread(g_preview, 1, 256 * 256 + 8, fp);
+		fread(g_preview, 1, 256 * 256 + 8, fp);
 		fclose(fp);
 		g_ispreview = 1;
 	} else {
 		memset(g_preview, 0, 256 * 256 + 8);
 		g_ispreview = 0;
+	}
+}
+
+void save_preview()
+{
+	char sname[2048];
+	strcpy(sname, FCEU_MakeFName(FCEUMKF_STATE, g_slot, 0).c_str());
+	strcat(sname, ".preview");
+
+	FILE *fp = fopen(sname, "wb");
+	if (fp) {
+		extern uint8 *XBuf;
+		fwrite(XBuf, 1, 256 * 256 + 8, fp);
+		fclose(fp);
 	}
 }
 
@@ -142,7 +153,7 @@ void draw_preview(unsigned short *dest, int x, int y) {
 	uint8 *PBuf = g_preview;
 	uint16 *dst = (uint16 *) dest;
 
-	PBuf += 256 * 8 + 16;
+	PBuf += 256 * 8;
 	dst += y * 320 + x;
 
 	for (y = 0; y < 76; y++) {
@@ -228,6 +239,7 @@ static int flip_disc() {
 
 static int save_state() {
 	FCEUI_SaveState(NULL);
+	save_preview();
 	return 0;
 }
 

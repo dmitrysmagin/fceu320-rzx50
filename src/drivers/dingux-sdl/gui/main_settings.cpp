@@ -75,42 +75,18 @@ static void mouse_update(unsigned long key) {
 	g_config->setOption("SDL.MouseSpeed", val);
 }
 
-#ifdef FRACTIONAL_FRAMESKIP
-struct frame_s {
-	int index;
-	int val;
-	const char *str;
-};
-
-static struct frame_s frame_tag[] = { { 0, 0, "0" }, { 1, 3, "1/3" }, { 2, 2,
-		"1/2" }, { 3, 1, "1" } };
-#endif
-
 // Frameskip
+#if 0 //def FRAMESKIP
 static void frameskip_update(unsigned long key) {
 	int val;
 	g_config->getOption("SDL.Frameskip", &val);
 
-#ifdef FRACTIONAL_FRAMESKIP
-	int i;
-	if (val > 3)
-		val = 3;
-	for (i = 0; i < 4; i++)
-		if (val == frame_tag[i].val)
-			break;
-	if (key == DINGOO_RIGHT)
-		i = i < 3 ? i + 1 : 3;
-	if (key == DINGOO_LEFT)
-		i = i > 0 ? i - 1 : 0;
-
-	g_config->setOption("SDL.Frameskip", frame_tag[i].val);
-#else
 	if (key == DINGOO_RIGHT) val = val < 9 ? val+1 : 9;
 	if (key == DINGOO_LEFT) val = val > 0 ? val-1 : 0;
 
 	g_config->setOption("SDL.Frameskip", val);
-#endif
 }
+#endif
 
 // Custom palette
 static void custom_update(unsigned long key) {
@@ -176,24 +152,17 @@ static void bright_update(unsigned long key) {
 
 static SettingEntry
 	st_menu[] = {
-		{ "PAL", "Use PAL timming", "SDL.PAL", pal_update },
+		{ "PAL", "Use PAL timing", "SDL.PAL", pal_update },
 		{ "Game Genie", "Emulate Game Genie", "SDL.GameGenie", gg_update },
 		{ "No sprite limit", "Disable sprite limit", "SDL.DisableSpriteLimit", sprite_limit_update },
 		{ "FPS Throttle", "Use fps throttling", "SDL.FPSThrottle", throttle_update },
 		{ "Show FPS", "Show frames per second", "SDL.ShowFPS", showfps_update },
 		{ "Show mouse", "Show/hide mouse cursor", "SDL.ShowMouseCursor", show_mouse_update },
 		{ "Mouse speed", "Mouse cursor speed", "SDL.MouseSpeed", mouse_update },
-#ifdef FRAMESKIP
-#ifdef FRACTIONAL_FRAMESKIP
-		{ "Frameskip", "Frameskip [0,1/3,1/2,1]", "SDL.Frameskip", frameskip_update },
-#else
+#if 0 //def FRAMESKIP
 		{ "Frameskip", "Frameskip [0-9]", "SDL.Frameskip", frameskip_update},
 #endif
-#endif
 		{ "Custom palette", "Load custom palette", "SDL.Palette", custom_update },
-		//{ "Hardware Volume", "Dingoo hardware volume (%)", "SDL.HWVolume", hwvolume_update },
-		//{ "Cpu rate", "Dingoo CPU rate (Mhz)", "SDL.CpuRate", cpu_update },
-		//{ "Brightness", "Dingoo lcd brightness (%)", "SDL.Brightness", bright_update },
 };
 
 int RunMainSettings() {
@@ -202,7 +171,7 @@ int RunMainSettings() {
 	int done = 0, y, i;
 
 	int max_entries = 8;
-#ifdef FRAMESKIP
+#if 0 //def FRAMESKIP
 	int menu_size = 9;
 #else
 	int menu_size = 8;
@@ -283,17 +252,7 @@ int RunMainSettings() {
 				DrawText(vbuffer, st_menu[i].name, 60, y);
 
 				g_config->getOption(st_menu[i].option, &itmp);
-#ifdef FRACTIONAL_FRAMESKIP
-				if (!strncmp(st_menu[i].name, "Frameskip", 8)) {
-					int j;
-					if (itmp > 3)
-						itmp = 3;
-					for (j = 0; j < 4; j++)
-						if (itmp == frame_tag[j].val)
-							break;
-					strcpy(tmp, frame_tag[j].str);
-				} else
-#endif
+
 				if (!strncmp(st_menu[i].name, "Custom palette", 6)) {
 					std::string palname;
 					g_config->getOption(st_menu[i].option, &palname);

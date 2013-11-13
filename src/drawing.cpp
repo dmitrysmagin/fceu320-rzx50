@@ -5,7 +5,6 @@
 #include "movie.h"
 #include "driver.h"
 
-#ifndef USE_ZSNES_FONT
 static uint8 Font6x7[792] =
 {
 	6,  0,  0,  0,  0,  0,  0,  0,
@@ -104,7 +103,6 @@ static uint8 Font6x7[792] =
 	4,128, 64, 64, 32, 64, 64,128,
 	6,  0,104,176,  0,  0,  0,  0
 };
-#endif
 
 void DrawTextLineBG(uint8 *dest)
 {
@@ -137,7 +135,11 @@ void DrawMessage(bool beforeMovie)
 
 		uint8 *t;
 		guiMessage.howlong--;
-		t=XBuf+FCEU_TextScanlineOffsetFromBottom(20)+1;
+
+		if (guiMessage.linesFromBottom > 0) 
+			t=XBuf+FCEU_TextScanlineOffsetFromBottom(guiMessage.linesFromBottom)+1;
+		else
+			t=XBuf+FCEU_TextScanlineOffsetFromBottom(20)+1;
 
 		/*
 		FCEU palette:
@@ -210,7 +212,7 @@ static uint8 sstat[2541] =
 
 
 
-#if 0
+
 static uint8 play_slines[]=
 {
 	0, 0, 1,
@@ -326,10 +328,8 @@ static void drawstatus(uint8* XBuf, int n, int y, int xofs)
 			dest[x]=4;
 	}
 }
-#endif
 
 /// this draws the recording icon (play/pause/record)
-#ifdef MOVIE_SUPPORT
 void FCEU_DrawRecordingStatus(uint8* XBuf)
 {
 	if(FCEUD_ShowStatusIcon())
@@ -340,7 +340,7 @@ void FCEU_DrawRecordingStatus(uint8* XBuf)
 			drawstatus(XBuf-ClipSidesOffset,2,28,0);
 			hasPlayRecIcon = true;
 		}
-		else if(FCEUMOV_Mode(MOVIEMODE_PLAY))
+		else if(FCEUMOV_Mode(MOVIEMODE_PLAY|MOVIEMODE_FINISHED))
 		{
 			drawstatus(XBuf-ClipSidesOffset,1,28,0);
 			hasPlayRecIcon = true;
@@ -350,7 +350,7 @@ void FCEU_DrawRecordingStatus(uint8* XBuf)
 			drawstatus(XBuf-ClipSidesOffset,3,28,hasPlayRecIcon?-16:0);
 	}
 }
-#endif
+
 
 void FCEU_DrawNumberRow(uint8 *XBuf, int *nstatus, int cur)
 {
@@ -390,67 +390,6 @@ void FCEU_DrawNumberRow(uint8 *XBuf, int *nstatus, int cur)
 		}
 }  
 
-#ifdef USE_ZSNES_FONT
-extern uint8 font_zsnes_char_width;
-extern uint8 font_zsnes_char_height;
-extern uint8 font_zsnes_map[];
-extern uint8 font_zsnes[];
-
-void gui_draw_pixel(uint8 *dest, uint8 color,int x,int y)
-{
-	dest[x + (y * 256)] = color;
-}
-
-
-static char translatechar(char ch)
-{
-	int i,n;
-
-	n = 0x50 - 2;
-	for(i=0;i<n;i++) {
-		if(font_zsnes_map[i] == toupper(ch))
-		   return(i);
-	}
-	return(0);
-}
-
-static uint8 *getfontdata(char ch)
-{
-	return(font_zsnes + (font_zsnes_char_width * translatechar(ch)));
-}
-
-void gui_draw_char(uint8 *dest,uint8 color,int x,int y,char ch)
-{
-	uint8 *fontdata = getfontdata(ch);
-	int cx,cy;
-
-	for(cy=0;cy<5;cy++) {
-		for(cx=0;cx<5;cx++) {
-			if((fontdata[cy] >> (4 - cx)) & 1) {
-				gui_draw_pixel(dest,color,x + cx,y + cy);
-				gui_draw_pixel(dest,0,x + cx + 1,y + cy + 1);
-			}
-		}
-	}
-}
-
-void DrawTextTransWH(uint8 *dest, uint32 width, uint8 *textmsg, uint8 fgcolor, int max_w, int max_h, int border)
-{
-	if( textmsg == NULL ) return;
-
-	char *str = (char *)textmsg;
-	int x = 0;
-	for(;*str;str++) {
-		gui_draw_char(dest,fgcolor,x,0,*str);
-		x += font_zsnes_char_width + 1;
-	}
-}
-
-void DrawTextTrans(uint8 *dest, uint32 width, uint8 *textmsg, uint8 fgcolor)
-{
-	DrawTextTransWH(dest, width, textmsg, fgcolor, 256, 16, 2);
-}
-#else
 static int FixJoedChar(uint8 ch)
 {
 	int c = ch; c -= 32;
@@ -550,4 +489,3 @@ void DrawTextTrans(uint8 *dest, uint32 width, uint8 *textmsg, uint8 fgcolor)
 {
 	DrawTextTransWH(dest, width, textmsg, fgcolor, 256, 16, 2);
 }
-#endif

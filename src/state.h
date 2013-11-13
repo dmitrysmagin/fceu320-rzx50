@@ -28,9 +28,9 @@ void FCEUSS_Save(const char *);
 bool FCEUSS_Load(const char *);
 
  //zlib values: 0 (none) through 9 (max) or -1 (default)
-bool FCEUSS_SaveMS(std::ostream* outstream, int compressionLevel);
+bool FCEUSS_SaveMS(EMUFILE* outstream, int compressionLevel);
 
-bool FCEUSS_LoadFP(std::istream* is, ENUM_SSLOADPARAMS params);
+bool FCEUSS_LoadFP(EMUFILE* is, ENUM_SSLOADPARAMS params);
 
 extern int CurrentState;
 void FCEUSS_CheckStates(void);
@@ -73,4 +73,7 @@ extern bool redoSS;					 //redo savestate flag
 extern char lastLoadstateMade[2048]; //Filename of last state loaded
 extern bool undoLS;					 //undo loadstate flag
 extern bool redoLS;					 //redo savestate flag
+extern bool backupSavestates;		 //Whether or not to make backups, true by default
 bool CheckBackupSaveStateExist();	 //Checks if backupsavestate exists
+
+extern bool compressSavestates;		//Whether or not to compress non-movie savestates (by default, yes)

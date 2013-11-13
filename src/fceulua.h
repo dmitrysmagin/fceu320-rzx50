@@ -1,4 +1,6 @@
 #ifdef _S9XLUA_H
+#ifndef _FCEULUA_H
+#define _FCEULUA_H
 
 enum LuaCallID
 {
@@ -63,7 +65,7 @@ void CallRegisteredLuaLoadFunctions(int savestateNumber, const LuaSaveData& save
 // Just forward function declarations 
 
 void FCEU_LuaFrameBoundary();
-int FCEU_LoadLuaCode(const char *filename);
+int FCEU_LoadLuaCode(const char *filename, const char *arg=NULL);
 void FCEU_ReloadLuaCode();
 void FCEU_LuaStop();
 int FCEU_LuaRunning();
@@ -83,4 +85,5 @@ char* FCEU_GetLuaScriptName();
 char *FCEU_GetFreezeFilename(int slot);
 
 
+#endif
 #endif

@@ -23,7 +23,7 @@ extern "C" {
 #endif
 
 #include "../../driver.h"
-#include "../drivers/common/config.h"
+#include "../common/config.h"
 #include "../common/args.h"
 
 extern int eoptions;

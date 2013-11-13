@@ -34,17 +34,13 @@
 #include "x6502.h"
 #include "fceu.h"
 #include "sound.h"
-#include "utils/general.h"
 #include "utils/endian.h"
 #include "utils/memory.h"
-#include "utils/memorystream.h"
 #include "utils/xstring.h"
 #include "file.h"
 #include "fds.h"
 #include "state.h"
-#ifdef MOVIE_SUPPORT
 #include "movie.h"
-#endif
 #include "ppu.h"
 #include "netplay.h"
 #include "video.h"
@@ -83,6 +79,9 @@ bool redoLS = false;		  //This will be true if a backupstate was loaded, meaning
 
 bool internalSaveLoad = false;
 
+bool backupSavestates = true;
+bool compressSavestates = true;  //By default FCEUX compresses savestates when a movie is inactive.
+
 #define SFMDATA_SIZE (64)
 static SFORMAT SFMDATA[SFMDATA_SIZE];
 static int SFEXINDEX;
@@ -94,9 +93,8 @@ extern SFORMAT FCEUPPU_STATEINFO[];
 extern SFORMAT FCEU_NEWPPU_STATEINFO[];
 extern SFORMAT FCEUSND_STATEINFO[];
 extern SFORMAT FCEUCTRL_STATEINFO[];
-#ifdef MOVIE_SUPPORT
 extern SFORMAT FCEUMOV_STATEINFO[];
-#endif
+
 
 SFORMAT SFCPU[]={
 	{ &X.PC, 2|RLSB, "PC\0"},
@@ -121,7 +119,7 @@ SFORMAT SFCPUC[]={
 
 void foo(uint8* test) { (void)test; }
 
-static int SubWrite(std::ostream* os, SFORMAT *sf)
+static int SubWrite(EMUFILE* os, SFORMAT *sf)
 {
 	uint32 acc=0;
 
@@ -143,7 +141,7 @@ static int SubWrite(std::ostream* os, SFORMAT *sf)
 
 		if(os)			//Are we writing or calculating the size of this block?
 		{
-			os->write(sf->desc,4);
+			os->fwrite(sf->desc,4);
 			write32le(sf->s&(~FCEUSTATE_FLAGS),os);
 
 #ifndef LSB_FIRST
@@ -152,9 +150,9 @@ static int SubWrite(std::ostream* os, SFORMAT *sf)
 #endif
 
 			if(sf->s&FCEUSTATE_INDIRECT)
-				os->write(*(char **)sf->v,sf->s&(~FCEUSTATE_FLAGS));
+				os->fwrite(*(char **)sf->v,sf->s&(~FCEUSTATE_FLAGS));
 			else
-				os->write((char*)sf->v,sf->s&(~FCEUSTATE_FLAGS));
+				os->fwrite((char*)sf->v,sf->s&(~FCEUSTATE_FLAGS));
 
 			//Now restore the original byte order.
 #ifndef LSB_FIRST
@@ -168,10 +166,10 @@ static int SubWrite(std::ostream* os, SFORMAT *sf)
 	return(acc);
 }
 
-static int WriteStateChunk(std::ostream* os, int type, SFORMAT *sf)
+static int WriteStateChunk(EMUFILE* os, int type, SFORMAT *sf)
 {
-	os->put(type);
-	int bsize = SubWrite((std::ostream*)0,sf);
+	os->fputc(type);
+	int bsize = SubWrite((EMUFILE*)0,sf);
 	write32le(bsize,os);
 
 	if(!SubWrite(os,sf))
@@ -204,16 +202,16 @@ static SFORMAT *CheckS(SFORMAT *sf, uint32 tsize, char *desc)
 	return(0);
 }
 
-static bool ReadStateChunk(std::istream* is, SFORMAT *sf, int size)
+static bool ReadStateChunk(EMUFILE* is, SFORMAT *sf, int size)
 {
 	SFORMAT *tmp;
-	int temp = is->tellg();
+	int temp = is->ftell();
 
-	while(is->tellg()<temp+size)
+	while(is->ftell()<temp+size)
 	{
 		uint32 tsize;
 		char toa[4];
-		if(is->read(toa,4).gcount()<4)
+		if(is->fread(toa,4)<4)
 			return false;
 
 		read32le(&tsize,is);
@@ -221,9 +219,9 @@ static bool ReadStateChunk(std::istream* is, SFORMAT *sf, int size)
 		if((tmp=CheckS(sf,tsize,toa)))
 		{
 			if(tmp->s&FCEUSTATE_INDIRECT)
-				is->read(*(char **)tmp->v,tmp->s&(~FCEUSTATE_FLAGS));
+				is->fread(*(char **)tmp->v,tmp->s&(~FCEUSTATE_FLAGS));
 			else
-				is->read((char *)tmp->v,tmp->s&(~FCEUSTATE_FLAGS));
+				is->fread((char *)tmp->v,tmp->s&(~FCEUSTATE_FLAGS));
 
 #ifndef LSB_FIRST
 			if(tmp->s&RLSB)
@@ -231,7 +229,7 @@ static bool ReadStateChunk(std::istream* is, SFORMAT *sf, int size)
 #endif
 		}
 		else
-			is->seekg(tsize,std::ios::cur);
+			is->fseek(tsize,SEEK_CUR);
 	} // while(...)
 	return true;
 }
@@ -240,7 +238,7 @@ static int read_sfcpuc=0, read_snd=0;
 
 void FCEUD_BlitScreen(uint8 *XBuf); //mbg merge 7/17/06 YUCKY had to add
 void UpdateFCEUWindow(void);  //mbg merge 7/17/06 YUCKY had to add
-static bool ReadStateChunks(std::istream* is, int32 totalsize)
+static bool ReadStateChunks(EMUFILE* is, int32 totalsize)
 {
 	int t;
 	uint32 size;
@@ -257,7 +255,7 @@ static bool ReadStateChunks(std::istream* is, int32 totalsize)
 
 	while(totalsize > 0)
 	{
-		t=is->get();
+		t=is->fgetc();
 		if(t==EOF) break;
 		if(!read32le(&size,is)) break;
 		totalsize -= size + 5;
@@ -268,7 +266,6 @@ static bool ReadStateChunks(std::istream* is, int32 totalsize)
 		case 3:if(!ReadStateChunk(is,FCEUPPU_STATEINFO,size)) ret=false;break;
 		case 31:if(!ReadStateChunk(is,FCEU_NEWPPU_STATEINFO,size)) ret=false;break;
 		case 4:if(!ReadStateChunk(is,FCEUCTRL_STATEINFO,size)) ret=false;break;
-#ifdef MOVIE_SUPPORT
 		case 7:
 			if(!FCEUMOV_ReadState(is,size)) {
 				//allow this to fail in old-format savestates.
@@ -276,7 +273,6 @@ static bool ReadStateChunks(std::istream* is, int32 totalsize)
 					ret=false;
 			}
 			break;
-#endif
 		case 0x10:if(!ReadStateChunk(is,SFMDATA,size)) ret=false; break;
 
 			// now it gets hackier:
@@ -286,24 +282,21 @@ static bool ReadStateChunks(std::istream* is, int32 totalsize)
 			else
 				read_snd=1;
 			break;
-#ifdef MOVIE_SUPPORT
 		case 6:
-			if(FCEUMOV_Mode(MOVIEMODE_PLAY|MOVIEMODE_RECORD))
+			if(FCEUMOV_Mode(MOVIEMODE_PLAY|MOVIEMODE_RECORD|MOVIEMODE_FINISHED))
 			{
 				if(!ReadStateChunk(is,FCEUMOV_STATEINFO,size)) ret=false;
 			}
 			else
 			{
-				is->seekg(size,std::ios::cur);
+				is->fseek(size,SEEK_CUR);
 			}
 			break;
-#endif
 		case 8:
 			// load back buffer
 			{
-				int t = is->tellg();
-				extern uint8 *XBuf;
-				if(is->read((char*)XBuf,size).gcount() != size)
+				extern uint8 *XBackBuf;
+				if(is->fread((char*)XBackBuf,size) != size)
 					ret = false;
 
 				//MBG TODO - can this be moved to a better place?
@@ -335,7 +328,7 @@ static bool ReadStateChunks(std::istream* is, int32 totalsize)
 				warned=true;
 			}
 			//if(fseek(st,size,SEEK_CUR)<0) goto endo;break;
-			is->seekg(size,std::ios::cur);
+			is->fseek(size,SEEK_CUR);
 		}
 	}
 	//endo:
@@ -360,13 +353,13 @@ int CurrentState=0;
 extern int geniestage;
 
 
-bool FCEUSS_SaveMS(std::ostream* outstream, int compressionLevel)
+bool FCEUSS_SaveMS(EMUFILE* outstream, int compressionLevel)
 {
 	//a temp memory stream. we'll dump some data here and then compress
 	//TODO - support dumping directly without compressing to save a buffer copy
 
-	memorystream ms;
-	std::ostream* os = (std::ostream*)&ms;
+	EMUFILE_MEMORY ms;
+	EMUFILE* os = &ms;
 
 	uint32 totalsize = 0;
 
@@ -378,8 +371,7 @@ bool FCEUSS_SaveMS(std::ostream* outstream, int compressionLevel)
 	totalsize+=WriteStateChunk(os,31,FCEU_NEWPPU_STATEINFO);
 	totalsize+=WriteStateChunk(os,4,FCEUCTRL_STATEINFO);
 	totalsize+=WriteStateChunk(os,5,FCEUSND_STATEINFO);
-#ifdef MOVIE_SUPPORT
-	if(FCEUMOV_Mode(MOVIEMODE_PLAY|MOVIEMODE_RECORD))
+	if(FCEUMOV_Mode(MOVIEMODE_PLAY|MOVIEMODE_RECORD|MOVIEMODE_FINISHED))
 	{
 		totalsize+=WriteStateChunk(os,6,FCEUMOV_STATEINFO);
 
@@ -387,25 +379,23 @@ bool FCEUSS_SaveMS(std::ostream* outstream, int compressionLevel)
 		//do not save the movie state if we are in tasedit! that is a huge waste of time and space!
 		if(!FCEUMOV_Mode(MOVIEMODE_TASEDIT))
 		{
-			os->seekp(5,std::ios::cur);
+			os->fseek(5,SEEK_CUR);
 			int size = FCEUMOV_WriteState(os);
-			os->seekp(-(size+5),std::ios::cur);
-			os->put(7);
+			os->fseek(-(size+5),SEEK_CUR);
+			os->fputc(7);
 			write32le(size, os);
-			os->seekp(size,std::ios::cur);
+			os->fseek(size,SEEK_CUR);
 
 			totalsize += 5 + size;
 		}
 	}
-#endif
-        printf("totalsize = %d\n", totalsize);
 	// save back buffer
 	{
-		extern uint8 *XBuf;
+		extern uint8 *XBackBuf;
 		uint32 size = 256 * 256 + 8;
-		os->put(8);
+		os->fputc(8);
 		write32le(size, os);
-		os->write((char*)XBuf,size);
+		os->fwrite((char*)XBackBuf,size);
 		totalsize += 5 + size;
 	}
 
@@ -426,7 +416,7 @@ bool FCEUSS_SaveMS(std::ostream* outstream, int compressionLevel)
 	int error = Z_OK;
 	uint8* cbuf = (uint8*)ms.buf();
 	uLongf comprlen = -1;
-	if(compressionLevel != Z_NO_COMPRESSION)
+	if(compressionLevel != Z_NO_COMPRESSION && compressSavestates)
 	{
 		//worst case compression.
 		//zlib says "0.1% larger than sourceLen plus 12 bytes"
@@ -442,8 +432,8 @@ bool FCEUSS_SaveMS(std::ostream* outstream, int compressionLevel)
 	FCEU_en32lsb(header+12, comprlen);
 
 	//dump it to the destination file
-	outstream->write((char*)header,16);
-	outstream->write((char*)cbuf,comprlen==-1?totalsize:comprlen);
+	outstream->fwrite((char*)header,16);
+	outstream->fwrite((char*)cbuf,comprlen==-1?totalsize:comprlen);
 
 	if(cbuf != (uint8*)ms.buf()) delete[] cbuf;
 	return error == Z_OK;
@@ -452,18 +442,18 @@ bool FCEUSS_SaveMS(std::ostream* outstream, int compressionLevel)
 
 void FCEUSS_Save(const char *fname)
 {
-	std::fstream* st = 0;
+	EMUFILE* st = 0;
 	char fn[2048];
 
 	if(geniestage==1)
 	{
-		FCEU_DispMessage("Cannot save FCS in GG screen.");
+		FCEU_DispMessage("Cannot save FCS in GG screen.",0);
 		return;
 	}
 
 	if(fname)	//If filename is given use it.
 	{
-		st =FCEUD_UTF8_fstream(fname, "wb");
+		st = FCEUD_UTF8_fstream(fname, "wb");
 		strcpy(fn, fname);
 	}
 	else		//Else, generate one
@@ -472,7 +462,7 @@ void FCEUSS_Save(const char *fname)
 		strcpy(fn, FCEU_MakeFName(FCEUMKF_STATE,CurrentState,0).c_str());
 
 		//backup existing savestate first
-		if (CheckFileExists(fn)) 
+		if (CheckFileExists(fn) && backupSavestates)	//adelikat:  If the files exists and we are allowed to make backup savestates
 		{
 			CreateBackupSaveState(fn);		//Make a backup of previous savestate before overwriting it
 			strcpy(lastSavestateMade,fn);	//Remember what the last savestate filename was (for undoing later)
@@ -484,9 +474,9 @@ void FCEUSS_Save(const char *fname)
 		st = FCEUD_UTF8_fstream(fn,"wb");
 	}
 
-	if(st == NULL)
+	if(st == NULL || st->get_fp() == NULL)
 	{
-		FCEU_DispMessage("State %d save error.",CurrentState);
+		FCEU_DispMessage("State %d save error.",0,CurrentState);
 		return;
 	}
 
@@ -516,11 +506,9 @@ void FCEUSS_Save(const char *fname)
 	}
 	#endif
 
-#ifdef MOVIE_SUPPORT
 	if(FCEUMOV_Mode(MOVIEMODE_INACTIVE))
 		FCEUSS_SaveMS(st,-1);
 	else
-#endif
 		FCEUSS_SaveMS(st,0);
 
 	delete st;
@@ -528,12 +516,12 @@ void FCEUSS_Save(const char *fname)
 	if(!fname)
 	{
 		SaveStateStatus[CurrentState]=1;
-		FCEU_DispMessage("State %d saved.",CurrentState);
+		FCEU_DispMessage("State %d saved.",0,CurrentState);
 	}
 		redoSS = false;					//we have a new savestate so redo is not possible
 }
 
-int FCEUSS_LoadFP_old(std::istream* is, ENUM_SSLOADPARAMS params)
+int FCEUSS_LoadFP_old(EMUFILE* is, ENUM_SSLOADPARAMS params)
 {
 	//if(params==SSLOADPARAM_DUMMY && suppress_scan_chunks)
 	//	return 1;
@@ -567,11 +555,9 @@ int FCEUSS_LoadFP_old(std::istream* is, ENUM_SSLOADPARAMS params)
 
 	//if(params!=SSLOADPARAM_DUMMY)
 	{
-#ifdef MOVIE_SUPPORT
 		FCEUMOV_PreLoad();
-#endif
 	}
-	is->read((char*)&header,16);
+    is->fread((char*)&header,16);
 	if(memcmp(header,"FCS",3))
 	{
 		return(0);
@@ -606,9 +592,7 @@ int FCEUSS_LoadFP_old(std::istream* is, ENUM_SSLOADPARAMS params)
 	{
 		FCEUPPU_LoadState(stateversion);
 		FCEUSND_LoadState(stateversion);  
-#ifdef MOVIE_SUPPORT
 		x=FCEUMOV_PostLoad();
-#endif
 	}
 	if(fn)
 	{
@@ -631,21 +615,25 @@ int FCEUSS_LoadFP_old(std::istream* is, ENUM_SSLOADPARAMS params)
 }
 
 
-bool FCEUSS_LoadFP(std::istream* is, ENUM_SSLOADPARAMS params)
+bool FCEUSS_LoadFP(EMUFILE* is, ENUM_SSLOADPARAMS params)
 {
 	//maybe make a backup savestate
-	memorystream msBackupSavestate;
+	EMUFILE_MEMORY msBackupSavestate;
 	bool backup = (params == SSLOADPARAM_BACKUP);
+
+	if(!is)
+		return false;
+
 	if(backup)
 		FCEUSS_SaveMS(&msBackupSavestate,Z_NO_COMPRESSION);
 
 	uint8 header[16];
 
 	//read and analyze the header
-	is->read((char*)&header,16);
+	is->fread((char*)&header,16);
 	if(memcmp(header,"FCSX",4)) {
 		//its not an fceux save file.. perhaps it is an fceu savefile
-		is->seekg(0);
+		is->fseek(0,SEEK_SET);
 		FCEU_state_loading_old_format = true;
 		bool ret = FCEUSS_LoadFP_old(is,params)!=0;
 		FCEU_state_loading_old_format = false;
@@ -657,14 +645,14 @@ bool FCEUSS_LoadFP(std::istream* is, ENUM_SSLOADPARAMS params)
 	int stateversion = FCEU_de32lsb(header + 8);
 	int comprlen = FCEU_de32lsb(header + 12);
 
-	std::vector<char> buf(totalsize);
+	std::vector<uint8> buf(totalsize);
 
 	//not compressed:
 	if(comprlen != -1)
 	{
 		//load the compressed chunk and decompress
 		std::vector<char> cbuf(comprlen);
-		is->read((char*)&cbuf[0],comprlen);
+		is->fread((char*)&cbuf[0],comprlen);
 
 		uLongf uncomprlen = totalsize;
 		int error = uncompress((uint8*)&buf[0],&uncomprlen,(uint8*)&cbuf[0],comprlen);
@@ -674,14 +662,12 @@ bool FCEUSS_LoadFP(std::istream* is, ENUM_SSLOADPARAMS params)
 	}
 	else
 	{
-		is->read((char*)&buf[0],totalsize);
+		is->fread((char*)&buf[0],totalsize);
 	}
 
-#ifdef MOVIE_SUPPORT
 	FCEUMOV_PreLoad();
-#endif
 
-	memorystream mstemp(&buf);
+	EMUFILE_MEMORY mstemp(&buf);
 	bool x = ReadStateChunks(&mstemp,totalsize)!=0;
 
 	//mbg 5/24/08 - we don't support old states, so this shouldnt matter.
@@ -696,13 +682,11 @@ bool FCEUSS_LoadFP(std::istream* is, ENUM_SSLOADPARAMS params)
 	{
 		FCEUPPU_LoadState(stateversion);
 		FCEUSND_LoadState(stateversion);
-#ifdef MOVIE_SUPPORT
 		x=FCEUMOV_PostLoad();
-#endif
 	}
 
 	if(!x && backup) {
-		msBackupSavestate.sync();
+		msBackupSavestate.fseek(0,SEEK_SET);
 		FCEUSS_LoadFP(&msBackupSavestate,SSLOADPARAM_NOBACKUP);
 	}
 
@@ -712,7 +696,7 @@ bool FCEUSS_LoadFP(std::istream* is, ENUM_SSLOADPARAMS params)
 
 bool FCEUSS_Load(const char *fname)
 {
-	std::fstream* st;
+	EMUFILE* st;
 	char fn[2048];
 
 	//mbg movie - this needs to be overhauled
@@ -724,7 +708,7 @@ bool FCEUSS_Load(const char *fname)
 
 	if(geniestage==1)
 	{
-		FCEU_DispMessage("Cannot load FCS in GG screen.");
+		FCEU_DispMessage("Cannot load FCS in GG screen.",0);
 		return false;
 	}
 	if(fname)
@@ -736,33 +720,30 @@ bool FCEUSS_Load(const char *fname)
 	{
 		strcpy(fn, FCEU_MakeFName(FCEUMKF_STATE,CurrentState,fname).c_str());
 		st=FCEUD_UTF8_fstream(fn,"rb");
-		strcpy(lastLoadstateMade,fn);
+        strcpy(lastLoadstateMade,fn);
 	}
 
-	if(st == NULL)
+	if(st == NULL || (st->get_fp() == NULL))
 	{
-		FCEU_DispMessage("State %d load error.",CurrentState);
+		FCEU_DispMessage("State %d load error. Filename: %s",0,CurrentState, fn);
 		SaveStateStatus[CurrentState]=0;
 		return false;
 	}
-
+    
 	//If in bot mode, don't do a backup when loading.
 	//Otherwise you eat at the hard disk, since so many
 	//states are being loaded.
-	if(FCEUSS_LoadFP(st,SSLOADPARAM_BACKUP))
+	if(FCEUSS_LoadFP(st, backupSavestates ? SSLOADPARAM_BACKUP : SSLOADPARAM_NOBACKUP))
 	{
 		if(fname)
 		{
 			char szFilename[260]={0};
 			splitpath(fname, 0, 0, szFilename, 0);
-			FCEU_DispMessage("State %s loaded.",szFilename);
+			FCEU_DispMessage("State %s loaded. Filename: %s",0,szFilename, fn);
 		}
 		else
 		{
-			//This looks redudant to me... but why bother deleting it:)
-			SaveStateStatus[CurrentState]=1;
-
-			FCEU_DispMessage("State %d loaded.",CurrentState);
+			FCEU_DispMessage("State %d loaded. Filename: %s",0,CurrentState, fn);
 			SaveStateStatus[CurrentState]=1;
 		}
 		delete st;
@@ -790,6 +771,13 @@ bool FCEUSS_Load(const char *fname)
 #if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	Update_RAM_Search(); // Update_RAM_Watch() is also called.
 #endif
+		
+		//Update input display if movie is loaded
+		extern uint32 cur_input_display;
+		extern uint8 FCEU_GetJoyJoy(void);
+		
+		cur_input_display = FCEU_GetJoyJoy(); //Input display should show the last buttons pressed (stored in the savestate)
+		
 		return true;
 	}
 	else
@@ -798,7 +786,7 @@ bool FCEUSS_Load(const char *fname)
 		{
 			SaveStateStatus[CurrentState]=1;
 		}
-		FCEU_DispMessage("Error(s) reading state %d!",CurrentState);
+		FCEU_DispMessage("Error(s) reading state %d! Filename: %s",0,CurrentState, fn);
 		delete st;
 		return 0;
 	}
@@ -886,7 +874,7 @@ int FCEUI_SelectState(int w, int show)
 	if(show)
 	{
 		StateShow=180;
-		FCEU_DispMessage("-select state-");
+		FCEU_DispMessage("-select state-",0);
 	}
 	return oldstate;
 }
@@ -902,11 +890,20 @@ void FCEUI_SaveState(const char *fname)
 
 int loadStateFailed = 0; // hack, this function should return a value instead
 
+bool file_exists(const char * filename)
+{
+    if (FILE * file = fopen(filename, "r")) //I'm sure, you meant for READING =)
+    {
+        fclose(file);
+        return true;
+    }
+    return false;
+}
 void FCEUI_LoadState(const char *fname)
 {
 	if(!FCEU_IsValidUI(FCEUI_LOADSTATE)) return;
 
-    StateShow = 0;
+	StateShow = 0;
 	loadStateFailed = 0;
 
 	/* For network play, be load the state locally, and then save the state to a temporary file,
@@ -914,15 +911,17 @@ void FCEUI_LoadState(const char *fname)
 	information expected in newer save states, desynchronization won't occur(at least not
 	from this ;)).
 	*/
-	BackupLoadState();	//Backup the current state before loading a new one
+	if (backupSavestates) BackupLoadState();	//If allowed, backup the current state before loading a new one
 	
-#ifdef MOVIE_SUPPORT
 	if (!movie_readonly && autoMovieBackup && freshMovie) //If auto-backup is on, movie has not been altered this session and the movie is in read+write mode
 	{
 		FCEUI_MakeBackupMovie(false);	//Backup the movie before the contents get altered, but do not display messages						  
 	}
-#endif
-
+	if (fname != NULL && !file_exists(fname))
+	{
+		loadStateFailed = 1;
+		return; // state doesn't exist; exit cleanly
+	}
 	if(FCEUSS_Load(fname))
 	{
 		//mbg todo netplay
@@ -948,9 +947,7 @@ void FCEUI_LoadState(const char *fname)
 
 			free(fn);
 		}*/
-#ifdef MOVIE_SUPPORT
 		freshMovie = false;		//The movie has been altered so it is no longer fresh
-#endif
 	}
 	else
 	{
@@ -965,7 +962,6 @@ void FCEU_DrawSaveStates(uint8 *XBuf)
 	FCEU_DrawNumberRow(XBuf,SaveStateStatus,CurrentState);
 	StateShow--;
 }
-
 
 //*************************************************************************
 //Savestate backup functions
@@ -1001,14 +997,14 @@ void SwapSaveState()
 	
 	if (!lastSavestateMade) 
 	{
-		FCEUI_DispMessage("Can't Undo");
+		FCEUI_DispMessage("Can't Undo",0);
 		FCEUI_printf("Undo savestate was attempted but unsuccessful because there was not a recently used savestate.\n");
 		return;		//If there is no last savestate, can't undo
 	}
 	string backup = GenerateBackupSaveStateFn(lastSavestateMade);	//Get filename of backup state
 	if (!CheckFileExists(backup.c_str())) 
 	{
-		FCEUI_DispMessage("Can't Undo");
+		FCEUI_DispMessage("Can't Undo",0);
 		FCEUI_printf("Undo savestate was attempted but unsuccessful because there was not a backup of the last used savestate.\n");
 		return;		//If no backup, can't undo
 	}
@@ -1029,8 +1025,8 @@ void SwapSaveState()
 	else					//This was an undo function so next will be redo, so flag it
 		redoSS = true;
 
-	FCEUI_DispMessage("%s restored",backup.c_str());
-	FCEUI_printf("%s restored\n",backup.c_str());
+	FCEUI_DispMessage("%s restored",0,backup.c_str());
+	FCEUI_printf("%s restored\n",0,backup.c_str());
 }	
 	
 //------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1098,7 +1094,7 @@ void LoadBackup()
 		undoLS = false;						//Flag that LoadBackup cannot be run again
 	}
 	else
-		FCEUI_DispMessage("Error: Could not load %s",filename.c_str());
+		FCEUI_DispMessage("Error: Could not load %s",0,filename.c_str());
 }
 
 void RedoLoadState()

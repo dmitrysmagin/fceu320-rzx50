@@ -51,7 +51,7 @@ extern int32 WaveFinal[2048+512];
 extern int32 WaveHi[];
 extern uint32 soundtsinc;
 
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#ifdef WIN32
 extern volatile int datacount, undefinedcount;
 extern int debug_loggingCD;
 extern unsigned char *cdloggerdata;
@@ -72,5 +72,13 @@ void FCEU_SoundCPUHook(int);
 void Write_IRQFM (uint32 A, uint8 V); //mbg merge 7/17/06 brought over from latest mmbuild
 
 void LogDPCM(int romaddress, int dpcmsize);
+
+typedef struct {
+	uint8 Speed;
+	uint8 Mode;	/* Fixed volume(1), and loop(2) */
+	uint8 DecCountTo1;
+	uint8 decvolume;
+	int reloaddec;
+} ENVUNIT;
 
 #endif

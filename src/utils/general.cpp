@@ -20,9 +20,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string>
-#include <iostream>
-#include <fstream>
+#include <string.h>
 #include "../types.h"
 
 uint32 uppow2(uint32 n)

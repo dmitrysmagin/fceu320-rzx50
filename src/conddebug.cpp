@@ -31,11 +31,12 @@
 * Compare   -> Sum {('==' | '!=' | '<=' | '>=' | '<' | '>') Sum}
 * Sum       -> Product {('+' | '-') Product}
 * Product   -> Primitive {('*' | '/') Primitive}
-* Primitive -> Number | Address | Register | Flag | '(' Connect ')'
+* Primitive -> Number | Address | Register | Flag | PC Bank | '(' Connect ')'
 * Number    -> '#' [1-9A-F]*
 * Address   -> '$' [1-9A-F]* | '$' '[' Connect ']'
 * Register  -> 'A' | 'X' | 'Y' | 'R'
 * Flag      -> 'N' | 'C' | 'Z' | 'I' | 'B' | 'V'
+* PC Bank   -> 'K'
 */
 
 #include <stdio.h>
@@ -45,6 +46,8 @@
 #include <ctype.h>
 
 #include "conddebug.h"
+#include "types.h"
+#include "utils/memory.h"
 
 // Next non-whitespace character in string
 char next;
@@ -88,11 +91,14 @@ Condition* InfixOperator(const char** str, Condition(*nextPart(const char**)), i
 
 		if (t1 == 0)
 		{
-			freeTree(t);
+			if(t)
+				freeTree(t);
 			return 0;
 		}
 
-		mid = (Condition*)malloc(sizeof(Condition));
+		mid = (Condition*)FCEU_dmalloc(sizeof(Condition));
+		if (!mid)
+			return NULL;
 		memset(mid, 0, sizeof(Condition));
 
 		mid->lhs = t;
@@ -129,6 +135,12 @@ int isFlag(char c)
 int isRegister(char c)
 {
 	return c == 'A' || c == 'X' || c == 'Y' || c == 'P';
+}
+
+// Determines if a character is for bank
+int isBank(char c)
+{
+	return c == 'K';
 }
 
 // Reads a hexadecimal number from str
@@ -217,6 +229,23 @@ Condition* Primitive(const char** str, Condition* c)
 
 		return c;
 	}
+	else if (isBank(next)) /* PC Bank */
+	{
+		if (c->type1 == TYPE_NO)
+		{
+			c->type1 = TYPE_BANK;
+			c->value1 = next;
+		}
+		else
+		{
+			c->type2 = TYPE_BANK;
+			c->value2 = next;
+		}
+
+		scan(str);
+
+		return c;
+	}
 	else if (next == '#') /* Numbers */
 	{
 		unsigned int number = 0;
@@ -293,9 +322,13 @@ Condition* Primitive(const char** str, Condition* c)
 /* Handle * and / operators */
 Condition* Term(const char** str)
 {
-	Condition* t = (Condition*)malloc(sizeof(Condition));
+	Condition* t;
 	Condition* t1;
 	Condition* mid;
+
+    t = (Condition*)FCEU_dmalloc(sizeof(Condition));
+    if (!t)
+        return NULL;
 
 	memset(t, 0, sizeof(Condition));
 
@@ -311,7 +344,9 @@ Condition* Term(const char** str)
 
 		scan(str);
 
-		t1 = (Condition*)malloc(sizeof(Condition));
+		if (!(t1 = (Condition*)FCEU_dmalloc(sizeof(Condition))))
+            return NULL;
+
 		memset(t1, 0, sizeof(Condition));
 
 		if (!Primitive(str, t1))
@@ -321,7 +356,9 @@ Condition* Term(const char** str)
 			return 0;
 		}
 
-		mid = (Condition*)malloc(sizeof(Condition));
+		if (!(mid = (Condition*)FCEU_dmalloc(sizeof(Condition))))
+            return NULL;
+        
 		memset(mid, 0, sizeof(Condition));
 
 		mid->lhs = t;

@@ -51,6 +51,10 @@ extern double g_fpsScale;
 
 extern bool MaxSpeed;
 
+static int isloaded;
+
+int closeFinishedMovie = 0;
+
 // NOTE: an ugly hack to get
 // mouse support
 int showmouse = 0;
@@ -409,23 +413,24 @@ void FCEUD_Update(uint8 *XBuf, int32 *Buffer, int Count)
 /**
  * Opens a file to be read a byte at a time.
  */
-std::fstream* FCEUD_UTF8_fstream(const char *fn, const char *m) {
+EMUFILE_FILE* FCEUD_UTF8_fstream(const char *fn, const char *m)
+{
 	std::ios_base::openmode mode = std::ios_base::binary;
-	if (!strcmp(m, "r") || !strcmp(m, "rb"))
+	if(!strcmp(m,"r") || !strcmp(m,"rb"))
 		mode |= std::ios_base::in;
-	else if (!strcmp(m, "w") || !strcmp(m, "wb"))
+	else if(!strcmp(m,"w") || !strcmp(m,"wb"))
 		mode |= std::ios_base::out | std::ios_base::trunc;
-	else if (!strcmp(m, "a") || !strcmp(m, "ab"))
+	else if(!strcmp(m,"a") || !strcmp(m,"ab"))
 		mode |= std::ios_base::out | std::ios_base::app;
-	else if (!strcmp(m, "r+") || !strcmp(m, "r+b"))
+	else if(!strcmp(m,"r+") || !strcmp(m,"r+b"))
 		mode |= std::ios_base::in | std::ios_base::out;
-	else if (!strcmp(m, "w+") || !strcmp(m, "w+b"))
+	else if(!strcmp(m,"w+") || !strcmp(m,"w+b"))
 		mode |= std::ios_base::in | std::ios_base::out | std::ios_base::trunc;
-	else if (!strcmp(m, "a+") || !strcmp(m, "a+b"))
+	else if(!strcmp(m,"a+") || !strcmp(m,"a+b"))
 		mode |= std::ios_base::in | std::ios_base::out | std::ios_base::app;
-
-	return new std::fstream(fn, mode);
+	return new EMUFILE_FILE(fn, m);
 }
+
 
 /**
  * Opens a file, C++ style, to be read a byte at a time.
@@ -477,7 +482,7 @@ int FCEUD_ConvertMovie(const char *name, char *outname) {
 
 	if (result == FCM_CONVERTRESULT_SUCCESS) {
 		okcount++;
-		std::fstream* outf = FCEUD_UTF8_fstream(tmp, "wb");
+		EMUFILE_FILE* outf = FCEUD_UTF8_fstream(tmp, "wb");
 		md.dump(outf, false);
 		delete outf;
 		FCEUD_Message("Your file has been converted to FM2.\n");
@@ -615,7 +620,7 @@ int main(int argc, char *argv[]) {
 
 		if (result == FCM_CONVERTRESULT_SUCCESS) {
 			okcount++;
-			std::fstream* outf = FCEUD_UTF8_fstream(outname, "wb");
+			EMUFILE_FILE* outf = FCEUD_UTF8_fstream(outname, "wb");
 			md.dump(outf, false);
 			delete outf;
 			FCEUD_Message("Your file has been converted to FM2.\n");
@@ -643,7 +648,7 @@ int main(int argc, char *argv[]) {
 		FCEUFILE *fp = FCEU_fopen(s.c_str(), 0, "rb", 0);
 
 		// load the movie and and subtitles
-		extern bool LoadFM2(MovieData&, std::istream*, int, bool);
+		extern bool LoadFM2(MovieData&, EMUFILE*, int, bool);
 		LoadFM2(md, fp->stream, INT_MAX, false);
 		LoadSubtitles(md); // fill subtitleFrames and subtitleMessages
 		delete fp;
@@ -868,7 +873,7 @@ void FCEUD_PrintError(const char *errormsg) {
 
 // dummy functions
 
-#define DUMMY(__f) void __f(void) {printf("%s\n", #__f); FCEU_DispMessage("Not implemented.");}
+#define DUMMY(__f) void __f(void) {printf("%s\n", #__f); FCEU_DispMessage("Not implemented.", 0);}
 DUMMY(FCEUD_HideMenuToggle)
 DUMMY(FCEUD_MovieReplayFrom)
 DUMMY(FCEUD_ToggleStatusIcon)
@@ -907,5 +912,19 @@ FCEUFILE* FCEUD_OpenArchive(ArchiveScanRecord& asr, std::string& fname,
 }
 ArchiveScanRecord FCEUD_ScanArchive(std::string fname) {
 	return ArchiveScanRecord();
+}
+
+extern uint8 SelectDisk, InDisk;
+extern int FDSSwitchRequested;
+
+void FCEUI_FDSFlip(void)
+{
+    /* Taken from fceugc 
+       the commands shouldn't be issued in parallel so
+     * we'll delay them so the virtual FDS has a chance
+     * to process them
+    */
+    if(FDSSwitchRequested == 0)
+        FDSSwitchRequested = 1;
 }
 

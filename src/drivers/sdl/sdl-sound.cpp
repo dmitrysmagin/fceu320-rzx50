@@ -44,18 +44,17 @@ static int s_mute = 0;
 /**
  * Callback from the SDL to get and play audio data.
  */
-static void fillaudio(void *udata, uint8 *stream, int len)
+static void
+fillaudio(void *udata,
+          uint8 *stream,
+          int len)
 {
     int16 *tmps = (int16*)stream;
     len >>= 1;
 	// debug code
 	//printf("s_BufferIn: %i s_BufferWrite = %i s_BufferRead = %i s_BufferSize = %i\n",
 	// s_BufferIn, s_BufferWrite, s_BufferRead, s_BufferSize);
-	// ensure that we're not writing garbage data to the soundcard
-
-	if (s_BufferWrite > s_BufferRead)
-		s_BufferWrite = s_BufferRead;
-
+		
     while(len) {
         int16 sample = 0;
         if(s_BufferIn) {
@@ -173,12 +172,11 @@ WriteSound(int32 *buf,
            int Count)
 {
     extern int EmulationPaused;
-
     if (EmulationPaused == 0)
         while(Count)
-        {
+		{
             while(s_BufferIn == s_BufferSize) 
-            {
+			{
                 SDL_Delay(1);
             }
 

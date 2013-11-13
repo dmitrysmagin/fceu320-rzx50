@@ -350,7 +350,7 @@ uint16 metadata_ucs2[];     // ucs-2, ick!  sizeof(metadata) = offset_to_savesta
 //	framets=0;
 //	nextts=0;
 //	nextd = -1;
-//	FCEU_DispMessage("Movie playback started.");
+//	FCEU_DispMessage("Movie playback started.",0);
 //}
 //
 //static int FCEUI_MovieGetInfo_v1(const char* fname, MOVIE_INFO* info)
@@ -542,11 +542,11 @@ EFCM_CONVERTRESULT convert_fcm(MovieData& md, std::string fname)
 	int movieConvertOffset1=0, movieConvertOffset2=0,movieSyncHackOn=0;
 
 
-	ifstream* fp = (ifstream*)FCEUD_UTF8_fstream(fname, "rb");
-	if(!fp) false;
+	EMUFILE* fp = FCEUD_UTF8_fstream(fname, "rb");
+	if(!fp) return FCM_CONVERTRESULT_FAILOPEN;
 
 	// read header
-	uint32 magic;
+	uint32 magic = 0;
 	uint32 version;
 	uint8 flags[4];
 
@@ -576,7 +576,7 @@ EFCM_CONVERTRESULT convert_fcm(MovieData& md, std::string fname)
 	}
 
 	
-	fp->read((char*)&flags,4);
+	fp->fread((char*)&flags,4);
 	read32le(&framecount, fp);
 	read32le(&rerecord_count, fp);
 	read32le(&moviedatasize, fp);
@@ -584,16 +584,12 @@ EFCM_CONVERTRESULT convert_fcm(MovieData& md, std::string fname)
 	read32le(&firstframeoffset, fp);
 
 	//read header values
-	fp->read((char*)&md.romChecksum,16);
+	fp->fread((char*)&md.romChecksum,16);
 	read32le((uint32*)&md.emuVersion,fp);
 
 	md.romFilename = readNullTerminatedAscii(fp);
 
-#if defined(DINGUX) && !defined(DINGUX_ON_WIN32)
-    md.comments.push_back("author  " + mbstowcs(readNullTerminatedAscii(fp)));
-#else
 	md.comments.push_back(L"author  " + mbstowcs(readNullTerminatedAscii(fp)));
-#endif
 
 		//int metadata_length = savestate_offset - MOVIE_V1_HEADER_SIZE;
 	//uint8* metadata = new uint8[metadata_length];
@@ -629,9 +625,9 @@ EFCM_CONVERTRESULT convert_fcm(MovieData& md, std::string fname)
 	//analyze input types?
 	//ResetInputTypes();
 
-	fp->seekg(firstframeoffset,ios::beg);
+	fp->fseek(firstframeoffset,SEEK_SET);
 	moviedata = (uint8*)realloc(moviedata, moviedatasize);
-	fp->read((char*)moviedata,moviedatasize);
+	fp->fread((char*)moviedata,moviedatasize);
 
 	frameptr = 0;
 	memset(joop,0,sizeof(joop));

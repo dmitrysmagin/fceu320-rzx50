@@ -1,3 +1,143 @@
+--- FCEUX 2.1.5 Release ---
+1-jun-2011 - prg318 - sdl - print usage when --help is passed even if SDL fails
+plombo - added stock icons to menu items
+plombo - added new gamepad configuration dialog
+19-mar-2011 - prg318 - gtk - added hard reset option (renamed reset->soft reset)
+18-mar-2011 - prg318 - sdl - removed GTK_LITE; --nogui made it obsolete
+12-feb-2010 - mart0258 - Fix input selection for Famicom Expansion port
+25-jan-2010 - prg318 - gtk - filechooser now remembers last file opened
+25-jan-2010 - prg318 - gtk - fixed xscale/yscale spinbuttons not changing config
+24-jan-2010 - prg318 - gtk - game window integrated into sdl window (thanks bryan!)
+11-nov-2010 - mart0258 - TasEdit - Invalidate greenzone when re-recording earlier portions of a movie. 
+09-oct-2010  - zeromus - fix bug in new ppu that made some intensify bits not get applied to output (fixes flashing siren screen in werefolf
+09-oct-2010 - gocha - win32 - Ram Watch - fix the multiple selection of watches
+09-oct-2010 - gocha - Win32 - Ram Search - multiple selection of addresses, fix restoration of the selection range
+09-oct-2010 - gocha - Win32 - Ram Search - fix restoration of the selection range
+01-oct-2010 - qeed - Fix many segfaults related to file handling
+22-sept-2010 - adelikat - win32 - Hex Editor - ask before removing all bookmarks
+04-sept-2010 - adelikat - Win32 - Ramwatch - fix displaying of 2 byte values
+26-aug-2010  - mart0258 - Win32 - fix crash when re-opening debugging window
+20-aug-2010  - adelikat - Win32 - Display movie name at the top of the main window
+09-july-2010 - mart0258 - TasEdit - cleanup; prevent crash when truncating while turbo
+13-june-2010 - adelikat - Win32 - avi capture commandline argument and related parameters
+12-june-2010 - adelikat - Save Turbo frame skip amount to config so that it can be customized by user
+12-june-2010 - adelikat - Lua - fix speed.mode() so that normal turns off turbo
+12-june-2010 - CaH4e3 - Fix Young Indiana Jones Chronicals
+10-june-2010 - Deign - Fix Ram Search to only display valid RAM addresses (0000-07FF and 6000-7FFF)
+10-june-2010 - zeromus - add luasocket to built in lua library
+09-june-2010 - adelikat - Movies - Fixed read-only loadstate error logic & messages
+07-june-2010 - mart0258 - Movie loading now faster - TAS savestates moved from class MovieRecord to class MovieData
+07-june-2010 - adelikat - Lua - new function: gui.screenshotas()
+07-june-2010 - Deign/adelikat - Win32 - Added a SavestateAs Menu item
+06-june-2010 - FatRatKnight - Added a return value to gui.text: The X position where the function would paint the next character.
+02-june-2010 - adelikat - Win32 - Movie Options Dialog - Fix so Full Savestate Load checkbox is updated on load
+
+---r1984 - FCEUX 2.1.4a Release---
+---June 1 2010---
+01-june-2010 - zeromus - fix crash bug in fcm convert
+01-june-2010 - adelikat - fix logic error in read-only loadstate of movies, should not improperly report savestate after movie errors
+
+---r1977 - FCEUX 2.1.4 Released---
+---May 31 2010---
+
+29-may-2010 - Cah4e3 - Added zapper autodetection for Gotcha!
+28-may-2010 - adelikat - Added lua function movie.getfilename() which returns the current movie filename without the path included
+27-may-2010 - ugetab - Win32 - Debugger - Made debugger able to break on and distinguish Stack reads/writes
+24-may-2010 - adelikat - Win32 - Memwatch - ignore spaces at the beginnign of an address in the address boxes
+24-may-2010 - mart0258 - Disable auto-savestates during turbo
+24-may-2010 - mart0258 - Prevent .zip files containing no recognized files from causing crash
+23-may-2010 - adelikat - Win32 - Replay dialog - fix bug that was causing it to always report savestate movies as soft-reset
+23-may-2010 - adelikat - Fix PlayMovieFromBeginning when using a movie that starts from savestate
+23-may-2010 - cah4e3  - mapper 19 savestate fix mirroring for "Dream Master (J)" corrected to "four-screen" by CRC check
+23-may-2010 - ugetab - Win32 - Fixed bug involving pausing emulation outside of the debugger, then trying to use the debugger commands, and having teh CPU registers become corrupted.
+22-may-2010 - ugetab - Win32 - Made cheat menu's Pause When Active effect immediate.
+22-may-2010 - ugetab - Win32 - Enabled multi-select for Cheat menu to allow multiple toggles and deletes.
+20-may-2010 - ugetab - Added NTSC 2x scalar option with some CFG config options of it's own
+20-may-2010 - Cah4e3 - Win32 - CDLogger - fixed bug preventing correct interrupt vectors from logging
+19-may-2010 - ugetab/adelikat - Win32 - Added single-instance mode, which makes starting a second copy of FCEUX load the file into the first, then exit.Mode off by default, togglable under Config -> GUI
+18-may-2010 - adelikat - Movie + loadstate errors are handled more gracefully now, more informative error messages and the movie doesn't have to stop
+18-may-2010 - adelikat - Implemented a "full savestate-movie load" mode similar to the implementation in VBA-rr & SNES9x-rr.  In this mode loading a savestate in read+write doesn't truncate the movie to its frame count immediately.  Instead it waits until input is recording into the movie (next frame).  For win32 this feature is togglable in movie options and the context menu.  For SDL this is off by default and a toggle will need to be added.
+17-may-2010 - adelikat - Made gamepad 2 off by default.
+17-may-2010 - adelikat - Movies - fully implemented "bulletproof" read-only
+17-may-2010 - zeromus - Movie loading (& movie-savestate saving/loading) should now be faster due to the use of a emufile class instead of std::ostream for dumping
+16-may-2010 - ugetab - Added player 3 and 4 to autohold notification window. Made FCEU_DispMessage able to display to different screen locations to do it. Made sure to update SDL with the change. Hope SDL still compiles ok.
+15-may-2010 - ugetab - Win32 - Added option for palette selection as color for LUA colors. Included an LUA script to display all choices with the value used to pick displayed color.
+14-may-2010 - adelikat - Win32 - Replay dialog, when selecting a movie in a relative path (.\movies for example), the recent movies list stores an absolute path instead.
+14-may-2010 - adelikat - Win32 - When recording a movie, add it to recent movies
+14-may-2010 - adelikat - Win32 - Replay dialog shows PAL flag & New PPU flag
+14-may-2010 - adelikat - New PPU flag in movie headers (doesn't change an emulators PPU state when loading a movie)
+13-may-2010 - adelikat - input display overhaul - a more desmume style system which shows both keys held the previous frame and immiately held keys that will be put in on the next frame
+12-may-2010 - ugetab - Win32 - Added rudamentry Between-Frames input display code for adelikat to customize.
+12-may-2010 - adelikat - Input Display - displays a silver color when input is from a movie rather than the user
+12-may-2010 - ugetab - Win32 - With special scaler in window mode, it's possible to resize to anything above the minimum.
+12-may-2010 - adelikat - Movies now have a "finished" option.  If a playback stops the movie isn't cleared from memory, and can be replayed or a state loaded.  Similar functionality as DeSmuME and GENS rerecording
+11-may-2010 - adelikat - Loadstate updates input display
+11-may-2010 - ugetab - Win32 - Added Ram Search hotkeys for the first 6 search types in the list.
+10-may-2010 - ugetab - Added gui.getpixel() which gets any gui.pixel() set pixel colors, and possibly other functions. Added emu.getscreenpixel() which gets the RGB and Palette of any pixel on the screen.
+08-may-2010 - ugetab - Added savestate.object() which is savestate.create() with intuitive numbering under windows
+08-may-2010 - ugetab - Added emu.addgamegenie() and emu.delgamegenie() LUA functions.
+07-may-2010 - ugetab - Win32 - Added context menu to Cheat Dialog Cheat Listbox, populated list with Toggle Cheat, Poke Cheat Value, and Goto In Hex Editor
+07-may-2010 - ugetab - Win32 - Made enabling/disabling cheats no longer deselect the selected cheat.
+06-may-2010 - ugetab - win32 - Add Cheat buttons for Ram Search and Ram Watch
+06-may-2010 - ugetab - win32 - Hex editor -  Made the Hex Editor display the Frozen, Bookmarked, etc. status of the selected address, and made the Frozen color override the Bookmarked color.
+04-may-2010 - ugetab - Win32 - Added "Goto" command for hex editor.
+28-april-2010 - ugetab - Added microphone support option. When enabled, Port 2 Start activates the Microphone. Movies also support this.
+25-april-2010 - FatRatKnight - Fixed a potential desync that plays out an extra frame without an update to the frame count involving heavy lua use, joypad.get, and a loadstate.
+23-april-2010 - ugetab - Win32 - Added Tools>GUI option to partially disable visual themes, so the emulator can be made to look like it did in 2.1.1 and earlier releases.
+20-april-2010 - adelikat - New lua functions movie.ispoweron() and movie.isfromsavestate()
+20-april-2010 - adelikat - Win32 - Drag & Drop - if dropping a .fcm with no ROM loaded, prompt for one (same functionality that was added to .fm2 files)
+08-april-2010 - ugetab - Win32 - Added conditional debugging option 'K', for bank PC is on
+07-april-2010 - adelikat - fix bug that caused zapper.read() to crash when movie playback ends
+
+---r1767 - FCEUX 2.1.3 Released---
+---April 7 2010---
+
+07-april-2010 - sgrunt - Lua - gui.text now has out of bounds checking
+07-april-2010 - adelikat - Win32 - Lua console - filename updates when lua scripts are dragged to emulator or recent filenames invoked
+07-april-2010 - adelikat - Lua no longer unpauses the emulator when a script is loaded
+30-march-2010 - ugetab - Win32 - Closing minimized windows no longer moves them the next time they get opened
+28-march-2010 - adelikat - lua - fixed zapper.read() to read movie data if a movie is playing.  Also changed the struct values to x,y,fire.  This breaks lua scripts that used it previous, sorry.  
+04-march-2010 - prockguy - added menu buttons for loading nsf files
+03-march-2010 - adelikat - Win32 - If .fm2 drag & dropped with no ROM load, the open ROM dialog will appear
+03-march-2010 - prockguy - fceux - now prints the name of the mapper on rom load
+03-march-2010 - prockguy - SDL - VS unisystem keys now configable
+03-march-2010 - prcokguy - SDL - changed default hotkeys and keys to match w32
+03-march-2010 - prockguy - SDL - fixed dpad/joyhat support
+01-march-2010 - adelikat - Movie file format header now has a FDS flag
+01-march-2010 - adelikat - win32 - cheats dialog - toggling a cheat in the cheats list now updates the active cheats count
+01-march-2010 - adelikat - win32 - a disable movie messages menu item
+25-feb-2010 - prockguy - unix netplay is now functional; gtk network gui created
+24-feb-2010 - prockguy - GTK - added basic movie controls
+24-feb-2010 - prockguy - GTK - added file filters; added Load FDS function
+24-feb-2010 - prockguy - GTK - added palette config dialog
+23-feb-2010 - prockguy - GTK - added UI elemnts for x/y scale; added lowpass UI option
+23-feb-2010 - prockguy - GTK - added GUI for color/tint/hue
+23-feb-2010 - prockguy - GTK - implemented sound mixer dialog (for square1, 2, triangle, etc)
+22-feb-2010 - prockguy - SDL - ported to SDL 1.3; compatibility maintained with 1.2
+18-feb-2010 - prockguy - GTK - a lot of options added to GTK gui; relatively stable; added GUI for gamepad config and sound config.  
+02-feb-2010 - ugetab - Win32 - Added window positions bounds checks. Accounts for -32000 positions & less out-of-range too
+08-jan-2010 - rheiny - Win32 - Trace Logger - Trace logger now logs the values of the stack pointer register
+31-dec-2009 - prg318 - added gtk gui
+08-dec-2009 - Zeromus - Fix Name Table Viewer - Fix for use with New PPU
+08-dec-2009 - - mart0258 - FDS - show name of missing bios file in error message
+07-dec-2009 - qeed - NewPPU - fixed sprite hit before 255 and for non transparent hits only, thanks to dwedit for providing the fix
+06-dec-2009 - Zeromus - SDL - disallow --inputcfg gamepad0 and gamepad5
+??-???-2009 - CaH4e3 - fixed mappers 82, 25, 21, and 18.  Games such as SD Kiji Blader, Ganbare Goemon Gaiden, and Ganbare Goemon Gaiden 2, Jajamaru Gekimadden are now playable
+17-nov-2009 - adelikat - Win32 - Cheats - Pause while active checkbox installed
+17-nov-2009 - adelikat - Win32 - Fix debug window so it doesn't crash if unminimized with no game loaded.
+13-nov-2009 - mart0258 - Win32 - TASEdit - Added interface functionality (save/load, running TASEdit mid-movie, etc.)
+13-nov-2009 - adelikat - made savestate compression togglable
+13-nov-2009 - adelikat - made savestate backups togglable
+08-nov-2009 - gocha - Win32 - Lua console - added a menu
+08-nov-2009 - gocha - change gui.line, gui.box, joypad.get to function like GENS rerecording
+08-nov-2009 - gocha - New lua functions: gui.parsecolor, joypad.getup, joypad.getdown, emu.emulating.
+08-nov-2009 - CaH4e3 - Fixes for mappers 253 & 226 - fixes games such as Fire Emblem (J) and Fire Emblem Gaiden (J)
+08-nov-2009 - CaH4e3 - Fix crashing on game loading for any battery backed roms with mappers from MapInitTab (fixes Esper Dream 2 - Aratanaru Tatakai (J) 
+04-nov-2009 - adelikat - win32 - debugger - added an auto-load feature
+
+---r1527 - FCEUX 2.1.2 Released---
+---November 3, 2009---
+
 02-nov-2009 - qeed - fixed mapper 226, 76-in-1 seems to work now, also super 42 also seems to work with this fix, but people with save states with this game should make a new one. Since the the save state format for this game was changed a little.
 31-oct-2009 - adelikat - win32 - Memwatch - Save Changes prompt - Selecting yes will do quicksave first, save as 2nd (instead of always defaulting to save as)
 19-oct-2009 - qeed   - Mapper 253 mostly implemented, known game [ES-1064] Qi Long Zhu (C) is mostly playable (some minor graphic glitches). Thanks to VirtualNESEX for reverse engineering this, gil for giving me the mapper src for implementation reference, and Dead_Body for figuring out this game had to use chr-ram 

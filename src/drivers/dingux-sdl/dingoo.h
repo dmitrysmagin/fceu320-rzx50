@@ -6,13 +6,14 @@
 #include "dface.h"
 #include "input.h"
 
-static void DoFun(int frameskip);
-static int isloaded = 0;
+void DoFun(int frameskip, int);
 
 int LoadGame(const char *path);
 int CloseGame(void);
 
 int FCEUD_LoadMovie(const char *name, char *romname);
 int FCEUD_DriverReset();
+
+void FCEUI_FDSFlip(void);
 
 #endif

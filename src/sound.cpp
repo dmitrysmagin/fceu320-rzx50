@@ -42,7 +42,7 @@ int32 WaveFinal[2048+512];
 
 EXPSOUND GameExpSound={0,0,0};
 
-static uint8 TriCount=0;
+/*static*/ uint8 TriCount=0;
 static uint8 TriMode=0;
 
 static int32 tristep=0;
@@ -50,26 +50,19 @@ static int32 tristep=0;
 static int32 wlcount[4]={0,0,0,0};	/* Wave length counters.	*/
 
 static uint8 IRQFrameMode=0;	/* $4017 / xx000000 */
-static uint8 PSG[0x10];
+/*static*/ uint8 PSG[0x10];
 static uint8 RawDALatch=0;	/* $4011 0xxxxxxx */
+/*static*/ uint8 InitialRawDALatch=0; // used only for lua
 
 uint8 EnabledChannels=0;		/* Byte written to $4015 */
 
-typedef struct {
-	uint8 Speed;
-	uint8 Mode;	/* Fixed volume(1), and loop(2) */
-	uint8 DecCountTo1;
-	uint8 decvolume;
-	int reloaddec;
-} ENVUNIT;
-
-static ENVUNIT EnvUnits[3];
+/*static*/ ENVUNIT EnvUnits[3];
 
 static const int RectDuties[4]={1,2,4,6};
 
 static int32 RectDutyCount[2];
 static uint8 sweepon[2];
-static int32 curfreq[2];
+/*static*/ int32 curfreq[2];
 static uint8 SweepCount[2];
 
 static uint16 nreg=0;  
@@ -87,7 +80,7 @@ uint32 soundtsi=0;
 static int32 sqacc[2];
 /* LQ variables segment ends. */
 
-static int32 lengthcount[4]; 
+/*static*/ int32 lengthcount[4]; 
 static const uint8 lengthtable[0x20]=
 {
 	10,254, 20,  2, 40,  4, 80,  6, 160,  8, 60, 10, 14, 12, 26, 14,
@@ -107,7 +100,7 @@ static const uint32 NoiseFreqTablePAL[0x10] =
 	236, 354, 472, 708,  944, 1890, 3778
 };
 
-static const uint32 *NoiseFreqTable = NoiseFreqTableNTSC;
+/*static*/ const uint32 *NoiseFreqTable = NoiseFreqTableNTSC;
 
 static const uint32 NTSCDMCTable[0x10]=
 {
@@ -133,11 +126,11 @@ static const uint32 PALDMCTable[0x10]=
 // $4013        -        Size register:  Size in bytes = (V+1)*64
 
 /*static*/ int32 DMCacc=1;
-static int32 DMCPeriod=0;
+/*static*/ int32 DMCPeriod=0;
 /*static*/ uint8 DMCBitCount=0;
 
-static uint8 DMCAddressLatch=0,DMCSizeLatch=0; /* writes to 4012 and 4013 */
-static uint8 DMCFormat=0;	/* Write to $4010 */
+/*static*/ uint8 DMCAddressLatch=0,DMCSizeLatch=0; /* writes to 4012 and 4013 */
+/*static*/ uint8 DMCFormat=0;	/* Write to $4010 */
 
 static uint32 DMCAddress=0;
 static int32 DMCSize=0;
@@ -146,7 +139,7 @@ static uint8 SIRQStat=0;
 
 static char DMCHaveDMA=0;
 static uint8 DMCDMABuf=0;  
-static char DMCHaveSample=0;
+/*static*/ char DMCHaveSample=0;
 
 static void Dummyfunc(void) {};
 static void (*DoNoise)(void)=Dummyfunc;
@@ -160,7 +153,7 @@ static uint32 ChannelBC[5];
 //savestate sync hack stuff
 int movieSyncHackOn=0,resetDMCacc=0,movieConvertOffset1,movieConvertOffset2;
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 extern volatile int datacount, undefinedcount;
 extern int debug_loggingCD;
 extern unsigned char *cdloggerdata;
@@ -179,7 +172,7 @@ static void PrepDPCM()
  DMCAddress=0x4000+(DMCAddressLatch<<6);
  DMCSize=(DMCSizeLatch<<4)+1;
 
- #ifdef WIN32
+ #if defined(WIN32) && !defined(DINGUX_ON_WIN32)
  if(debug_loggingCD)LogDPCM(0x8000+DMCAddress, DMCSize);
  #endif
 
@@ -201,13 +194,11 @@ void LogDPCM(int romaddress, int dpcmsize){
 			}
 		}
 	}
-
-	return;
 }
 
 /* Instantaneous?  Maybe the new freq value is being calculated all of the time... */
 
-static int CheckFreq(uint32 cf, uint8 sr)
+/*static*/ int CheckFreq(uint32 cf, uint8 sr)
 {
  uint32 mod;
  if(!(sr&0x8))
@@ -332,7 +323,8 @@ static DECLFW(Write_DMCRegs)
 	    DMCFormat=V;
 	    break;
   case 0x01:DoPCM();
-	    RawDALatch=V&0x7F;
+	    InitialRawDALatch=V&0x7F;
+	    RawDALatch=InitialRawDALatch;
 	    break;
   case 0x02:DMCAddressLatch=V;break;
   case 0x03:DMCSizeLatch=V;break;
@@ -777,16 +769,17 @@ static void RDoTriangle(void)
 
  if(!lengthcount[2] || !TriCount)
  {           /* Counter is halted, but we still need to output. */
-  int32 *start = &WaveHi[ChannelBC[2]];
+  /*int32 *start = &WaveHi[ChannelBC[2]];
   int32 count = SOUNDTS - ChannelBC[2];
   while(count--)
   {
    //Modify volume based on channel volume modifiers
    *start += (tcout/256*FSettings.TriangleVolume)&(~0xFFFF);  // TODO OPTIMIZE ME NOW DAMMIT!
    start++;
-  }
-  //for(V=ChannelBC[2];V<SOUNDTS;V++)
-  // WaveHi[V]+=tcout;
+  }*/
+  int32 cout = (tcout/256*FSettings.TriangleVolume)&(~0xFFFF);
+  for(V=ChannelBC[2];V<SOUNDTS;V++)
+   WaveHi[V]+=cout;
  }
  else
   for(V=ChannelBC[2];V<SOUNDTS;V++)
@@ -1168,7 +1161,7 @@ void FCEUSND_Reset(void)
 		if(resetDMCacc)
 		{
 			// no value in movie save state
-		#ifdef WIN32
+		#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 			// use editbox fields
 			DMCacc=movieConvertOffset1;
 			DMCBitCount=movieConvertOffset2;

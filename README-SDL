@@ -1,0 +1,65 @@
+FCEUX SDL 2.1.5 SDL README
+By Lukas Sabota (punkrockguy318)
+http://www.fceux.com
+
+Table of Contents
+1.  Requirements
+2.  Installation
+3.  Compile-time options
+4.  GUI
+5.  FAQ
+6.  Contact
+
+1. Requirements
+	* libsdl1.2 - It is strongly recommended that you upgrade to the latest
+		version of sdl (1.2.14).
+	* scons - Required to build fceux.
+	* libgtk2.0 (optional) - recomended that you install version >= 2.18
+
+2. Installation
+	Fceux is installed with the scons utility.  To compile, run:
+
+	scons
+	
+	After a sucessful compilation, the fceux binary will be generated to 
+	./src/fceux .  You can install it to your path with:
+
+	sudo install -m 755 src/fceux /usr/local/bin/fceux
+
+	or by running the install.sh script which executes the same function.
+
+3. Compile-time options
+	You can enable and disable certain features of fceux at build time. 
+To edit these options, edit the SConstruct file in this source directory.  The
+default options here will be fine for most users, but power users may want to
+tweak these.
+
+4. GUI
+	You can enable the GTK GUI by setting GTK to 1 in the SConstruct build file. 
+	Gfceux is deprecatiated in favor of the new GTK GUI.  You can disable it at
+	run-time by passing the --nogui 1 option, or disable it build time by setting
+	GTK to 0 in the SConstruct file.
+
+5.  FAQ
+
+	Q.  I'm having issues with my sound!
+	A.  First of all, for the best sound quality be sure you are using SDL 1.2.14 or later.  Versions 1.2.13 and earlier are known to have problems with fceux!  Next, try different SDL audio drivers to see if this makes any difference.  You can do this by using this command before running fceux:
+
+	export SDL_AUDIODRIVER=driver
+
+	where driver is either:
+		'pulse' for pulseaudio
+		'alsa' for ALSA
+		'dsp' for OSS
+		'esd' for ESD
+
+	There are sound options that you can tweak at runtime through command line switches:
+
+	-soundq x 		internal sound quality hack value (0 off)
+	-soundrate x    	sound rate (sane values: 28000 48000
+	-soundbuffersize x 	(in ms)  sane values (30, 50, 100, 120)
+
+	* Running fceux through esddsp is known to fix some audio issues with pulseaudio on some older Ubuntu versions.
+	
+6.  Contact
+	If you have an issue with fceux, report it in the sourceforge bug tracker (see fceux.com).  If you would like to contact the author of this readme personally, e-mail LTsmooth42 <at> gmail <dot> com.  You can also check us out at #fceu on irc.freenode.net.

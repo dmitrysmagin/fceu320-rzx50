@@ -553,13 +553,13 @@ std::string stditoa(int n)
 }
 
 
-std::string readNullTerminatedAscii(std::istream* is)
+std::string readNullTerminatedAscii(EMUFILE* is)
 {
 	std::string ret;
 	ret.reserve(50);
 	for(;;) 
 	{
-		int c = is->get();
+		int c = is->fgetc();
 		if(c == 0) break;
 		else ret += (char)c;
 	}
@@ -749,11 +749,7 @@ std::wstring mbstowcs(std::string str) // UTF8->UTF32
 	try {
 		return UtfConverter::FromUtf8(str);
 	} catch(std::exception) {
-#if defined(DINGUX) && !defined(DINGUX_ON_WIN32)
-		return "(failed UTF-8 Conversion)";
-#else
 		return L"(failed UTF-8 conversion)";
-#endif
 	}
 }
 
@@ -777,4 +773,17 @@ std::string getExtension(const char* input) {
 	for(k=0;k<extlen;k++)
 		ext[k]=tolower(ext[k]);
 	return ext;
+}
+
+//strips the file extension off a filename
+std::string StripExtension(std::string filename)
+{
+	return filename.substr(0, filename.find_last_of("."));
+}
+
+//strips the path off a filename
+std::string StripPath(std::string filename)
+{
+	int x = filename.find_last_of("\\") + 1;
+	return filename.substr(x, filename.length() - x);
 }

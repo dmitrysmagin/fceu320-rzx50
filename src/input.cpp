@@ -49,7 +49,8 @@
 #include "drivers/win/cdlogger.h"
 #include "drivers/win/tracer.h"
 #include "drivers/win/memview.h"
-
+#include "drivers/win/window.h"
+#include "drivers/win/ntview.h"
 #endif // WIN32
 
 //it is easier to declare these input drivers extern here than include a bunch of files
@@ -85,48 +86,7 @@ static uint8 joy_readbit[2];
 uint8 joy[4]={0,0,0,0}; //HACK - should be static but movie needs it
 static uint8 LastStrobe;
 
-#ifdef _USE_SHARED_MEMORY_
-static uint32 BotPointer = 0; //mbg merge 7/18/06 changed to uint32
-#endif
-
-static int showcursor = 0;
-extern int showmouse;
-
-#ifdef DINGUX
-// Mouse simulation stuff
-#define N 1
-#define P 60
-
-static uint8 cursor[12*12] = {
-	P,P,0,0,0,0,0,0,0,0,0,0,
-	P,N,P,0,0,0,0,0,0,0,0,0,
-	P,N,N,P,0,0,0,0,0,0,0,0,
-	P,N,N,N,P,0,0,0,0,0,0,0,
-	P,N,N,N,N,P,0,0,0,0,0,0,
-	P,N,N,N,N,N,P,0,0,0,0,0,
-	P,N,N,N,N,P,P,P,0,0,0,0,
-	P,N,P,N,N,P,0,0,0,0,0,0,
-	P,P,0,P,N,N,P,0,0,0,0,0,
-    P,0,0,P,N,N,P,0,0,0,0,0,
-    0,0,0,0,P,P,0,0,0,0,0,0
-};
-
-int mousex = 128, mousey = 128;
-void FCEU_DrawMouseCursor(uint8 *XBuf)
-{
-	if(!showcursor || !showmouse) return;
-
-	int i,j;
-	uint8 p;
-
-	for(j=0;j<12;j++) {
-		for(i=0;i<12;i++) {
-			if((p = cursor[i + j * 12]) != 0)
-				XBuf[(mousex + i) + (mousey + j)*256] = p;
-	    }
-    }
-}
-#endif
+bool replaceP2StartWithMicrophone = false;
 
 //This function is a quick hack to get the NSF player to use emulated gamepad input.
 uint8 FCEU_GetJoyJoy(void)
@@ -146,13 +106,36 @@ static DECLFR(JPRead)
 {
 	lagFlag = 0;
 	uint8 ret=0;
+	static bool microphone = false;
 
 	ret|=joyports[A&1].driver->Read(A&1);
+
+	// Test if the port 2 start button is being pressed.
+	// On a famicom, port 2 start shouldn't exist, so this removes it.
+	// Games can't automatically be checked for NES/Famicom status,
+	// so it's an all-encompassing change in the input config menu.
+	if ((replaceP2StartWithMicrophone) && (A&1) && (joy_readbit[1] == 4)) {
+	// Nullify Port 2 Start Button
+	ret&=0xFE;
+	}
 
 	if(portFC.driver)
 		ret = portFC.driver->Read(A&1,ret);
 
+	// Not verified against hardware.
+	if (replaceP2StartWithMicrophone) {
+		if (joy[1]&8) {
+			microphone = !microphone;
+			if (microphone) {
+				ret|=4;
+			}
+		} else {
+			microphone = false;
+		}
+	}
+
 	ret|=X.DB&0xC0;
+
 	return(ret);
 }
 
@@ -328,18 +311,19 @@ void FCEU_DrawInput(uint8 *buf)
 		portFC.driver->Draw(buf,portFC.attrib);
 }
 
+
 void FCEU_UpdateInput(void)
 {
 	//tell all drivers to poll input and set up their logical states
-	if(!FCEUMOV_Mode(MOVIEMODE_PLAY)) {
+	if(!FCEUMOV_Mode(MOVIEMODE_PLAY))
+	{
 		for(int port=0;port<2;port++)
 			joyports[port].driver->Update(port,joyports[port].ptr,joyports[port].attrib);
 		portFC.driver->Update(portFC.ptr,portFC.attrib);
 	} 
 
 	if(GameInfo->type==GIT_VSUNI)
-		if(coinon)
-			coinon--;
+		if(coinon) coinon--;
 
 	if(FCEUnetplay)
 		NetplayUpdate(joy);
@@ -388,7 +372,6 @@ void InputScanlineHook(uint8 *bg, uint8 *spr, uint32 linets, int final)
 //binds JPorts[pad] to the driver specified in JPType[pad]
 static void SetInputStuff(int port)
 {
-    showcursor= 0;
 	switch(joyports[port].type)
 	{
 	case SI_GAMEPAD:
@@ -399,10 +382,8 @@ static void SetInputStuff(int port)
 		break;
 	case SI_ARKANOID:
 		joyports[port].driver=FCEU_InitArkanoid(port);
-        showcursor = 1;
 		break;
 	case SI_ZAPPER:
-        showcursor = 1;
 		joyports[port].driver=FCEU_InitZapper(port);
 		break;
 	case SI_POWERPADA:
@@ -425,15 +406,12 @@ static void SetInputStuffFC()
 		portFC.driver=&DummyPortFC;
 		break;
 	case SIFC_ARKANOID:
-        showcursor = 1;
 		portFC.driver=FCEU_InitArkanoidFC();
 		break;
 	case SIFC_SHADOW:
-        showcursor = 1;
 		portFC.driver=FCEU_InitSpaceShadow();
 		break;
 	case SIFC_OEKAKIDS:
-        showcursor = 1;
 		portFC.driver=FCEU_InitOekaKids();
 		break;
 	case SIFC_4PLAYER:
@@ -447,7 +425,6 @@ static void SetInputStuffFC()
 		portFC.driver=FCEU_InitSuborKB();
 		break;
 	case SIFC_HYPERSHOT:
-        showcursor = 1;
 		portFC.driver=FCEU_InitHS();
 		break;
 	case SIFC_MAHJONG:
@@ -516,6 +493,10 @@ bool FCEUI_GetInputFourscore()
 {
 	return FSAttached;
 }
+bool FCEUI_GetInputMicrophone()
+{
+	return replaceP2StartWithMicrophone;
+}
 void FCEUI_SetInputFourscore(bool attachFourscore)
 {
 	FSAttached = attachFourscore;
@@ -565,19 +546,6 @@ void FCEU_QSimpleCommand(int cmd)
 		if(FCEUMOV_Mode(MOVIEMODE_RECORD))
 			FCEUMOV_AddCommand(cmd);
 	}
-}
-
-extern uint8 SelectDisk, InDisk;
-extern int FDSSwitchRequested;
-void FCEUI_FDSFlip(void)
-{
-    /* Taken from fceugc 
-       the commands shouldn't be issued in parallel so
-     * we'll delay them so the virtual FDS has a chance
-     * to process them
-    */
-    if(FDSSwitchRequested == 0)
-        FDSSwitchRequested = 1;
 }
 
 void FCEUI_FDSSelect(void)
@@ -656,14 +624,22 @@ static void LaunchMemoryWatch(void);
 static void LaunchCheats(void);
 static void LaunchDebugger(void);
 static void LaunchPPU(void);
+static void LaunchNTView(void);
 static void LaunchHex(void);
 static void LaunchTraceLogger(void);
 static void LaunchCodeDataLogger(void);
 static void LaunchRamWatch(void);
 static void LaunchRamSearch(void);
+static void RamSearchOpLT(void);
+static void RamSearchOpGT(void);
+static void RamSearchOpLTE(void);
+static void RamSearchOpGTE(void);
+static void RamSearchOpEQ(void);
+static void RamSearchOpNE(void);
 static void FA_SkipLag(void);
 static void OpenRom(void);
 static void CloseRom(void);
+static void ReloadRom(void);
 static void MovieSubtitleToggle(void);
 static void UndoRedoSavestate(void);
 static void FCEUI_DoExit(void);
@@ -773,16 +749,24 @@ struct EMUCMDTABLE FCEUI_CommandTable[]=
 	{ EMUCMD_TOOL_OPENDEBUGGER,				EMUCMDTYPE_TOOL,	LaunchDebugger,   0, 0, "Open Debugger", 0},
 	{ EMUCMD_TOOL_OPENHEX,					EMUCMDTYPE_TOOL,	LaunchHex,		  0, 0, "Open Hex Editor", 0},
 	{ EMUCMD_TOOL_OPENPPU,					EMUCMDTYPE_TOOL,	LaunchPPU,		  0, 0, "Open PPU Viewer", 0},
+	{ EMUCMD_TOOL_OPENNTVIEW,					EMUCMDTYPE_TOOL,	LaunchNTView,		  0, 0, "Open Name Table Viewer", 0},
 	{ EMUCMD_TOOL_OPENTRACELOGGER,			EMUCMDTYPE_TOOL,	LaunchTraceLogger, 0, 0, "Open Trace Logger", 0},
 	{ EMUCMD_TOOL_OPENCDLOGGER,				EMUCMDTYPE_TOOL,	LaunchCodeDataLogger, 0, 0, "Open Code/Data Logger", 0},
 	{ EMUCMD_FRAMEADV_SKIPLAG,				EMUCMDTYPE_MISC,	FA_SkipLag,		  0, 0,  "Frame Adv.-Skip Lag", 0},
 	{ EMUCMD_OPENROM,						EMUCMDTYPE_TOOL,	OpenRom,		  0, 0,  "Open ROM", 0},
 	{ EMUCMD_CLOSEROM,						EMUCMDTYPE_TOOL,	CloseRom,		  0, 0,	 "Close ROM", 0},
+	{ EMUCMD_RELOADROM,						EMUCMDTYPE_TOOL,	ReloadRom,		  0, 0,	 "Reload ROM", 0},
 	{ EMUCMD_MISC_DISPLAY_MOVIESUBTITLES,	EMUCMDTYPE_MISC,	MovieSubtitleToggle,0,0,"Toggle Movie Subtitles", 0},
 	{ EMUCMD_MISC_UNDOREDOSAVESTATE,		EMUCMDTYPE_MISC,	UndoRedoSavestate,  0,0,"Undo/Redo Savestate",    0},
 	{ EMUCMD_MISC_TOGGLEFULLSCREEN,			EMUCMDTYPE_MISC,	ToggleFullscreen, 0, 0, "Toggle Fullscreen",	  0},
-	{ EMUCMD_TOOL_OPENRAMWATCH,				EMUCMDTYPE_TOOL,	LaunchRamWatch,   0, 0, "Open Ram Watch",		  0},
+	{ EMUCMD_TOOL_OPENRAMWATCH,				EMUCMDTYPE_TOOL,	LaunchRamWatch,	  0, 0, "Open Ram Watch",		  0},
 	{ EMUCMD_TOOL_OPENRAMSEARCH,			EMUCMDTYPE_TOOL,	LaunchRamSearch,  0, 0, "Open Ram Search",		  0},
+	{ EMUCMD_TOOL_RAMSEARCHLT,				EMUCMDTYPE_TOOL,	RamSearchOpLT,	  0, 0, "Ram Search - Less Than", 0},
+	{ EMUCMD_TOOL_RAMSEARCHGT,				EMUCMDTYPE_TOOL,	RamSearchOpGT,	  0, 0, "Ram Search - Greater Than", 0},
+	{ EMUCMD_TOOL_RAMSEARCHLTE,				EMUCMDTYPE_TOOL,	RamSearchOpLTE,	  0, 0, "Ram Search - Less Than or Equal", 0},
+	{ EMUCMD_TOOL_RAMSEARCHGTE,				EMUCMDTYPE_TOOL,	RamSearchOpGTE,	  0, 0, "Ram Search - Greater Than or Equal", 0},
+	{ EMUCMD_TOOL_RAMSEARCHEQ,				EMUCMDTYPE_TOOL,	RamSearchOpEQ,	  0, 0, "Ram Search - Equal",	  0},
+	{ EMUCMD_TOOL_RAMSEARCHNE,				EMUCMDTYPE_TOOL,	RamSearchOpNE,	  0, 0, "Ram Search - Not Equal", 0},
 };
 
 #define NUM_EMU_CMDS		(sizeof(FCEUI_CommandTable)/sizeof(FCEUI_CommandTable[0]))
@@ -816,7 +800,7 @@ void FCEUI_HandleEmuCommands(TestCommandState* testfn)
 
 static void CommandUnImpl(void)
 {
-	FCEU_DispMessage("command '%s' unimplemented.", FCEUI_CommandTable[i].name);
+	FCEU_DispMessage("command '%s' unimplemented.",0, FCEUI_CommandTable[i].name);
 }
 
 static void CommandToggleDip(void)
@@ -931,6 +915,13 @@ static void LaunchDebugger(void)
 #endif
 }
 
+static void LaunchNTView(void)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	DoNTView();
+#endif
+}
+
 static void LaunchPPU(void)
 {
 #if defined(WIN32) && !defined(DINGUX_ON_WIN32)
@@ -983,7 +974,59 @@ static void LaunchRamSearch(void)
 #endif
 }
 
+static void RamSearchOpLT(void) {
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	extern void SetSearchType(int SearchType);
+	extern void DoRamSearchOperation();
+	SetSearchType(0);
+	DoRamSearchOperation();
+#endif
+}
 
+static void RamSearchOpGT(void) {
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	extern void SetSearchType(int SearchType);
+	extern void DoRamSearchOperation();
+	SetSearchType(1);
+	DoRamSearchOperation();
+#endif
+}
+
+static void RamSearchOpLTE(void) {
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	extern void SetSearchType(int SearchType);
+	extern void DoRamSearchOperation();
+	SetSearchType(2);
+	DoRamSearchOperation();
+#endif
+}
+
+static void RamSearchOpGTE(void) {
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	extern void SetSearchType(int SearchType);
+	extern void DoRamSearchOperation();
+	SetSearchType(3);
+	DoRamSearchOperation();
+#endif
+}
+
+static void RamSearchOpEQ(void) {
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	extern void SetSearchType(int SearchType);
+	extern void DoRamSearchOperation();
+	SetSearchType(4);
+	DoRamSearchOperation();
+#endif
+}
+
+static void RamSearchOpNE(void) {
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	extern void SetSearchType(int SearchType);
+	extern void DoRamSearchOperation();
+	SetSearchType(5);
+	DoRamSearchOperation();
+#endif
+}
 
 static void FA_SkipLag(void)
 {
@@ -1005,11 +1048,22 @@ static void CloseRom(void)
 #endif
 }
 
+static void ReloadRom(void)
+{
+#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+  char*& fname = recent_files[0];
+	if(fname)
+	{
+	  ALoad(fname);
+  }
+#endif
+}
+
 static void MovieSubtitleToggle(void)
 {
 	movieSubtitles ^= 1;
-	if (movieSubtitles)	FCEU_DispMessage("Movie subtitles on");
-	else FCEU_DispMessage("Movie subtitles off");
+	if (movieSubtitles)	FCEU_DispMessage("Movie subtitles on",0);
+	else FCEU_DispMessage("Movie subtitles off",0);
 }
 
 static void UndoRedoSavestate(void)

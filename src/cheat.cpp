@@ -30,8 +30,8 @@
 #include "fceu.h"
 #include "file.h"
 #include "cart.h"
-#include "memory.h"
 #include "driver.h"
+#include "utils/memory.h"
 
 using namespace std;
 
@@ -128,7 +128,7 @@ void RebuildSubCheats(void)
 			if(GetReadHandler(c->addr)==SubCheatsRead)
 			{
 				/* Prevent a catastrophe by this check. */
-				//FCEU_DispMessage("oops");
+				//FCEU_DispMessage("oops",0);
 			}
 			else
 			{
@@ -144,7 +144,7 @@ void RebuildSubCheats(void)
 	}
 	FrozenAddressCount = numsubcheats;		//Update the frozen address list
 	UpdateFrozenList();
-	//FCEUI_DispMessage("Active Cheats: %d", FrozenAddresses.size()/*FrozenAddressCount*/); //Debug
+	//FCEUI_DispMessage("Active Cheats: %d",0, FrozenAddresses.size()/*FrozenAddressCount*/); //Debug
 }
 
 void FCEU_PowerCheats()
@@ -163,7 +163,7 @@ static void CheatMemErr(void)
 static int AddCheatEntry(char *name, uint32 addr, uint8 val, int compare, int status, int type)
 {
 	struct CHEATF *temp;
-	if(!(temp=(struct CHEATF *)malloc(sizeof(struct CHEATF))))
+	if(!(temp=(struct CHEATF *)FCEU_dmalloc(sizeof(struct CHEATF))))
 	{
 		CheatMemErr();
 		return(0);
@@ -214,8 +214,8 @@ void FCEU_LoadGameCheats(FILE *override)
 		if(!fp) return;
 	}
 
-	FCEU_DispMessage("Cheats file loaded."); //Tells user a cheats file was loaded.
-	FCEU_printf("Cheats file loaded.\n");	 //Sends message to message log.
+	FCEU_DispMessage("Cheats file loaded.",0); //Tells user a cheats file was loaded.
+	FCEU_printf("Cheats file loaded.\n",0);	 //Sends message to message log.
 	while(fgets(linebuf,2048,fp)>0)
 	{
 		char *tbuf=linebuf;
@@ -248,7 +248,8 @@ void FCEU_LoadGameCheats(FILE *override)
 			char *neo=&tbuf[4+2+2+1+1+1];
 			if(sscanf(tbuf,"%04x%*[:]%02x%*[:]%02x",&addr,&val,&compare)!=3)
 				continue;
-			namebuf=(char *)malloc(strlen(neo)+1);
+			if (!(namebuf=(char *)FCEU_dmalloc(strlen(neo)+1)))
+                return;
 			strcpy(namebuf,neo);
 		}
 		else
@@ -256,7 +257,8 @@ void FCEU_LoadGameCheats(FILE *override)
 			char *neo=&tbuf[4+2+1+1];
 			if(sscanf(tbuf,"%04x%*[:]%02x",&addr,&val)!=2)
 				continue;
-			namebuf=(char *)malloc(strlen(neo)+1);
+			if (!(namebuf=(char *)FCEU_dmalloc(strlen(neo)+1)))
+                return;
 			strcpy(namebuf,neo);
 		}
 
@@ -364,7 +366,7 @@ int FCEUI_AddCheat(const char *name, uint32 addr, uint8 val, int compare, int ty
 {
 	char *t;
 
-	if(!(t=(char *)malloc(strlen(name)+1)))
+	if(!(t=(char *)FCEU_dmalloc(strlen(name)+1)))
 	{
 		CheatMemErr();
 		return(0);
@@ -660,7 +662,7 @@ static int InitCheatComp(void)
 {
 	uint32 x;
 
-	CheatComp=(uint16*)malloc(65536*sizeof(uint16));
+	CheatComp=(uint16*)FCEU_dmalloc(65536*sizeof(uint16));
 	if(!CheatComp)
 	{
 		CheatMemErr();
@@ -948,5 +950,5 @@ void UpdateFrozenList(void)
 		FrozenAddresses.push_back(SubCheats[x].addr);
 		//FCEU_printf("Address %d: %d \n",x,FrozenAddresses[x]); //Debug
 	}
-	//FCEUI_DispMessage("FrozenCount: %d",FrozenAddressCount);//Debug
+	//FCEUI_DispMessage("FrozenCount: %d",0,FrozenAddressCount);//Debug
 }

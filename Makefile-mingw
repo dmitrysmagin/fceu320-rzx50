@@ -9,7 +9,7 @@ CORE_OBJS = \
 	$(SRC)drawing.o $(SRC)fceu.o $(SRC)fds.o $(SRC)file.o $(SRC)conddebug.o \
 	$(SRC)filter.o $(SRC)ines.o $(SRC)input.o $(SRC)debug.o $(SRC)wave.o \
 	$(SRC)nsf.o $(SRC)palette.o $(SRC)ppu.o $(SRC)sound.o $(SRC)state.o $(SRC)unif.o \
- 	$(SRC)video.o $(SRC)vsuni.o $(SRC)x6502.o $(SRC)netplay.o
+ 	$(SRC)video.o $(SRC)vsuni.o $(SRC)x6502.o $(SRC)netplay.o $(SRC)emufile.o
     
 BOARDS_OBJS = \
     $(SRC)boards/01-222.o \
@@ -62,7 +62,7 @@ BOARDS_OBJS = \
     $(SRC)boards/bonza.o \
     $(SRC)boards/bs-5.o \
     $(SRC)boards/copyfami_mmc3.o \
-    $(SRC)boards/dance.o \
+    $(SRC)boards/onebus.o \
     $(SRC)boards/datalatch.o \
     $(SRC)boards/deirom.o \
     $(SRC)boards/dream.o \
@@ -176,10 +176,10 @@ MAPPERS_OBJS = \
 
 UTILS_OBJS = $(SRC)utils/crc32.o $(SRC)utils/endian.o $(SRC)utils/general.o \
 	$(SRC)utils/guid.o $(SRC)utils/md5.o $(SRC)utils/memory.o $(SRC)utils/unzip.o \
-	$(SRC)utils/xstring.o $(SRC)utils/font_zsnes.o
+	$(SRC)utils/xstring.o
 	
 COMMON_DRIVER_OBJS = $(SRC)drivers/common/args.o $(SRC)drivers/common/cheat.o \
-	$(SRC)drivers/common/config.o $(SRC)drivers/common/configSys.o
+	$(SRC)drivers/common/config.o $(SRC)drivers/common/configSys.o $(SRC)drivers/common/nes_ntsc.o
 
 GUI_OBJS = $(SRC)drivers/dingux-sdl/gui/gfceu320.o \
 	$(SRC)drivers/dingux-sdl/gui/gui.o \
@@ -211,7 +211,7 @@ CXXFLAGS =
 LIBDIR=
 LDFLAGS = -s
 
-W_OPTS	= -Wall -Wno-write-strings -Wno-narrowing
+W_OPTS	= -Wall -Wno-write-strings -Wno-narrowing -Wno-unused-local-typedefs
 
 F_OPTS = -DDINGUX_ON_WIN32
 CC_OPTS	= -O2 $(F_OPTS) $(W_OPTS)

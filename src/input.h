@@ -89,7 +89,6 @@ extern struct FCPORT
 } portFC;
 
 
-void FCEU_DrawMouseCursor(uint8 *XBuf);
 void FCEU_DrawInput(uint8 *buf);
 void FCEU_UpdateInput(void);
 void InitializeInput(void);
@@ -216,12 +215,22 @@ enum EMUCMD
 	//Currently only windows (but sdl could easily add onto these)
 	EMUCMD_OPENROM,
 	EMUCMD_CLOSEROM,
+  EMUCMD_RELOADROM,
 	//-----------------------------
 	EMUCMD_MISC_DISPLAY_MOVIESUBTITLES,
 	EMUCMD_MISC_UNDOREDOSAVESTATE,
 	EMUCMD_MISC_TOGGLEFULLSCREEN,
 	EMUCMD_TOOL_OPENRAMWATCH,
 	EMUCMD_TOOL_OPENRAMSEARCH,
+	EMUCMD_TOOL_RAMSEARCHLT,
+	EMUCMD_TOOL_RAMSEARCHGT,
+	EMUCMD_TOOL_RAMSEARCHLTE,
+	EMUCMD_TOOL_RAMSEARCHGTE,
+	EMUCMD_TOOL_RAMSEARCHEQ,
+	EMUCMD_TOOL_RAMSEARCHNE,
+	//-----------------------------
+	//keep adding these in order of newness or else the hotkey binding configs will get messed up...
+	EMUCMD_TOOL_OPENNTVIEW,
 	EMUCMD_MAX
 };
 
@@ -270,4 +279,3 @@ extern bool turbo;
 void LagCounterReset();
 
 #endif //_INPUT_H_
-

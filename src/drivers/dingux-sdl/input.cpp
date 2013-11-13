@@ -246,7 +246,7 @@ static void KeyboardCommands() {
     if(InputType[2] == SIFC_FKB) {
         if(keyonly(SCROLLLOCK)) {
             g_fkbEnabled ^= 1;
-            FCEUI_DispMessage("Family Keyboard %sabled.",0,
+            FCEUI_DispMessage("Family Keyboard %sabled.", 0,
                               g_fkbEnabled ? "en" : "dis");
         }
         SDL_WM_GrabInput(g_fkbEnabled ? SDL_GRAB_ON : SDL_GRAB_OFF);
@@ -345,7 +345,7 @@ static void KeyboardCommands() {
 	 // Toggle Movie auto-backup
 	 if(keyonly(M) && is_shift) {
 	 autoMovieBackup ^= 1;
-	 FCEUI_DispMessage("Automatic movie backup %sabled.",
+	 FCEUI_DispMessage("Automatic movie backup %sabled.", 0,
 	 autoMovieBackup ? "en" : "dis");
 	 }
 	 */
@@ -470,13 +470,13 @@ static void KeyboardCommands() {
 
 	if (_keyonly(Hotkeys[HK_BIND_STATE])) {
 		bindSavestate ^= 1;
-		FCEUI_DispMessage("Savestate binding to movie %sabled.",
+		FCEUI_DispMessage("Savestate binding to movie %sabled.", 0,
 				bindSavestate ? "en" : "dis");
 	}
 
 	if (_keyonly(Hotkeys[HK_FA_LAG_SKIP])) {
 		frameAdvanceLagSkip ^= 1;
-		FCEUI_DispMessage("Skipping lag in Frame Advance %sabled.",
+		FCEUI_DispMessage("Skipping lag in Frame Advance %sabled.", 0,
 				frameAdvanceLagSkip ? "en" : "dis");
 	}
 
@@ -486,7 +486,7 @@ static void KeyboardCommands() {
 	if (_keyonly(Hotkeys[HK_TOGGLE_SUBTITLE])) {
 		extern int movieSubtitles;
 		movieSubtitles ^= 1;
-		FCEUI_DispMessage("Movie subtitles o%s.", movieSubtitles ? "n" : "ff");
+		FCEUI_DispMessage("Movie subtitles o%s.", 0, movieSubtitles ? "n" : "ff");
 	}
 #endif
 	// VS Unisystem games
@@ -542,10 +542,10 @@ static void KeyboardCommands() {
 		 } else {
 		 FCEUI_GetDatachSet(bbuf);
 		 }
-		 FCEUI_DispMessage("Barcode Entered");
+		 FCEUI_DispMessage("Barcode Entered", 0);
 		 } else {
 		 bbuft = 0;
-		 FCEUI_DispMessage("Enter Barcode");
+		 FCEUI_DispMessage("Enter Barcode", 0);
 		 }
 		 }
 		 } else {
@@ -559,7 +559,7 @@ static void KeyboardCommands() {
 			    bbuf[bbuft++] = '0' + x;              \
 			    bbuf[bbuft] = 0;                      \
 			}                                         \
-			FCEUI_DispMessage("Barcode: %s", bbuf);   \
+			FCEUI_DispMessage("Barcode: %s", 0, bbuf);   \
 			}                                             \
 		} while(0)
 
@@ -854,7 +854,7 @@ void FCEUD_UpdateInput() {
 		GetMouseData(MouseData);
 }
 
-void FCEUD_SetInput(bool fourscore, ESI port0, ESI port1, ESIFC fcexp) {
+void FCEUD_SetInput(bool fourscore, bool microphone, ESI port0, ESI port1, ESIFC fcexp) {
 	eoptions &= ~EO_FOURSCORE;
 	if (fourscore) { // Four Score emulation, only support gamepads, nothing else
 		eoptions |= EO_FOURSCORE;
@@ -866,8 +866,12 @@ void FCEUD_SetInput(bool fourscore, ESI port0, ESI port1, ESIFC fcexp) {
 		InputType[1] = port1;
 		InputType[2] = fcexp;
 	}
+
+	//replaceP2StartWithMicrophone = microphone;
+
 	InitInputInterface();
 }
+
 
 /**
  * Initialize the input device interface between the emulation and the driver.

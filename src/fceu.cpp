@@ -83,6 +83,7 @@ bool justLagged = false;
 bool frameAdvanceLagSkip = false; //If this is true, frame advance will skip over lag frame (i.e. it will emulate 2 frames instead of 1)
 bool AutoSS = false;		//Flagged true when the first auto-savestate is made while a game is loaded, flagged false on game close
 bool movieSubtitles = true; //Toggle for displaying movie subtitles
+bool DebuggerWasUpdated = false; //To prevent the debugger from updating things without being updated.
 
 FCEUGI::FCEUGI()
 : filename(0)
@@ -97,20 +98,53 @@ FCEUGI::~FCEUGI()
 	if(archiveFilename) delete archiveFilename;
 }
 
+bool CheckFileExists(const char* filename)
+{
+	//This function simply checks to see if the given filename exists
+	if (!filename) return false;
+	fstream test;
+	test.open(filename,fstream::in);
+		
+	if (test.fail())
+	{
+		test.close();
+		return false; 
+	}
+	else
+	{
+		test.close();
+		return true; 
+	}
+}
+
+void FCEU_TogglePPU(void)
+{
+	newppu ^= 1;
+	if (newppu)
+	{
+		FCEU_DispMessage("New PPU loaded", 0);
+		FCEUI_printf("New PPU loaded");
+	}
+	else
+	{
+		FCEU_DispMessage("Old PPU loaded", 0);
+		FCEUI_printf("Old PPU loaded");
+	}
+}
+
 static void FCEU_CloseGame(void)
 {
 	if(GameInfo)
 	{
 
 #if defined(WIN32) && !defined(DINGUX_ON_WIN32)
-// ################################## Start of SP CODE ###########################
+//SP CODE
 	extern char LoadedRomFName[2048];
 
 	if (storePreferences(LoadedRomFName))
 	{
 		FCEUD_PrintError("Couldn't store debugging data");
 	}
-// ################################## End of SP CODE ###########################
 #endif
 
 		if(FCEUnetplay)
@@ -135,8 +169,7 @@ static void FCEU_CloseGame(void)
 
 		ResetExState(0,0);
 
-		//mbg 5/9/08 - clear screen when game is closed
-		//http://sourceforge.net/tracker/index.php?func=detail&aid=1787298&group_id=13536&atid=113536
+		//clear screen when game is closed
 		extern uint8 *XBuf;
 		if(XBuf)
 			memset(XBuf,0,256*256);
@@ -145,11 +178,10 @@ static void FCEU_CloseGame(void)
 
 		delete GameInfo;
 		GameInfo = 0;
-
-		//Reset frame counter
+				
 		currFrameCounter = 0;
 
-		//Reset flags for Undo/Redo/Auto Savestating
+		//Reset flags for Undo/Redo/Auto Savestating //adelikat: TODO: maybe this stuff would be cleaner as a struct or class
 		lastSavestateMade[0] = 0;
 		undoSS = false;
 		redoSS = false;
@@ -185,8 +217,10 @@ int frameAdvanceDelay;
 //indicates that the emulation core just frame advanced (consumed the frame advance state and paused)
 bool JustFrameAdvanced=false;
 
-static int AutosaveStatus[4] = {0, 0, 0, 0}; //is it safe to load Auto-savestate
+static int *AutosaveStatus; //is it safe to load Auto-savestate
 static int AutosaveIndex = 0; //which Auto-savestate we're on
+int AutosaveQty = 4; // Number of Autosaves to store
+int AutosaveFrequency = 256; // Number of frames between autosaves
 
 // Flag that indicates whether the Auto-save option is enabled or not
 int EnableAutosave = 0;
@@ -296,35 +330,21 @@ uint8 *RAM;
 
 static void AllocBuffers()
 {
-
-#ifdef _USE_SHARED_MEMORY_
-
-	void win_AllocBuffers(uint8 **GameMemBlock, uint8 **RAM);
-	win_AllocBuffers(&GameMemBlock, &RAM);
-
-#else 
-
-	GameMemBlock = (uint8*)FCEU_gmalloc(131072);
+	GameMemBlock = (uint8*)FCEU_gmalloc(GAME_MEM_BLOCK_SIZE);
 	RAM = (uint8*)FCEU_gmalloc(0x800);
-
-#endif
 }
 
-static void FreeBuffers() {
-#ifdef _USE_SHARED_MEMORY_
-	void win_FreeBuffers(uint8 *GameMemBlock, uint8 *RAM);
-	win_FreeBuffers(GameMemBlock, RAM);
-#else 
+static void FreeBuffers()
+{
 	FCEU_free(GameMemBlock);
 	FCEU_free(RAM);
-#endif
 }
 //------
 
 uint8 PAL=0;
 
 static DECLFW(BRAML)
-{  
+{
 	RAM[A]=V;
 	#ifdef _S9XLUA_H
 	CallRegisteredLuaMemHook(A, 1, V, LUAMEMHOOK_WRITE);
@@ -408,8 +428,10 @@ FCEUGI *FCEUI_LoadGameVirtual(const char *name, int OverwriteVidMode)
 
 	ResetGameLoaded();
 
-	AutosaveStatus[0] = AutosaveStatus[1] = 0;
-	AutosaveStatus[2] = AutosaveStatus[3] = 0;
+	if (!AutosaveStatus)
+		AutosaveStatus = (int*)FCEU_dmalloc(sizeof(int)*AutosaveQty);
+	for (AutosaveIndex=0; AutosaveIndex<AutosaveQty; ++AutosaveIndex)
+		AutosaveStatus[AutosaveIndex] = 0;
 
 	FCEU_CloseGame();
 	GameInfo = new FCEUGI();
@@ -483,7 +505,7 @@ endlseq:
 		FCEU_LoadGameCheats(0);
 
 #if (defined (WIN32) || defined (WIN64)) && !defined(DINGUX_ON_WIN32)
-	DoDebuggerRunCheck(); //Can't safely do it in loadPreferences
+	DoDebuggerDataReload(); // Reloads data without reopening window
 #endif
 
 	return GameInfo;
@@ -580,12 +602,13 @@ void SetAutoFireOffset(int offset)
 void AutoFire(void)
 {
 	static int counter = 0;
-	if (justLagged == false) counter = (counter + 1) % (8*7*5*3);
+	if (justLagged == false) 
+		counter = (counter + 1) % (8*7*5*3);
 	//If recording a movie, use the frame # for the autofire so the offset
 	//doesn't get screwed up when loading.
 	if(FCEUMOV_Mode(MOVIEMODE_RECORD | MOVIEMODE_PLAY))
 	{
-		rapidAlternator= AutoFirePattern[(AutoFireOffset + FCEUMOV_GetFrame())%AutoFirePatternLength];
+		rapidAlternator= AutoFirePattern[(AutoFireOffset + FCEUMOV_GetFrame())%AutoFirePatternLength]; //adelikat: TODO: Think through this, MOVIEMODE_FINISHED should not use movie data for auto-fire?
 	}
 	else
 	{
@@ -651,12 +674,15 @@ void FCEUI_Emulate(uint8 **pXBuf, int32 **SoundBuf, int32 *SoundBufSize, int ski
 
 #if defined(WIN32) && !defined(DINGUX_ON_WIN32)
 	//These Windows only dialogs need to be updated only once per frame so they are included here
-	UpdateCheatList();
+	UpdateCheatList(); // CaH4e3: can't see why, this is only cause problems with selection - adelikat: selection is only a problem when not paused, it shoudl be paused to select, we want to see the values update
 	UpdateTextHooker();
 	Update_RAM_Search(); // Update_RAM_Watch() is also called.
 	RamChange();
 	UpdateLogWindow();
 	//FCEUI_AviVideoUpdate(XBuf);
+	extern int KillFCEUXonFrame;
+	if (KillFCEUXonFrame && (FCEUMOV_GetFrame() >= KillFCEUXonFrame))
+		DoFCEUExit();
 #endif
 
 	timestampbase += timestamp;
@@ -668,12 +694,12 @@ void FCEUI_Emulate(uint8 **pXBuf, int32 **SoundBuf, int32 *SoundBufSize, int ski
 		*SoundBuf=0;
 		*SoundBufSize=0;
 	}
-	else 
+	else
 	{
 		*SoundBuf=WaveFinal;
 		*SoundBufSize=ssize;
 	}
-		
+
 	if (EmulationPaused&2 && ( !frameAdvanceLagSkip || !lagFlag) )
 	//Lots of conditions here.  EmulationPaused&2 must be true.  In addition frameAdvanceLagSkip or lagFlag must be false
 	{
@@ -683,12 +709,12 @@ void FCEUI_Emulate(uint8 **pXBuf, int32 **SoundBuf, int32 *SoundBufSize, int ski
 			if(soundoptions&SO_MUTEFA) //mute the frame advance if the user requested it
 				*SoundBufSize=0;       //keep sound muted
 		#endif
-		
+
 	}
-	
+
 	currMovieData.TryDumpIncremental();
-	
-	if (lagFlag) 
+
+	if (lagFlag)
 	{
 		lagCounter++;
 		justLagged = true;
@@ -700,8 +726,8 @@ void FCEUI_Emulate(uint8 **pXBuf, int32 **SoundBuf, int32 *SoundBufSize, int ski
 }
 
 void FCEUI_CloseGame(void)
-{	
-	if(!FCEU_IsValidUI(FCEUI_CLOSEGAME)) 
+{
+	if(!FCEU_IsValidUI(FCEUI_CLOSEGAME))
 		return;
 
 	FCEU_CloseGame();
@@ -739,7 +765,7 @@ void hand(X6502 *X, int type, unsigned int A)
 }
 
 int suppressAddPowerCommand=0; // hack... yeah, I know...
-void PowerNES(void) 
+void PowerNES(void)
 {
 	//void MapperInit();
 	//MapperInit();
@@ -778,7 +804,7 @@ void PowerNES(void)
 	extern int disableBatteryLoading;
 	if(disableBatteryLoading)
 		GameInterface(GI_RESETSAVE);
-		
+
 
 	timestampbase=0;
 	LagCounterReset();
@@ -795,9 +821,9 @@ void FCEU_ResetVidSys(void)
 	int w;
 
 	if(GameInfo->vidsys==GIV_NTSC)
-		w=0; 
+		w=0;
 	else if(GameInfo->vidsys==GIV_PAL)
-		w=1;  
+		w=1;
 	else
 		w=FSettings.PAL;
 
@@ -918,6 +944,7 @@ void FCEUI_SetEmulationPaused(int val)
 void FCEUI_ToggleEmulationPause(void)
 {
 	EmulationPaused = (EmulationPaused&1)^1;
+	DebuggerWasUpdated = false;
 }
 
 void FCEUI_FrameAdvanceEnd(void)
@@ -935,14 +962,14 @@ static int AutosaveCounter = 0;
 
 void UpdateAutosave(void)
 {
-	if(!EnableAutosave)
+	if(!EnableAutosave || turbo)
 		return;
-	
+
 	char * f;
-	AutosaveCounter = (AutosaveCounter + 1) % 256;
-	if(AutosaveCounter == 0)
+	if(++AutosaveCounter >= AutosaveFrequency)
 	{
-		AutosaveIndex = (AutosaveIndex + 1) % 4;
+		AutosaveCounter = 0;
+		AutosaveIndex = (AutosaveIndex + 1) % AutosaveQty;
 		f = strdup(FCEU_MakeFName(FCEUMKF_AUTOSTATE,AutosaveIndex,0).c_str());
 		FCEUSS_Save(f);
 		AutoSS = true;	//Flag that an auto-savestate was made
@@ -953,7 +980,7 @@ void UpdateAutosave(void)
 
 void FCEUI_Autosave(void)
 {
-	if(!EnableAutosave || !AutoSS)
+	if(!EnableAutosave || !AutoSS || FCEUMOV_Mode(MOVIEMODE_TASEDIT))
 		return;
 
 	if(AutosaveStatus[AutosaveIndex] == 1)
@@ -964,9 +991,9 @@ void FCEUI_Autosave(void)
 		free(f);
 
 		//Set pointer to previous available slot
-		if(AutosaveStatus[(AutosaveIndex + 3)%4] == 1)
+		if(AutosaveStatus[(AutosaveIndex + AutosaveQty-1)%AutosaveQty] == 1)
 		{
-			AutosaveIndex = (AutosaveIndex + 3)%4;
+			AutosaveIndex = (AutosaveIndex + AutosaveQty-1)%AutosaveQty;
 		}
 
 		//Reset time to next Auto-save
@@ -1006,7 +1033,7 @@ bool FCEU_IsValidUI(EFCEUI ui)
 
 	case FCEUI_STOPMOVIE:
 	case FCEUI_PLAYFROMBEGINNING:
-		return FCEUMOV_Mode(MOVIEMODE_PLAY|MOVIEMODE_RECORD);
+		return (FCEUMOV_Mode(MOVIEMODE_PLAY|MOVIEMODE_RECORD|MOVIEMODE_FINISHED));
 
 	case FCEUI_STOPAVI:
 		return FCEUI_AviIsRecording();
@@ -1017,7 +1044,7 @@ bool FCEU_IsValidUI(EFCEUI ui)
 
 	case FCEUI_RESET:
 		if(!GameInfo) return false;
-		if(FCEUMOV_Mode(MOVIEMODE_TASEDIT|MOVIEMODE_PLAY)) return false;
+		if(FCEUMOV_Mode(MOVIEMODE_FINISHED|MOVIEMODE_TASEDIT|MOVIEMODE_PLAY)) return false;
 		break;
 
 	case FCEUI_POWER:
@@ -1121,7 +1148,7 @@ bool FCEUXLoad(const char *name, FCEUFILE *fp)
 
 	cart->chrPages = head.VROM_size;
 
-	cart->mirroring = (head.ROM_type&1); 
+	cart->mirroring = (head.ROM_type&1);
 	if(head.ROM_type&8) cart->mirroring=2;
 
 	//skip trainer
@@ -1143,7 +1170,7 @@ bool FCEUXLoad(const char *name, FCEUFILE *fp)
 	ResetCartMapping();
 	SetupCartPRGMapping(0,(uint8*)cart->PRG,cart->prgSize,0);
 	SetupCartCHRMapping(0,(uint8*)cart->CHR,cart->chrSize,0);
-	
+
 	return true;
 }
 

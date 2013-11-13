@@ -4,13 +4,14 @@
 #include <string>
 #include <iostream>
 #include "types.h"
-#include "utils/memorystream.h"
+#include "emufile.h"
 
 extern bool bindSavestate;
 
 struct FCEUFILE {
 	//the stream you can use to access the data
-	std::iostream *stream;
+	//std::iostream *stream;
+	EMUFILE *stream;
 
 	//the name of the file, or the logical name of the file within the archive
 	std::string filename;
@@ -51,25 +52,25 @@ struct FCEUFILE {
 	} mode;
 
 	//guarantees that the file contains a memorystream, and returns it for your convenience
-	memorystream* EnsureMemorystream() {
-		memorystream* ret = dynamic_cast<memorystream*>(stream);
+	EMUFILE_MEMORY* EnsureMemorystream() {
+
+		EMUFILE_MEMORY* ret = dynamic_cast<EMUFILE_MEMORY*>(stream);
 		if(ret) return ret;
 		
 		//nope, we need to create it: copy the contents 
-		ret = new memorystream(size);
-		stream->read(ret->buf(),size);
+		ret = new EMUFILE_MEMORY(size);
+		stream->fread(ret->buf(),size);
 		delete stream;
 		stream = ret;
 		return ret;
 	}
 
-	void SetStream(std::iostream *newstream) {
+	void SetStream(EMUFILE *newstream) {
 		if(stream) delete stream;
 		stream = newstream;
 		//get the size of the stream
-		stream->seekg(0,std::ios::end);
-		size = stream->tellg();
-		stream->seekg(0,std::ios::beg);
+		stream->fseek(0,SEEK_SET);
+		size = stream->size();
 	}
 };
 
@@ -160,6 +161,6 @@ void FCEU_SplitArchiveFilename(std::string src, std::string& archive, std::strin
 #define FCEUMKF_ROMS         18
 #define FCEUMKF_INPUT        19
 #define FCEUMKF_LUA          20
-#define FCEUMKF_AVI          21
-#define FCEUMKF_CFG	         22
+#define FCEUMKF_AVI			 21
+#define FCEUMKF_CFG          22
 #endif

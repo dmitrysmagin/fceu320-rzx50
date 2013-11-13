@@ -39,6 +39,10 @@ THE SOFTWARE.
 #include <io.h>
 #endif
 
+// wtf ??? these could be macros from stdlib.h, so undefine
+#undef fgetc
+#undef fputc
+
 class EMUFILE {
 protected:
 	bool failbit;
@@ -74,7 +78,7 @@ public:
 
 	virtual int fprintf(const char *format, ...) = 0;
 
-	virtual int fgetc() = 0;
+	virtual int fgetc () = 0;
 	virtual int fputc(int c) = 0;
 
 	virtual size_t _fread(const void *ptr, size_t bytes) = 0;

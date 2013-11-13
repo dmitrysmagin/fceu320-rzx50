@@ -1059,7 +1059,11 @@ void FCEUI_SaveMovie(const char *fname, EMOVIE_FLAG flags, std::wstring author)
 	currMovieData = MovieData();
 	currMovieData.guid.newGuid();
 
+#if defined(DINGUX) && !defined(WIN32)
+	if(author != "") currMovieData.comments.push_back("author " + author);
+#else
 	if(author != L"") currMovieData.comments.push_back(L"author " + author);
+#endif
 	currMovieData.palFlag = FCEUI_GetCurrentVidSystem(0,0)!=0;
 	currMovieData.romChecksum = GameInfo->MD5;
 	currMovieData.romFilename = FileBase;

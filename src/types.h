@@ -136,6 +136,7 @@ typedef uint8 (*readfunc)(uint32 A);
 
 // PUT THIS HERE?
 #if defined(DINGUX) && !defined(DINGUX_ON_WIN32)
+#define L
 #define wstring string
 #endif
 

@@ -624,7 +624,11 @@ namespace UtfConverter
         {
             throw std::exception();
         }
+#if defined(DINGUX) && !defined(WIN32)
+        return "";
+#else
         return L"";
+#endif
     }
 
     std::string ToUtf8(const std::wstring& widestring)
@@ -749,7 +753,11 @@ std::wstring mbstowcs(std::string str) // UTF8->UTF32
 	try {
 		return UtfConverter::FromUtf8(str);
 	} catch(std::exception) {
+#if defined(DINGUX) && !defined(WIN32)
+		return "(failed UTF-8 conversion)";
+#else
 		return L"(failed UTF-8 conversion)";
+#endif
 	}
 }
 

@@ -68,7 +68,7 @@ static int inited = 0;
 
 int eoptions = 0;
 
-static int fpsthrottle = 1;
+static int fpsthrottle = 0;
 static int frameskip = 0;
 
 static void DriverKill(void);
@@ -286,6 +286,8 @@ static void DoFun(int fskip) {
 		timer = GetTicks() / frametime;
 		now = timer;
 		ticks = now - done;
+
+		if(fpsthrottle) ticks = 1;
 
 		if(ticks < 1) continue;
 		if(ticks > 10) ticks = 10;

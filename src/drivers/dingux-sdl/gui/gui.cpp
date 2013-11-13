@@ -121,8 +121,11 @@ void load_preview() {
 	FILE *fp = fopen(sname, "rb");
 	if (fp) {
 		// TODO - check the offset ... HARD-CODED VALUE IS EVIL!
-		fseek(fp, 0x159A, SEEK_SET);
-		fread(g_preview, 1, 256 * 256 + 8, fp);
+		// FCEUX 2.1.5 has compressed savestates, damn...
+		// TODO - a workaround, maybe with image saving...
+		// SaveSnapshot(name) in video.cpp
+		//fseek(fp, 0x159A, SEEK_SET);
+		//fread(g_preview, 1, 256 * 256 + 8, fp);
 		fclose(fp);
 		g_ispreview = 1;
 	} else {

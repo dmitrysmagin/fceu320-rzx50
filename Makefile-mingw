@@ -209,12 +209,12 @@ CFLAGS = -I$(SRC)
 CXXFLAGS =
 
 LIBDIR=
-LDFLAGS =
+LDFLAGS = -s
 
-W_OPTS	= -Wall -Wwrite-strings
+W_OPTS	= -Wall -Wno-write-strings -Wno-narrowing
 
 F_OPTS = -DDINGUX_ON_WIN32
-CC_OPTS	= -O2 $(F_OPTS)
+CC_OPTS	= -O2 $(F_OPTS) $(W_OPTS)
 
 CFLAGS += $(CC_OPTS)
 CFLAGS += -DDINGUX \
@@ -223,7 +223,6 @@ CFLAGS += -DDINGUX \
 	  -DHAVE_ASPRINTF \
 	  -DUSE_ZSNES_FONT \
 	  -DFRAMESKIP \
-	  -DFRACTIONAL_FRAMESKIP \
 	  -D_REENTRANT \
 	  -DSHOWFPS \
 	  -D_GNU_SOURCE=1 -D_REENTRANT

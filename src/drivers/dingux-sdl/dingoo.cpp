@@ -192,7 +192,7 @@ int LoadGame(const char *path) {
 	RefreshThrottleFPS();
 
 	// Reload game config or default config
-	g_config->reload(FCEU_MakeFName(FCEUMKF_CFG, 0, 0));
+	//g_config->reload(FCEU_MakeFName(FCEUMKF_CFG, 0, 0));
 
 #ifdef FRAMESKIP
 	// Update frameskip value
@@ -331,10 +331,6 @@ static int DriverInitialize(FCEUGI *gi) {
 	if (fourscore)
 		eoptions |= EO_FOURSCORE;
 
-	int cpu_rate;
-	g_config->getOption("SDL.CpuRate", &cpu_rate);
-	//dingoo_set_clock(cpu_rate);
-
 	InitInputInterface();
 
 	FCEUGUI_Reset(gi);
@@ -346,7 +342,7 @@ static int DriverInitialize(FCEUGI *gi) {
  */
 int FCEUD_DriverReset() {
 	// Save game config file
-	g_config->save(FCEU_MakeFName(FCEUMKF_CFG, 0, 0));
+	g_config->save(/*FCEU_MakeFName(FCEUMKF_CFG, 0, 0)*/);
 
 #ifdef FRAMESKIP
 	// Update frameskip value
@@ -366,10 +362,6 @@ int FCEUD_DriverReset() {
 	if (InitSound())
 		inited |= 1;
 
-	int cpu_rate;
-	g_config->getOption("SDL.CpuRate", &cpu_rate);
-	//dingoo_set_clock(cpu_rate);
-
 	// Set mouse cursor's movement speed
 	g_config->getOption("SDL.MouseSpeed", &mousespeed);
 	g_config->getOption("SDL.ShowMouseCursor", &showmouse);
@@ -386,7 +378,7 @@ int FCEUD_DriverReset() {
  */
 static void DriverKill() {
 	// Save only game config file
-	g_config->save(FCEU_MakeFName(FCEUMKF_CFG, 0, 0));
+	g_config->save(/*FCEU_MakeFName(FCEUMKF_CFG, 0, 0)*/);
 
 	if (inited & 2)
 		KillJoysticks();

@@ -193,7 +193,9 @@ _exit:
  */
 void SilenceSound(int n)
 {
-    SDL_PauseAudio(n);  
+    // Not needed, the callback will write silence to buffer anyway
+    // otherwise it causes noticable lag
+    //SDL_PauseAudio(n);  
 }
 
 /**

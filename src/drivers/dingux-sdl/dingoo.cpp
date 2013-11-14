@@ -279,8 +279,8 @@ static void DoFun(int fskip) {
 	int done = 0, timer = 0, ticks = 0, tick = 0, fps = 0;
 	unsigned int frame_limit = 60, frametime = 16667;
 
-	frame_limit = (PAL ? 50 : 60);
-	frametime = (PAL ? 20000 : 16667);
+	//frame_limit = (PAL ? 50 : 60);
+	//frametime = (PAL ? 20000 : 16667);
 
 	gettimeofday(&start, NULL);
 

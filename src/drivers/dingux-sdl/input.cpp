@@ -304,9 +304,11 @@ static void KeyboardCommands() {
 	// R shift + combokeys
 	if(ispressed(DINGOO_R)) {
 		extern int g_slot; // import from gui.cpp
+		void save_preview(); // import from gui.cpp
 		if(_keyonly(DINGOO_A)) { // R + A  save state
 			FCEUI_SelectState(g_slot, 0);
 			FCEUI_SaveState(NULL);
+			save_preview();
 			resetkey(DINGOO_A);
 		}
 		if(_keyonly(DINGOO_B)) { // R + B  load state

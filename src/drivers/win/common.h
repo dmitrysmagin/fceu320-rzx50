@@ -33,26 +33,39 @@ extern int NoWaiting;
 
 extern int eoptions;
 
-#define EO_BGRUN           1
+#define EO_BGRUN              1
 
-#define EO_CPALETTE        4
-#define EO_NOSPRLIM        8
-#define EO_FSAFTERLOAD    32
-#define EO_FOAFTERSTART   64
-#define EO_NOTHROTTLE    128
-#define EO_CLIPSIDES     256
-#define EO_HIDEMENU     2048
-#define EO_HIGHPRIO     4096
-#define EO_FORCEASPECT  8192
-#define EO_FORCEISCALE 16384
-#define EO_FOURSCORE   32768
-#define EO_BESTFIT     65536
-#define EO_BGCOLOR    131072
-#define EO_HIDEMOUSE  262144
+#define EO_CPALETTE           4
+#define EO_NOSPRLIM           8
+#define EO_FSAFTERLOAD       32
+#define EO_FOAFTERSTART      64
+#define EO_NOTHROTTLE       128
+#define EO_CLIPSIDES        256
+#define EO_HIDEMENU        2048
+#define EO_HIGHPRIO        4096
+#define EO_FORCEASPECT     8192
+#define EO_FORCEISCALE    16384
+#define EO_FOURSCORE      32768
+#define EO_BESTFIT        65536
+#define EO_BGCOLOR       131072
+#define EO_HIDEMOUSE     262144
+#define EO_TVASPECT      524288
+#define EO_SQUAREPIXELS 1048576
+
+enum WINDOW_ITEM_RESIZE_TYPES
+{
+	WINDOW_ITEM_RESIZE_TYPE_LEFT_ALIGNED,
+	WINDOW_ITEM_RESIZE_TYPE_RIGHT_ALIGNED,
+	WINDOW_ITEM_RESIZE_TYPE_CENTER_ALIGNED,
+	WINDOW_ITEM_RESIZE_TYPE_MULTIPLY,
+	// ---
+	WINDOW_ITEM_RESIZE_TYPES_TOTAL
+};
 
 bool directoryExists(const char* dirname);
 void WindowBoundsCheckResize(int &windowPosX, int &windowPosY, int windowSizeX, long windowRight);
 void WindowBoundsCheckNoResize(int &windowPosX, int &windowPosY, long windowRight);
+int recalculateResizedItemCoordinate(int initialValue, int initialBase, int newBase, unsigned int resizingType);
 void AddExtensionIfMissing(char * name,unsigned int maxsize,const char * extension);
 void AddExtensionIfMissing(std::string &name,const char * extension);
 std::string GetPath(std::string filename);

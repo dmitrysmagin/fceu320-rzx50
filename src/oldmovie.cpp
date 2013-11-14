@@ -587,8 +587,6 @@ EFCM_CONVERTRESULT convert_fcm(MovieData& md, std::string fname)
 	fp->fread((char*)&md.romChecksum,16);
 	read32le((uint32*)&md.emuVersion,fp);
 
-	md.romFilename = readNullTerminatedAscii(fp);
-
 #if defined(DINGUX) && !defined(WIN32)
 	md.comments.push_back("author  " + mbstowcs(readNullTerminatedAscii(fp)));
 #else

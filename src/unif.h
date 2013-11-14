@@ -45,7 +45,6 @@ void BMCT2271_Init(CartInfo *info);
 void BMCT262_Init(CartInfo *info);
 void CNROM_Init(CartInfo *info);
 void CPROM_Init(CartInfo *info);
-void DEIROM_Init(CartInfo *info);
 void DreamTech01_Init(CartInfo *info);
 void EKROM_Init(CartInfo *info);
 void ELROM_Init(CartInfo *info);
@@ -86,7 +85,7 @@ void SLROM_Init(CartInfo *info);
 void SNROM_Init(CartInfo *info);
 void SOROM_Init(CartInfo *info);
 void SSSNROM_Init(CartInfo *info);
-void SUNSOFT_UNROM_Init(CartInfo *info); // "Shanghi" original version mapper
+void SUNSOFT_UNROM_Init(CartInfo *info);	// "Shanghi" original version mapper
 void Super24_Init(CartInfo *info);
 void Supervision16_Init(CartInfo *info);
 void TBROM_Init(CartInfo *info);
@@ -130,6 +129,7 @@ void UNLKS7032_Init(CartInfo *info);
 void UNLKS7037_Init(CartInfo *info);
 void UNLKS7057_Init(CartInfo *info);
 void UNLN625092_Init(CartInfo *info);
+void UNLMaliSB_Init(CartInfo *info);
 void UNLOneBus_Init(CartInfo *info);
 void UNLPEC586Init(CartInfo *info);
 void UNLSC127_Init(CartInfo *info);

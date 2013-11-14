@@ -18,11 +18,6 @@
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#include <string>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <ctype.h>
 
 #include "types.h"
 #include "x6502.h"
@@ -32,6 +27,12 @@
 #include "cart.h"
 #include "driver.h"
 #include "utils/memory.h"
+
+#include <string>
+#include <cstdlib>
+#include <cstring>
+#include <cstdio>
+#include <cctype>
 
 using namespace std;
 
@@ -86,8 +87,8 @@ struct CHEATF *cheats=0,*cheatsl=0;
 #define CHEATC_EXCLUDED 0x4000
 #define CHEATC_NOSHOW   0xC000
 
-static uint16 *CheatComp=0;
-static int savecheats;
+static uint16 *CheatComp = 0;
+int savecheats = 0;
 
 static DECLFR(SubCheatsRead)
 {
@@ -215,7 +216,6 @@ void FCEU_LoadGameCheats(FILE *override)
 	}
 
 	FCEU_DispMessage("Cheats file loaded.",0); //Tells user a cheats file was loaded.
-	FCEU_printf("Cheats file loaded.\n",0);	 //Sends message to message log.
 	while(fgets(linebuf,2048,fp)>0)
 	{
 		char *tbuf=linebuf;

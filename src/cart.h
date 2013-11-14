@@ -1,31 +1,29 @@
 typedef struct {
-  /* Set by mapper/board code: */
-  void (*Power)(void);
-  void (*Reset)(void);
-  void (*Close)(void);
-  uint8 *SaveGame[4];     /* Pointers to memory to save/load. */
-  uint32 SaveGameLen[4];  /* How much memory to save/load. */
+	// Set by mapper/board code:
+	void (*Power)(void);
+	void (*Reset)(void);
+	void (*Close)(void);
+	uint8 *SaveGame[4];		// Pointers to memory to save/load.
+	uint32 SaveGameLen[4];	// How much memory to save/load.
 
-  /* Set by iNES/UNIF loading code. */
-  int mirror;    /* As set in the header or chunk.
-           iNES/UNIF specific.  Intended
-           to help support games like "Karnov"
-           that are not really MMC3 but are
-           set to mapper 4.
-        */
-  int battery;      /* Presence of an actual battery. */
-  uint8 MD5[16];
-  uint32 CRC32;     /* Should be set by the iNES/UNIF loading
-           code, used by mapper/board code, maybe
-           other code in the future.
-        */
+	// Set by iNES/UNIF loading code.
+	int mirror;		// As set in the header or chunk.
+					// iNES/UNIF specific.  Intended
+					// to help support games like "Karnov"
+					// that are not really MMC3 but are
+					// set to mapper 4.
+	int battery;	// Presence of an actual battery.
+	uint8 MD5[16];
+	uint32 CRC32;	// Should be set by the iNES/UNIF loading
+					// code, used by mapper/board code, maybe
+					// other code in the future.
 } CartInfo;
 
 void FCEU_SaveGameSave(CartInfo *LocalHWInfo);
 void FCEU_LoadGameSave(CartInfo *LocalHWInfo);
 void FCEU_ClearGameSave(CartInfo *LocalHWInfo);
 
-extern uint8 *Page[32],*VPage[8],*MMC5SPRVPage[8],*MMC5BGVPage[8];
+extern uint8 *Page[32], *VPage[8], *MMC5SPRVPage[8], *MMC5BGVPage[8];
 
 void ResetCartMapping(void);
 void SetupCartPRGMapping(int chip, uint8 *p, uint32 size, int ram);
@@ -35,6 +33,9 @@ void SetupCartMirroring(int m, int hard, uint8 *extra);
 DECLFR(CartBROB);
 DECLFR(CartBR);
 DECLFW(CartBW);
+
+extern uint8 PRGram[32];
+extern uint8 CHRram[32];
 
 extern uint8 *PRGptr[32];
 extern uint8 *CHRptr[32];
@@ -75,14 +76,6 @@ void setchr2(unsigned int A, unsigned int V);
 void setchr4(unsigned int A, unsigned int V);
 void setchr8(unsigned int V);
 
-void setvram4(uint32 A, uint8 *p);
-void setvram8(uint8 *p);
-
-void setvramb1(uint8 *p, uint32 A, uint32 b);
-void setvramb2(uint8 *p, uint32 A, uint32 b);
-void setvramb4(uint8 *p, uint32 A, uint32 b);
-void setvramb8(uint8 *p, uint32 b);
-
 void setmirror(int t);
 void setmirrorw(int a, int b, int c, int d);
 void setntamem(uint8 *p, int ram, uint32 b);
@@ -94,8 +87,8 @@ void setntamem(uint8 *p, int ram, uint32 b);
 
 extern int geniestage;
 
-void GeniePower(void);
+void FCEU_GeniePower(void);
 
-void OpenGenie(void);
-void CloseGenie(void);
+bool FCEU_OpenGenie(void);
+void FCEU_CloseGenie(void);
 void FCEU_KillGenie(void);

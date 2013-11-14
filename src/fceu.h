@@ -1,9 +1,14 @@
 #ifndef _FCEUH
 #define _FCEUH
 
+#include "types.h"
+
 extern int fceuindbg;
 extern int newppu;
 void ResetGameLoaded(void);
+
+extern bool AutoResumePlay;
+extern char romNameWhenClosingEmulator[];
 
 #define DECLFR(x) uint8 x (uint32 A)
 #define DECLFW(x) void x (uint32 A, uint8 V)
@@ -26,7 +31,7 @@ void PowerNES(void);
 void SetAutoFireOffset(int offset);
 void SetAutoFirePattern(int onframes, int offframes);
 void AutoFire(void);
-void FCEUI_Autosave(void);
+void FCEUI_RewindToLastAutosave(void);
 
 //mbg 7/23/06
 char *FCEUI_GetAboutString();
@@ -34,7 +39,7 @@ char *FCEUI_GetAboutString();
 extern uint64 timestampbase;
 extern uint32 MMC5HackVROMMask;
 extern uint8 *MMC5HackExNTARAMPtr;
-extern int MMC5Hack;
+extern int MMC5Hack, PEC586Hack;
 extern uint8 *MMC5HackVROMPTR;
 extern uint8 MMC5HackCHRMode;
 extern uint8 MMC5HackSPMode;
@@ -46,7 +51,6 @@ extern uint8 MMC5HackSPPage;
 #define GAME_MEM_BLOCK_SIZE 131072
 
 extern  uint8  *RAM;            //shared memory modifications
-extern  uint8  *GameMemBlock;   //shared memory modifications
 extern int EmulationPaused;
 
 uint8 FCEU_ReadRomByte(uint32 i);
@@ -140,4 +144,9 @@ extern uint8 vsdip;
 #endif
 
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
+
+#define EMULATIONPAUSED_PAUSED 1
+#define EMULATIONPAUSED_FA 2
+
+#define FRAMEADVANCE_DELAY_DEFAULT 10
 

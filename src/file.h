@@ -3,10 +3,11 @@
 
 #define MAX_MOVIEFILENAME_LEN 80
 
-#include <string>
-#include <iostream>
 #include "types.h"
 #include "emufile.h"
+
+#include <string>
+#include <iostream>
 
 extern bool bindSavestate;
 
@@ -165,5 +166,6 @@ void FCEU_SplitArchiveFilename(std::string src, std::string& archive, std::strin
 #define FCEUMKF_LUA          20
 #define FCEUMKF_AVI			 21
 #define FCEUMKF_TASEDITOR    22
-#define FCEUMKF_CFG          23
+#define FCEUMKF_RESUMESTATE  23
+#define FCEUMKF_CFG          24
 #endif

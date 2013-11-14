@@ -24,14 +24,14 @@
 extern uint32 ROM_size;
 
 static uint8 prg[4], chr, sbw, we_sram;
-static uint8 *WRAM=NULL;
+static uint8 *WRAM = NULL;
 static uint32 WRAMSIZE;
 
 static SFORMAT StateRegs[]=
 {
   {prg, 4, "PRG"},
   {&chr, 1, "CHR"},
-	{&sbw, 1, "SBW"},
+  {&sbw, 1, "SBW"},
   {0}
 };
 
@@ -135,7 +135,7 @@ static void M176Close(void)
 {
   if(WRAM)
     FCEU_gfree(WRAM);
-  WRAM=NULL;
+  WRAM = NULL;
 }
 
 static void StateRestore(int version)

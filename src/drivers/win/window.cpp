@@ -77,8 +77,11 @@
 
 #include "taseditor/taseditor_window.h"
 #include "taseditor/playback.h"
-extern TASEDITOR_WINDOW taseditor_window;
+extern TASEDITOR_WINDOW taseditorWindow;
 extern PLAYBACK playback;
+
+#include "Win32InputBox.h"
+extern int32 fps_scale_unpaused;
 
 //extern void ToggleFullscreen();
 
@@ -142,7 +145,7 @@ static int vchanged = 0;
 int menuYoffset = 0;
 bool wasPausedByCheats = false;		//For unpausing the emulator if paused by the cheats dialog
 bool rightClickEnabled = true;		//If set to false, the right click context menu will be disabled.
-bool fullscreenByDoubleclick = true;
+bool fullscreenByDoubleclick = false;
 
 //Function Prototypes
 void ChangeMenuItemText(int menuitem, string text);			//Alters a menu item name
@@ -179,8 +182,8 @@ int EnableBackgroundInput = 0;
 int ismaximized = 0;
 
 //Help Menu subtopics
-string moviehelp = "{695C964E-B83F-4A6E-9BA2-1A975387DB55}";		 //Movie Recording
-string gettingstartedhelp = "{C76AEBD9-1E27-4045-8A37-69E5A52D0F9A}";//Getting Started
+string moviehelp = "MovieRecording";		 //Movie Recording
+string gettingstartedhelp = "Gettingstarted";//Getting Started
 
 //********************************************************************************
 void SetMainWindowText()
@@ -332,10 +335,15 @@ static void ConvertFCM(HWND hwndOwner)
 
 void CalcWindowSize(RECT *al)
 {
+	double screen_width = VNSWID;
+	double screen_height = FSettings.TotalScanlines();
+	if (eoptions & EO_TVASPECT)
+		screen_width = ceil(screen_height * (screen_width / 256) * (tvAspectX / tvAspectY));
+
 	al->left = 0;
-	al->right = VNSWID * winsizemulx;
 	al->top = 0;
-	al->bottom = (FSettings.TotalScanlines() * winsizemuly) + menuYoffset;
+	al->right = ceil(screen_width * winsizemulx);
+	al->bottom = menuYoffset + ceil(screen_height * winsizemuly);
 
 	AdjustWindowRectEx(al,
 		GetWindowLong(hAppWnd, GWL_STYLE),
@@ -419,6 +427,7 @@ void UpdateCheckedMenuItems()
 	CheckMenuItem(fceumenu, MENU_CONFIG_BINDSAVES, bindSavestate?MF_CHECKED : MF_UNCHECKED);
 	CheckMenuItem(fceumenu, ID_ENABLE_BACKUPSAVESTATES, backupSavestates?MF_CHECKED : MF_UNCHECKED);
 	CheckMenuItem(fceumenu, ID_ENABLE_COMPRESSSAVESTATES, compressSavestates?MF_CHECKED : MF_UNCHECKED);
+	CheckMenuItem(fceumenu, ID_ENABLE_AUTORESUME, AutoResumePlay?MF_CHECKED : MF_UNCHECKED);
 
 	//Config - Display SubMenu
 	CheckMenuItem(fceumenu, MENU_DISPLAY_LAGCOUNTER, lagCounterDisplay?MF_CHECKED : MF_UNCHECKED);
@@ -961,7 +970,7 @@ void HideFWindow(int h)
 {
 	LONG desa;
 
-	if(h)  /* Full-screen. */
+	if (h)  /* Full-screen. */
 	{
 		RECT bo;
 		GetWindowRect(hAppWnd, &bo);
@@ -970,8 +979,7 @@ void HideFWindow(int h)
 
 		SetMenu(hAppWnd, 0);
 		desa=WS_POPUP | WS_CLIPSIBLINGS;  
-	}
-	else
+	} else
 	{
 		desa = WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS;
 		HideMenu(tog);
@@ -980,8 +988,8 @@ void HideFWindow(int h)
 		SetWindowPos(hAppWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOACTIVATE | SWP_NOCOPYBITS | SWP_NOMOVE | SWP_NOREPOSITION | SWP_NOSIZE);
 	}
 
-	SetWindowLong(hAppWnd, GWL_STYLE ,desa | ( GetWindowLong(hAppWnd, GWL_STYLE) & WS_VISIBLE ));
-	SetWindowPos(hAppWnd, 0 ,0 ,0 ,0 ,0 ,SWP_FRAMECHANGED | SWP_NOACTIVATE | SWP_NOCOPYBITS | SWP_NOMOVE | SWP_NOREPOSITION | SWP_NOSIZE | SWP_NOZORDER);
+	SetWindowLong(hAppWnd, GWL_STYLE, desa | ( GetWindowLong(hAppWnd, GWL_STYLE) & WS_VISIBLE ));
+	SetWindowPos(hAppWnd, 0, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOACTIVATE | SWP_NOCOPYBITS | SWP_NOMOVE | SWP_NOREPOSITION | SWP_NOSIZE | SWP_NOZORDER);
 }
 
 //Toggles the display status of the main menu.
@@ -1014,13 +1022,13 @@ void CloseGame()
 	}
 }
 
-bool ALoad(const char *nameo, char* innerFilename)
+bool ALoad(const char *nameo, char* innerFilename, bool silent)
 {
-  int oldPaused = EmulationPaused;
+	int oldPaused = EmulationPaused;
 
 	if (GameInfo) FCEUI_CloseGame();
 
-	if(FCEUI_LoadGameVirtual(nameo, 1))
+	if (FCEUI_LoadGameVirtual(nameo, 1, silent))
 	{
 		pal_emulation = FCEUI_GetCurrentVidSystem(0, 0);
 
@@ -1095,7 +1103,7 @@ void LoadNewGamey(HWND hParent, const char *initialdir)
 	ofn.lpstrFile=nameo;
 	ofn.nMaxFile=256;
 	ofn.Flags=OFN_EXPLORER|OFN_FILEMUSTEXIST|OFN_HIDEREADONLY; //OFN_EXPLORER|OFN_ENABLETEMPLATE|OFN_ENABLEHOOK;
-	string stdinitdir =FCEU_GetPath(FCEUMKF_ROMS);
+	string stdinitdir = FCEU_GetPath(FCEUMKF_ROMS);
 	
 	if (initialdir)					//adelikat: If a directory is specified in the function parameter, it should take priority
 		ofn.lpstrInitialDir = initialdir;
@@ -1111,27 +1119,59 @@ void LoadNewGamey(HWND hParent, const char *initialdir)
 
 void GetMouseData(uint32 (&md)[3])
 {
-	md[0] = mousex;
-	md[1] = mousey;
+	extern RECT bestfitRect;
 
-	if(!fullscreen)
+	double screen_width = VNSWID;
+	double screen_height = FSettings.TotalScanlines();
+
+	if (eoptions & EO_BESTFIT && (bestfitRect.top || bestfitRect.left))
 	{
-		if(ismaximized)
+		if ((int)mousex <= bestfitRect.left)
 		{
-			RECT t;
-			GetClientRect(hAppWnd, &t);
-			md[0] = md[0] * VNSWID / (t.right ? t.right : 1);
-			md[1] = md[1] * FSettings.TotalScanlines() / (t.bottom ? t.bottom : 1);
-		}
-		else
+			md[0] = 0;
+		} else if ((int)mousex >= bestfitRect.right)
 		{
-			md[0] /= winsizemulx;
-			md[1] /= winsizemuly;
+			md[0] = screen_width - 1;
+		} else
+		{
+			md[0] = screen_width * (mousex - bestfitRect.left) / (bestfitRect.right - bestfitRect.left);
 		}
-
-		md[0] += VNSCLIP;
+		if ((int)mousey <= bestfitRect.top)
+		{
+			md[1] = 0;
+		} else if ((int)mousey >= bestfitRect.bottom)
+		{
+			md[1] = screen_height - 1;
+		} else
+		{
+			md[1] = screen_height * (mousey - bestfitRect.top) / (bestfitRect.bottom - bestfitRect.top);
+		}
+	} else
+	{
+		RECT client_rect;
+		GetClientRect(hAppWnd, &client_rect);
+		if ((int)mousex <= client_rect.left)
+		{
+			md[0] = 0;
+		} else if ((int)mousex >= client_rect.right)
+		{
+			md[0] = screen_width - 1;
+		} else
+		{
+			md[0] = screen_width * (mousex - client_rect.left) / (client_rect.right - client_rect.left);
+		}
+		if ((int)mousey <= client_rect.top)
+		{
+			md[1] = 0;
+		} else if ((int)mousey >= client_rect.bottom)
+		{
+			md[1] = screen_height - 1;
+		} else
+		{
+			md[1] = screen_height * (mousey - client_rect.top) / (client_rect.bottom - client_rect.top);
+		}
 	}
-
+	md[0] += VNSCLIP;
 	md[1] += FSettings.FirstSLine;
 	md[2] = ((mouseb == MK_LBUTTON) ? 1 : 0) | (( mouseb == MK_RBUTTON ) ? 2 : 0);
 }
@@ -1147,7 +1187,7 @@ void DumpSubtitles(HWND hWnd)
 	ofn.hwndOwner = hWnd;
 	ofn.lpstrTitle="Save Subtitles as...";
 	ofn.lpstrFilter = filter;
-	strcpy(nameo,GetRomName());
+	strcpy(nameo, mass_replace(GetRomName(), "|", ".").c_str());
 	ofn.lpstrFile = nameo;
 	ofn.nMaxFile = 256;
 	ofn.Flags = OFN_EXPLORER|OFN_FILEMUSTEXIST|OFN_HIDEREADONLY;
@@ -1251,15 +1291,15 @@ LRESULT FAR PASCAL AppWndProc(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam)
 	case WM_MOUSEWHEEL:
 	{
 		// send the message to TAS Editor
-		if (taseditor_window.hwndTasEditor)
-			SendMessage(taseditor_window.hwndTasEditor, msg, wParam, lParam);
+		if (taseditorWindow.hwndTASEditor)
+			SendMessage(taseditorWindow.hwndTASEditor, msg, wParam, lParam);
 		return 0;
 	}
 
 	case WM_MBUTTONDOWN:
 	{
 		if (FCEUMOV_Mode(MOVIEMODE_TASEDITOR))
-			playback.MiddleButtonClick();
+			playback.handleMiddleButtonClick();
 		return 0;
 	}
 
@@ -1327,8 +1367,9 @@ LRESULT FAR PASCAL AppWndProc(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			goto proco;
 
 	case WM_PAINT:
-		if(xbsave)
+		if (xbsave)
 		{
+			InvalidateRect(hWnd, NULL, false);		// AnS: HACK in order to force the entire client area to be redrawn; this fixes the bug with DIRECTDRAWCLIPPER sometimes calculating wrong region
 			PAINTSTRUCT ps;
 			BeginPaint(hWnd,&ps);
 			FCEUD_BlitScreen(xbsave);
@@ -1338,17 +1379,23 @@ LRESULT FAR PASCAL AppWndProc(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam)
 		goto proco;
 
 	case WM_SIZE:
-		if(!fullscreen && !changerecursive)
-			switch(wParam)
+		if (!fullscreen && !changerecursive && !windowedfailed)
 		{
+			switch(wParam)
+			{
 			case SIZE_MAXIMIZED: 
 				ismaximized = 1;
+				changerecursive = 1;
 				SetMainWindowStuff();
+				changerecursive = 0;
 				break;
 			case SIZE_RESTORED: 
 				ismaximized = 0;
+				changerecursive = 1;
 				SetMainWindowStuff();
+				changerecursive = 0;
 				break;
+			}
 		}
 		break;
 	case WM_SIZING:
@@ -1371,10 +1418,12 @@ LRESULT FAR PASCAL AppWndProc(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam)
 				winsizemulx*= (double)w/winwidth;
 			if(how & 2)
 				winsizemuly*= (double)h/winheight;
+
+			bool shift_held = (GetAsyncKeyState(VK_SHIFT) < 0);
 			if(how & 1)
-				FixWXY(0);
+				FixWXY(0, shift_held);
 			else
-				FixWXY(1);
+				FixWXY(1, shift_held);
 
 			CalcWindowSize(&srect);
 			winwidth=srect.right;
@@ -1477,12 +1526,12 @@ LRESULT FAR PASCAL AppWndProc(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam)
 					if (GameInfo && !(fileDropped.find(".fm3") == string::npos))
 					{
 						//.fm3 is at the end of the filename so that must be the extension
-						extern bool EnterTasEditor();
-						extern bool LoadProject(const char* fullname);
-						extern bool AskSaveProject();
-						if (EnterTasEditor())					//We are convinced it is a TAS Editor project file, attempt to load in TAS Editor
-							if (AskSaveProject())		// in case there's unsaved project
-								LoadProject(fileDropped.c_str());
+						extern bool enterTASEditor();
+						extern bool loadProject(const char* fullname);
+						extern bool askToSaveProject();
+						if (enterTASEditor())					//We are convinced it is a TAS Editor project file, attempt to load in TAS Editor
+							if (askToSaveProject())		// in case there's unsaved project
+								loadProject(fileDropped.c_str());
 					}
 				}
 				//-------------------------------------------------------
@@ -1764,7 +1813,54 @@ LRESULT FAR PASCAL AppWndProc(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			case ID_NES_NORMALSPEED:
 				FCEUD_SetEmulationSpeed(2);
 				break;
-						
+			case ID_EMULATIONSPEED_CUSTOMSPEED:
+			{
+				int new_value = fps_scale / 2.56;
+				if ((CWin32InputBox::GetInteger("Emulation Speed", "Enter a number of percents from 1 to 1000.", new_value, hWnd) == IDOK))
+				{
+					fps_scale_unpaused = new_value * 2.56 + 1;
+					if (fps_scale_unpaused / 2.56 > 1000 || fps_scale_unpaused <= 0)
+						fps_scale_unpaused = 256;
+					fps_scale = fps_scale_unpaused;
+					RefreshThrottleFPS();
+					FCEU_DispMessage("Emulation speed %d%%", 0, (fps_scale_unpaused * 100) >> 8);
+				}
+				break;
+			}
+
+			case ID_EMULATIONSPEED_SETFRAMEADVANCEDELAY:
+			{
+				extern int frameAdvance_Delay;
+				int new_value = frameAdvance_Delay;
+				if((CWin32InputBox::GetInteger("FrameAdvance Delay", "How much time should elapse before\nholding the Frame Advance\nunpauses emulation?", new_value, hWnd) == IDOK))
+				{
+					if (new_value < 0)
+						new_value = FRAMEADVANCE_DELAY_DEFAULT;
+					frameAdvance_Delay = new_value;
+				}
+				break;
+			}
+			case ID_EMULATIONSPEED_SETCUSTOMSPEEDFORFRAMEADVANCE:
+			{
+				extern int32 fps_scale_frameadvance;
+				int new_value = fps_scale_frameadvance / 2.56;
+				if ((CWin32InputBox::GetInteger("FrameAdvance Custom Speed", "Enter 0 to use the current emulation speed when\nthe Frame Advance is held. Or enter the number\nof percents (1-1000) to use different speed.", new_value, hWnd) == IDOK))
+				{
+					if (new_value > 1000)
+						new_value = 1000;
+					if (new_value > 0)
+					{
+						fps_scale_frameadvance = new_value * 2.56 + 1;
+					} else
+					{
+						fps_scale_frameadvance = 0;
+						fps_scale = fps_scale_unpaused;
+						RefreshThrottleFPS();
+					}
+				}
+				break;
+			}
+
 			//Config Menu-----------------------------------------------------------
 			case FCEUX_CONTEXT_UNHIDEMENU:
 			case MENU_HIDE_MENU:
@@ -1803,7 +1899,11 @@ LRESULT FAR PASCAL AppWndProc(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam)
 				compressSavestates ^=1;
 				UpdateCheckedMenuItems();
 				break;
-			
+			case ID_ENABLE_AUTORESUME:
+				AutoResumePlay ^=1;
+				UpdateCheckedMenuItems();
+				break;
+
 			//Display submenu
 			case MENU_INPUTDISPLAY_0: //Input display off
 				input_display = 0;
@@ -1943,8 +2043,8 @@ LRESULT FAR PASCAL AppWndProc(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			//	break;
 			//  Removing this tool since it is redundant to both 
 			case MENU_TASEDITOR:
-				extern bool EnterTasEditor();
-				EnterTasEditor();
+				extern bool enterTASEditor();
+				enterTASEditor();
 				break;
 			case MENU_CONVERT_MOVIE:
 				ConvertFCM(hWnd);
@@ -2146,7 +2246,7 @@ LRESULT FAR PASCAL AppWndProc(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam)
 
 			//Load last auto-save
 			case FCEUX_CONTEXT_REWINDTOLASTAUTO:
-				FCEUI_Autosave();
+				FCEUI_RewindToLastAutosave();
 				break;
 
 			//Create a backup movie file
@@ -2276,6 +2376,7 @@ adelikat: Outsourced this to a remappable hotkey
 		EnableMenuItem(fceumenu,MENU_POWER,MF_BYCOMMAND | (FCEU_IsValidUI(FCEUI_POWER)?MF_ENABLED:MF_GRAYED));
 		EnableMenuItem(fceumenu,MENU_EJECT_DISK,MF_BYCOMMAND | (FCEU_IsValidUI(FCEUI_EJECT_DISK)?MF_ENABLED:MF_GRAYED));
 		EnableMenuItem(fceumenu,MENU_SWITCH_DISK,MF_BYCOMMAND | (FCEU_IsValidUI(FCEUI_SWITCH_DISK)?MF_ENABLED:MF_GRAYED));
+		EnableMenuItem(fceumenu,MENU_INSERT_COIN,MF_BYCOMMAND | (FCEU_IsValidUI(FCEUI_INSERT_COIN)?MF_ENABLED:MF_GRAYED));
 		EnableMenuItem(fceumenu,MENU_TASEDITOR,MF_BYCOMMAND | (FCEU_IsValidUI(FCEUI_TASEDITOR)?MF_ENABLED:MF_GRAYED));
 		EnableMenuItem(fceumenu,MENU_CLOSE_FILE,MF_BYCOMMAND | (FCEU_IsValidUI(FCEUI_CLOSEGAME) && GameInfo ?MF_ENABLED:MF_GRAYED));
 		EnableMenuItem(fceumenu,MENU_RECENT_FILES,MF_BYCOMMAND | ((FCEU_IsValidUI(FCEUI_OPENGAME) && HasRecentFiles()) ?MF_ENABLED:MF_GRAYED)); //adelikat - added && recent_files, otherwise this line prevents recent from ever being gray when TAS Editor is not engaged
@@ -2295,24 +2396,31 @@ adelikat: Outsourced this to a remappable hotkey
 		EnableMenuItem(fceumenu,MENU_STOP_AVI,MF_BYCOMMAND | (FCEUI_AviIsRecording()?MF_ENABLED:MF_GRAYED));
 		EnableMenuItem(fceumenu,MENU_STOP_WAV,MF_BYCOMMAND | (loggingSound?MF_ENABLED:MF_GRAYED));
 		EnableMenuItem(fceumenu,ID_FILE_CLOSELUAWINDOWS,MF_BYCOMMAND | (LuaConsoleHWnd?MF_ENABLED:MF_GRAYED));
-		if (FCEUMOV_Mode(MOVIEMODE_TASEDITOR))
+		// PAL and PPU should not be changed while a movie is recorded/played
+		if (FCEUMOV_Mode(MOVIEMODE_INACTIVE))
+		{
+			EnableMenuItem(fceumenu, MENU_PAL, MF_ENABLED);
+			EnableMenuItem(fceumenu, ID_NEWPPU, MF_ENABLED);
+			EnableMenuItem(fceumenu, ID_OLDPPU, MF_ENABLED);
+		} else
 		{
 			EnableMenuItem(fceumenu, MENU_PAL, MF_GRAYED);
 			EnableMenuItem(fceumenu, ID_NEWPPU, MF_GRAYED);
 			EnableMenuItem(fceumenu, ID_OLDPPU, MF_GRAYED);
+		}
+		CheckMenuRadioItem(fceumenu, ID_NEWPPU, ID_OLDPPU, newppu ? ID_NEWPPU : ID_OLDPPU, MF_BYCOMMAND);
+		// when TASEditor is engaged, some settings should not be changeable
+		if (FCEUMOV_Mode(MOVIEMODE_TASEDITOR))
+		{
 			EnableMenuItem(fceumenu, MENU_ENABLE_AUTOSAVE, MF_GRAYED);
 			EnableMenuItem(fceumenu, ID_ENABLE_BACKUPSAVESTATES, MF_GRAYED);
 			EnableMenuItem(fceumenu, ID_ENABLE_COMPRESSSAVESTATES, MF_GRAYED);
 		} else
 		{
-			EnableMenuItem(fceumenu, MENU_PAL, MF_ENABLED);
-			EnableMenuItem(fceumenu, ID_NEWPPU, MF_ENABLED);
-			EnableMenuItem(fceumenu, ID_OLDPPU, MF_ENABLED);
 			EnableMenuItem(fceumenu, MENU_ENABLE_AUTOSAVE, MF_ENABLED);
 			EnableMenuItem(fceumenu, ID_ENABLE_BACKUPSAVESTATES, MF_ENABLED);
 			EnableMenuItem(fceumenu, ID_ENABLE_COMPRESSSAVESTATES, MF_ENABLED);
 		}
-		CheckMenuRadioItem(fceumenu, ID_NEWPPU, ID_OLDPPU, newppu ? ID_NEWPPU : ID_OLDPPU, MF_BYCOMMAND);
 
 	default:
 proco:
@@ -2321,72 +2429,22 @@ proco:
 	return 0;
 }
 
-void FixWXY(int pref)
+void FixWXY(int pref, bool shift_held)
 {
-	if(eoptions&EO_FORCEASPECT)
+	if (eoptions & EO_FORCEASPECT)
 	{
-		/* First, make sure the ratio is valid, and if it's not, change
-		it so that it doesn't break everything.
-		*/
-		if(saspectw < 0.01) saspectw = 0.01;
-		if(saspecth < 0.01) saspecth = 0.01;
-		if((saspectw / saspecth) > 100) saspecth = saspectw;
-		if((saspecth / saspectw) > 100) saspectw = saspecth;
-
-		if((saspectw / saspecth) < 0.1) saspecth = saspectw;
-		if((saspecth / saspectw) > 0.1) saspectw = saspecth;
-
-		if(!pref)
-		{
-			winsizemuly = winsizemulx * (saspecth / saspectw);
-		}
+		if (pref == 0)
+			winsizemuly = winsizemulx;
 		else
-		{
-			winsizemulx = winsizemuly * (saspectw / saspecth);
-		}
+			winsizemulx = winsizemuly;
 	}
+	if (winsizemulx < 0.1)
+		winsizemulx = 0.1;
+	if (winsizemuly < 0.1)
+		winsizemuly = 0.1;
 
-	// AnS: removed unnecessary restrictions of window size
-	/*
-	if(winspecial)
-	{
-		// -Video Modes Tag-
-		int mult;
-		if(winspecial >= 1 && winspecial <= 3) mult = 2;
-		else mult = 3;
-		if(winsizemulx < mult)
-		{
-			if(eoptions&EO_FORCEASPECT)
-				winsizemuly *= mult / winsizemulx;
-
-			if (winsizemulx < mult)
-				winsizemulx = mult;
-		}
-		if(winsizemuly < mult && mult < 3) //11/14/2008, adelikat: added && mult < 3 and extra code to meet mult >=3 conditions
-		{
-			if(eoptions&EO_FORCEASPECT)
-				winsizemulx *= mult / winsizemuly;
-			
-			if (winsizemuly < mult)
-				winsizemuly = mult;
-
-		}
-		else if (winsizemuly < mult&& mult >= 3) { //11/14/2008, adelikat: This was probably a hacky solution.  But when special scalar = 3 and aspect correction is on,
-			if(eoptions&EO_FORCEASPECT)			//then x is corrected to a wider ratio (.5 of what this code seems to expect) so I added a special circumstance for these 2 situations
-				winsizemulx *= (mult+0.5) / winsizemuly;	//And adjusted the special scaling by .5
-
-			if (winsizemuly < mult)
-				winsizemuly = mult;
-		}
-	}
-	*/
-
-	if(winsizemulx<0.1)
-		winsizemulx=0.1;
-	if(winsizemuly<0.1)
-		winsizemuly=0.1;
-
-	if(eoptions & EO_FORCEISCALE)
+	// round to integer values
+	if (((eoptions & EO_FORCEISCALE) && !shift_held) || (!(eoptions & EO_FORCEISCALE) && shift_held))
 	{
 		int x,y;
 
@@ -2403,8 +2461,13 @@ void FixWXY(int pref)
 		winsizemuly = y;    
 	}
 
-	if(winsizemulx > 100) winsizemulx = 100;
-	if(winsizemuly > 100) winsizemuly = 100;
+	/*
+	// is this really necessary?
+	if (winsizemulx > 100)
+		winsizemulx = 100;
+	if (winsizemuly > 100)
+		winsizemuly = 100;
+	*/
 }
 
 void UpdateFCEUWindow(void)
@@ -2448,7 +2511,7 @@ int CreateMainWindow()
 
 	memset(&winclass, 0, sizeof(winclass));
 	winclass.cbSize = sizeof(WNDCLASSEX);
-	winclass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW | CS_SAVEBITS | CS_DBLCLKS;
+	winclass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;	// AnS: removed CS_SAVEBITS
 	winclass.lpfnWndProc = AppWndProc;
 	winclass.cbClsExtra = 0;
 	winclass.cbWndExtra = 0;
@@ -2509,7 +2572,7 @@ void SetMainWindowStuff()
 
 	GetWindowRect(hAppWnd, &tmp);
 
-	if(ismaximized)
+	if (ismaximized)
 	{
 		winwidth = tmp.right - tmp.left;
 		winheight = tmp.bottom - tmp.top;
@@ -2551,11 +2614,12 @@ void SetMainWindowStuff()
 
 		ShowWindow(hAppWnd, SW_SHOWNORMAL);
 	}
+
 	if (eoptions & EO_BESTFIT && !windowedfailed)
 	{
 		RECT client_recr;
 		GetClientRect(hAppWnd, &client_recr);
-		RecreateResizableSurface(client_recr.right - client_recr.left, client_recr.bottom - client_recr.top);
+		recalculateBestFitRect(client_recr.right - client_recr.left, client_recr.bottom - client_recr.top);
 	}
 }
 
@@ -2608,7 +2672,7 @@ void FCEUD_AviRecordTo(void)
 	}
 	//else construct it from the ROM name.
 	else
-		tempFilename = GetRomName();
+		tempFilename = mass_replace(GetRomName(), "|", ".").c_str();
 	
 	aviFilename = aviDirectory + tempFilename;	//concate avi directory and movie filename
 				

@@ -41,6 +41,7 @@
 #include "cdlogger.h" //needed for TextHookerLoadTable
 #include "fceu.h"
 #include "main.h"
+#include "utils/xstring.h"
 
 char *textToTrans; // buffer to hold the text that needs translating
 char *transText; //holds the translated text
@@ -683,7 +684,7 @@ int TextHookerSaveTableFile(){
 
 	//init the "Save File" dialogue
 	const char filter[]="Table Files (*.THT)\0*.tht\0All Files (*.*)\0*.*\0\0";
-	char nameo[2048]; //todo: possibly no need for this? can lpstrfilter point to loadedcdfile instead?
+	char nameo[2048];
 	OPENFILENAME ofn;
 	//StopSound(); //mbg merge 6/30/08
 	memset(&ofn,0,sizeof(ofn));
@@ -691,7 +692,7 @@ int TextHookerSaveTableFile(){
 	ofn.hInstance=fceu_hInstance;
 	ofn.lpstrTitle="Load Table File...";
 	ofn.lpstrFilter=filter;
-	strcpy(nameo,GetRomName());
+	strcpy(nameo, mass_replace(GetRomName(), "|", ".").c_str());
 	ofn.lpstrFile=nameo;
 	ofn.lpstrDefExt="tht";
 	ofn.nMaxFile=256;

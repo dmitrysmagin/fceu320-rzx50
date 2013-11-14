@@ -1,17 +1,3 @@
-#include <gtk/gtk.h>
-#include <gdk/gdkkeysyms.h>
-#include <gdk/gdkx.h>
-
-#ifdef _GTK3
-#include <gdk/gdkkeysyms-compat.h>
-#endif
-
-#include <fstream>
-#include <iostream>
-#include <cstdlib>
-
-#include <SDL/SDL.h>
-
 #include "../../types.h"
 #include "../../fceu.h"
 #include "../../driver.h"
@@ -32,6 +18,18 @@
 #include "../../fceulua.h"
 #endif
 
+#include <gtk/gtk.h>
+#include <gdk/gdkkeysyms.h>
+#include <gdk/gdkx.h>
+
+#ifdef _GTK3
+#include <gdk/gdkkeysyms-compat.h>
+#endif
+
+#include <fstream>
+#include <iostream>
+#include <cstdlib>
+
 // Fix compliation errors for older version of GTK (Ubuntu 10.04 LTS)
 #if GTK_MINOR_VERSION < 24 && GTK_MAJOR_VERSION == 2
   #define GTK_COMBO_BOX_TEXT GTK_COMBO_BOX
@@ -51,6 +49,7 @@ GtkWidget* padNoCombo = NULL;
 GtkWidget* configNoCombo = NULL;
 GtkWidget* buttonMappings[10];
 GtkRadioAction* stateSlot = NULL;
+bool gtkIsStarted = false;
 
 // check to see if a particular GTK version is available
 // 2.24 is required for most of the dialogs -- ie: checkGTKVersion(2,24);
@@ -84,6 +83,9 @@ int configHotkey(char* hotkeyString)
 	SDL_Surface *screen;
 	SDL_Event event;
 	KillVideo();
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+	return 0; // TODO - SDL 2.0
+#else
 	screen = SDL_SetVideoMode(420, 200, 8, 0);
 	//SDL_WM_SetCaption("Press a key to bind...", 0);
 
@@ -104,6 +106,7 @@ int configHotkey(char* hotkeyString)
 	}	
 	
 	return 0;
+#endif
 }
 // This function configures a single button on a gamepad
 int configGamepadButton(GtkButton* button, gpointer p)
@@ -224,7 +227,7 @@ void loadPalette (GtkWidget* w, gpointer p)
 	fileChooser = gtk_file_chooser_dialog_new ("Open NES Palette", GTK_WINDOW(MainWindow),
 			GTK_FILE_CHOOSER_ACTION_OPEN, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
 			GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL);
-	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(fileChooser), getcwd(NULL, 0));
+	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(fileChooser), "/usr/share/fceux/palettes");
 
 	if (gtk_dialog_run (GTK_DIALOG (fileChooser)) ==GTK_RESPONSE_ACCEPT)
 	{
@@ -233,15 +236,7 @@ void loadPalette (GtkWidget* w, gpointer p)
 		filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (fileChooser));
 		g_config->setOption("SDL.Palette", filename);
 		g_config->setOption("SDL.SDL.NTSCpalette", 0);
-		if(LoadCPalette(filename) == 0)
-		{
-			GtkWidget* msgbox;
-			msgbox = gtk_message_dialog_new(GTK_WINDOW(MainWindow), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
-			"Failed to load the palette.");
-			
-			gtk_dialog_run(GTK_DIALOG(msgbox));
-			gtk_widget_hide(msgbox);
-		}
+		LoadCPalette(filename);
 		
 		gtk_entry_set_text(GTK_ENTRY(p), filename);
 		
@@ -515,9 +510,14 @@ void openHotkeyConfig()
         g_config->getOption(optionName, &keycode);
         gtk_tree_store_set(hotkey_store, &iter, 
                 COMMAND_COLUMN, optionName,
-                KEY_COLUMN, SDL_GetKeyName((SDLKey)keycode),
+                KEY_COLUMN,
+#if SDL_VERSION_ATLEAST(2, 0, 0)                                                    
+				SDL_GetKeyName(keycode),
+#else
+				SDL_GetKeyName((SDLKey)keycode),
+#endif
                 -1);
-        gtk_tree_store_append(hotkey_store, &iter, NULL); // acquire child     iterator
+        gtk_tree_store_append(hotkey_store, &iter, NULL); // acquire child iterator
     }                      
 
 	tree = gtk_tree_view_new_with_model(GTK_TREE_MODEL(hotkey_store));
@@ -600,8 +600,13 @@ void updateGamepadConfig(GtkWidget* w, gpointer p)
 		GtkWidget* mappedKey = buttonMappings[i];
 		if(GamePadConfig[padNo][i].ButtType[configNo] == BUTTC_KEYBOARD)
 		{
+#if SDL_VERSION_ATLEAST(2, 0, 0)                                                    
+			snprintf(strBuf, sizeof(strBuf), "<tt>%s</tt>", 
+					SDL_GetKeyName(GamePadConfig[padNo][i].ButtonNum[configNo]));
+#else
 			snprintf(strBuf, sizeof(strBuf), "<tt>%s</tt>", 
 					SDL_GetKeyName((SDLKey)GamePadConfig[padNo][i].ButtonNum[configNo]));
+#endif
 		}
 		else // FIXME: display joystick button/hat/axis names properly
 			strncpy(strBuf, "<tt>Joystick</tt>", sizeof(strBuf));
@@ -1299,6 +1304,7 @@ void quit ()
 	// this is not neccesary to be explicitly called
 	// it raises a GTK-Critical when its called
 	//gtk_main_quit();
+	FCEUI_CloseGame();
 	FCEUI_Kill();
 	// LoadGame() checks for an IP and if it finds one begins a network session
 	// clear the NetworkIP field so this doesn't happen unintentionally
@@ -1362,14 +1368,7 @@ void hardReset ()
 		closeGame();
 		const char* lastFile;
 		g_config->getOption("SDL.LastOpenFile", &lastFile);
-		if(LoadGame(lastFile) == 0)
-		{
-			GtkWidget* d;
-			d = gtk_message_dialog_new(GTK_WINDOW(MainWindow), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, 
-				"Error opening the ROM file.");
-			gtk_dialog_run(GTK_DIALOG(d));
-			gtk_widget_destroy(d);
-		}
+		LoadGame(lastFile);
 		resizeGtkWindow();
 	}
 }
@@ -1379,6 +1378,15 @@ void enableFullscreen ()
 	if(isloaded)
 		ToggleFS();
 }
+
+void toggleAutoResume (GtkToggleAction *action)
+{
+	bool autoResume = gtk_toggle_action_get_active(action);
+
+	g_config->setOption("SDL.AutoResume", (int)autoResume);
+	AutoResumePlay = autoResume;
+}
+
 void recordMovie()
 {
 	if(isloaded)
@@ -1514,6 +1522,9 @@ void loadLua ()
 	g_config->getOption("SDL.LastLoadLua", &last_file);
 	gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(fileChooser), last_file);
 	
+	if(strcmp(last_file, "") == 0)
+		gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(fileChooser), "/usr/share/fceux/luaScripts");
+	
 	if (gtk_dialog_run (GTK_DIALOG (fileChooser)) ==GTK_RESPONSE_ACCEPT)
 	{
 		char* filename;
@@ -1523,6 +1534,7 @@ void loadLua ()
 		gtk_widget_destroy(fileChooser);
 		if(FCEU_LoadLuaCode(filename) == 0)
 		{
+			// This is necessary because lua scripts do not use FCEUD_PrintError to print errors.
 			GtkWidget* d;
 			d = gtk_message_dialog_new(GTK_WINDOW(MainWindow), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, 
 				"Could not open the selected lua script.");
@@ -1547,7 +1559,7 @@ void loadFdsBios ()
 	
 	filterDiskSys = gtk_file_filter_new();
 	gtk_file_filter_add_pattern(filterDiskSys, "disksys.rom");
-	gtk_file_filter_set_name(filterDiskSys, "FDS BIOS");
+	gtk_file_filter_set_name(filterDiskSys, "disksys.rom");
 	
 	filterRom = gtk_file_filter_new();
 	gtk_file_filter_add_pattern(filterRom, "*.rom");
@@ -1571,22 +1583,24 @@ void loadFdsBios ()
 		char* filename;
 		filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (fileChooser));
 		// copy BIOS file to proper place (~/.fceux/disksys.rom)
-		std::ifstream f1 (filename,std::fstream::binary);
-		std::string fn_out = FCEU_MakeFName(FCEUMKF_FDSROM, 0, "");
-		std::ofstream f2 (fn_out.c_str(),std::fstream::trunc|std::fstream::binary);
-		gtk_widget_destroy (fileChooser);
-		GtkWidget* d;
-		d = gtk_message_dialog_new(GTK_WINDOW(MainWindow), GTK_DIALOG_MODAL, GTK_MESSAGE_INFO, GTK_BUTTONS_OK, 
+		std::ifstream fdsBios (filename,std::fstream::binary);
+		std::string output_filename = FCEU_MakeFName(FCEUMKF_FDSROM, 0, "");
+		std::ofstream outFile (output_filename.c_str(),std::fstream::trunc|std::fstream::binary);
+		outFile<<fdsBios.rdbuf();
+		if(outFile.fail())
+		{
+			FCEUD_PrintError("Error copying the FDS BIOS file.");
+		}
+		else
+		{	
+			GtkWidget* d;
+			d = gtk_message_dialog_new(GTK_WINDOW(MainWindow), GTK_DIALOG_MODAL, GTK_MESSAGE_INFO, GTK_BUTTONS_OK, 
 			"Famicom Disk System BIOS loaded.  If you are you having issues, make sure your BIOS file is 8KB in size.");
-		gtk_dialog_run(GTK_DIALOG(d));
-		gtk_widget_destroy(d);
-	
-		f2<<f1.rdbuf();
-		g_free(filename);
+			gtk_dialog_run(GTK_DIALOG(d));
+			gtk_widget_destroy(d);
+		}
 	}
-	else
-		gtk_widget_destroy (fileChooser);
-
+	gtk_widget_destroy (fileChooser);
 }
 
 // TODO: is there somewhere else we can move this?  works for now though
@@ -1720,7 +1734,9 @@ void loadNSF ()
 		
 		filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (fileChooser));
 		gtk_widget_destroy (fileChooser);
-		if(LoadGame(filename) == 0)
+		LoadGame(filename);
+		// no longer required with GTK FCEUD_PrintError implementation
+		/*if(LoadGame(filename) == 0)
 		{
 			
 			GtkWidget* d;
@@ -1728,7 +1744,7 @@ void loadNSF ()
 				"Could not open the selected NSF file.");
 			gtk_dialog_run(GTK_DIALOG(d));
 			gtk_widget_destroy(d);
-		}
+		}*/
 		g_config->setOption("SDL.LastOpenNSF", filename);
 		g_free(filename);
 	}
@@ -1811,7 +1827,9 @@ void loadGame ()
 		gtk_widget_destroy (fileChooser);
 		g_config->setOption("SDL.LastOpenFile", filename);
 		closeGame();
-		if(LoadGame(filename) == 0)
+		LoadGame(filename);
+		// Error dialog no longer required with GTK implementation of FCEUD_PrintError()
+		/*if(LoadGame(filename) == 0)
 		{
 			
 			GtkWidget* d;
@@ -1819,7 +1837,7 @@ void loadGame ()
 				"Could not open the selected ROM file.");
 			gtk_dialog_run(GTK_DIALOG(d));
 			gtk_widget_destroy(d);
-		}
+		}*/
 		resizeGtkWindow();
 		g_free(filename);
 	}
@@ -1928,8 +1946,28 @@ void changeState(GtkAction *action, GtkRadioAction *current, gpointer data)
 {
 	FCEUI_SelectState(gtk_radio_action_get_current_value(current), 0);
 }
-
-
+#if SDL_VERSION_ATLEAST(2, 0, 0)                                                    
+// SDL 1.2/2.0 compatibility macros
+#define SDLK_SCROLLOCK SDLK_SCROLLLOCK
+#define SDLK_PRINT SDLK_PRINTSCREEN
+#define SDLK_BREAK 0
+#define SDLK_COMPOSE 0
+#define SDLK_NUMLOCK SDLK_NUMLOCKCLEAR
+#define SDLK_KP0 SDLK_KP_0
+#define SDLK_KP1 SDLK_KP_1
+#define SDLK_KP2 SDLK_KP_2
+#define SDLK_KP3 SDLK_KP_3
+#define SDLK_KP4 SDLK_KP_4
+#define SDLK_KP5 SDLK_KP_5
+#define SDLK_KP6 SDLK_KP_6
+#define SDLK_KP7 SDLK_KP_7
+#define SDLK_KP8 SDLK_KP_8
+#define SDLK_KP9 SDLK_KP_9
+#define SDLK_LSUPER SDLK_LGUI
+#define SDLK_RSUPER SDLK_RGUI
+#define SDLK_LMETA 0
+#define SDLK_RMETA 0
+#endif
 // Adapted from Gens/GS.  Converts a GDK key value into an SDL key value.
 unsigned short GDKToSDLKeyval(int gdk_key)
 {
@@ -2077,9 +2115,12 @@ unsigned short GDKToSDLKeyval(int gdk_key)
 gint convertKeypress(GtkWidget *grab, GdkEventKey *event, gpointer user_data)
 {
 	SDL_Event sdlev;
-	SDLKey sdlkey;
 	int keystate;
-	
+#if SDL_VERSION_ATLEAST(2, 0, 0) 
+	SDL_Keycode sdlkey;
+#else
+	SDLKey sdlkey;
+#endif	
 	switch (event->type)
 	{
 		case GDK_KEY_PRESS:
@@ -2100,7 +2141,11 @@ gint convertKeypress(GtkWidget *grab, GdkEventKey *event, gpointer user_data)
 	}
 	
 	// Convert this keypress from GDK to SDL.
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+	sdlkey = GDKToSDLKeyval(event->keyval);
+#else
 	sdlkey = (SDLKey)GDKToSDLKeyval(event->keyval);
+#endif
 	
 	// Create an SDL event from the keypress.
 	sdlev.key.keysym.sym = sdlkey;
@@ -2111,8 +2156,10 @@ gint convertKeypress(GtkWidget *grab, GdkEventKey *event, gpointer user_data)
 		// Only let the emulator handle the key event if this window has the input focus.
 		if(keystate == 0 || gtk_window_is_active(GTK_WINDOW(MainWindow)))
 		{
-			#if SDL_VERSION_ATLEAST(1, 3, 0)
-			SDL_GetKeyboardState(NULL)[SDL_GetScancodeFromKey(sdlkey)] = keystate;
+			#if SDL_VERSION_ATLEAST(2, 0, 0)
+			// Not sure how to do this yet with SDL 2.0
+			// TODO - SDL 2.0
+			//SDL_GetKeyboardState(NULL)[SDL_GetScancodeFromKey(sdlkey)] = keystate;
 			#else
 			SDL_GetKeyState(NULL)[sdlkey] = keystate;
 			#endif
@@ -2165,6 +2212,7 @@ static char* menuXml =
 	"      <menuitem action='VideoConfigAction' />"
 	"      <menuitem action='PaletteConfigAction' />"
 	"      <menuitem action='NetworkConfigAction' />"
+	"      <menuitem action='AutoResumeAction' />"
 	"      <separator />"
 	"      <menuitem action='FullscreenAction' />"
 	"    </menu>"
@@ -2224,8 +2272,7 @@ static GtkActionEntry normal_entries[] = {
 	{"VideoConfigAction", "video-display", "_Video Config", NULL, NULL, G_CALLBACK(openVideoConfig)},
 	{"PaletteConfigAction", GTK_STOCK_SELECT_COLOR, "_Palette Config", NULL, NULL, G_CALLBACK(openPaletteConfig)},
 	{"NetworkConfigAction", GTK_STOCK_NETWORK, "_Network Config", NULL, NULL, G_CALLBACK(openNetworkConfig)},
-	{"FullscreenAction", GTK_STOCK_FULLSCREEN, "_Fullscreen", "<alt>Return", NULL, G_CALLBACK(enableFullscreen)},
-	
+	{"FullscreenAction", GTK_STOCK_FULLSCREEN, "_Fullscreen", "<alt>Return", NULL, G_CALLBACK(enableFullscreen)},	
 	{"EmulationMenuAction", NULL, "_Emulation"},
 	{"PowerAction", NULL, "P_ower", NULL, NULL, G_CALLBACK(FCEUI_PowerNES)},
 	{"SoftResetAction", GTK_STOCK_REFRESH, "_Soft Reset", NULL, NULL, G_CALLBACK(emuReset)},
@@ -2251,6 +2298,7 @@ static GtkActionEntry normal_entries[] = {
 // Menu items with a check box that can be toggled on or off
 static GtkToggleActionEntry toggle_entries[] = {
 	{"GameGenieToggleAction", NULL, "Enable Game _Genie", NULL, NULL, G_CALLBACK(toggleGameGenie), FALSE},
+	{"AutoResumeAction", NULL, "Auto-Resume Play", NULL, NULL, G_CALLBACK(toggleAutoResume), FALSE},
 };
 
 // Menu items for selecting a save state slot using radio buttons
@@ -2301,6 +2349,10 @@ static GtkWidget* CreateMenubar( GtkWidget* window)
 	state = gtk_action_group_get_action (action_group, "State0Action");
 	if (state && GTK_IS_RADIO_ACTION (state))
 		stateSlot = GTK_RADIO_ACTION (state);
+
+	/* Set the autoResume checkbox */
+	GtkCheckMenuItem* auto_resume_chk = (GtkCheckMenuItem*) gtk_ui_manager_get_widget ( ui_manager, "/Menubar/OptionsMenuAction/AutoResumeAction");
+	gtk_check_menu_item_set_active (auto_resume_chk, (bool)AutoResumePlay);
     
 	/* Finally, return the actual menu bar created by the UIManager. */
 	return gtk_ui_manager_get_widget (ui_manager, "/Menubar");
@@ -2428,8 +2480,7 @@ int InitGTKSubsystem(int argc, char** argv)
 	Menubar = CreateMenubar(MainWindow);
 	// turn of game genie by default, since its off by default in the menu
 	enableGameGenie(0); 
-		
-	
+
 	gtk_box_pack_start (GTK_BOX(vbox), Menubar, FALSE, TRUE, 0);
 		
 	// PRG: this code here is the the windowID "hack" to render SDL
@@ -2477,6 +2528,7 @@ int InitGTKSubsystem(int argc, char** argv)
 	GtkRequisition req;
 	gtk_widget_size_request(GTK_WIDGET(MainWindow), &req);
 	gtk_window_resize(GTK_WINDOW(MainWindow), req.width, req.height);
+	gtkIsStarted = true;
 	 
 	return 0;
 }

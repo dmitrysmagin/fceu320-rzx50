@@ -1,3 +1,120 @@
+
+23-Sep-2013 - AnS - Tracer: do not clear window log when stopping the logging
+22-Sep-2013 - AnS - Tracer: the dialog window can be resized
+21-Sep-2013 - AnS - Debugger: newly created Bookmarks inherit existing symbolic name by default
+20-Sep-2013 - AnS - Debugger, Tracer: clicking on Symbolic names works as well as clicking on addresses
+17-Sep-2013 - zeromus - fixed "Single Instance Mode"
+16-Sep-2013 - AnS - PPU Viewer: added "Mask unused graphics" and "Invert the mask" checkboxes; fixed window layout when using big fonts
+15-Sep-2013 - feos - Lua: added tobitstring(), memory.readword(int address1 [, int address2]), memory.readwordsigned(int address1 [, int address2]) functions
+15-Sep-2013 - CaH4e3 - mapper 002 - workaround for "Top Gun" issue #621, needs testing if this broke something else; mapper 012 - added hardware dip for language select; UNIF PEC-586 - fixed render finally, added 512K cartridges suppport, TODO: PEC keyboard
+13-Sep-2013 - AnS - debuggerFontSize and hexeditorFontSize can be specified in fceux.cfg
+13-Sep-2013 - AnS - Debugger: "Symbolic Debug" state is now saved in global fceux.cfg instead of different .deb files
+12-Sep-2013 - AnS - Tracer: added mouse wheel support
+12-Sep-2013 - AnS - Tracer: clicking any address select the address; double-clicking any address brings Debugger at the address
+12-Sep-2013 - AnS - Tracer: added Symbolic Debug naming by right-clicking any address
+10-Sep-2013 - feos - Hexeditor: Symbolic Debug naming by right-clicking address
+10-Sep-2013 - AnS - Debugger: added Symbolic Debug naming by right-clicking any address
+05-Sep-2013 - AnS - Debugger: fixed Cycles counter reset when loading an earlier savestate
+15-Aug-2013 - CaH4e3 - fixed bandai mapper emulation
+04-Aug-2013 - AnS - Hexeditor: added "Highlighting" submenu and "Highlight Activity" feature
+04-Aug-2013 - AnS - Taseditor: an experiment with somewhat different colors for HotChanges
+04-Aug-2013 - AnS - Auto-disable "Game Genie ROM" feature when no "gg.rom" file is found
+16-Jul-2013 - AnS - Debugger: highlight PC pointer line when a breakpoint is hit
+05-Jul-2013 - AnS - RAM Search: added "Hex Editor" button and right-click
+04-Jul-2013 - AnS - Debugger: added CDL data column in place of left panel. It helps to distinguish executed branches of code from not logged code
+04-Jul-2013 - AnS - Debugger: clever autoscrolling when stepping/seeking to PC. It maintains relative position of the ">" pointer inside the Disassembly window
+03-Jul-2013 - AnS - RAM Watch: fixed epic bug when contents of old .wch file mixed with the newly saved data because of "r+b" mode (changed it to "w+b")
+03-Jul-2013 - AnS - Taseditor: Greenzone: always keep Greenzone.lagLog in touch with history.currentSnapshot.laglog (fixes workflow with "Auto-adjust" disabled)
+03-Jul-2013 - AnS - Tracer: only output "from $XXXX" when the subroutine was called by JSR (fixes possible errors in those cases when the subroutine was called using stack magic)
+03-Jul-2013 - AnS - Debugger: do not reload ram.nl every time automatically
+21-Jun-2013 - CaH4e3 - PPU Viewer: when CDLogger is on, display unused graphics in a dim palette
+15-Jun-2013 - AnS - Movie recording: fixed bug when emulator allowed recording commands outside the range of FM2 specs
+15-Jun-2013 - AnS - Movie recording: added ability to record "Insert coin" command (for VS games)
+15-Jun-2013 - AnS - Movie recording: remember last Author name when creating a new movie
+08-Jun-2013 - AnS - A couple of fixes which deal with "multiple ROMs in a single archive" case. The loading procedure now takes into account actual ROM name when loading ROM from an archive containing multiple files. This affects PAL/NTSC detection (in case there were ROMs of different regions inside a single zip). Also, "auto-resume play" now loads actual ROM on startup (instead of prompting a list of archived files to choose). Also, NL files (symbolic debug) are named correctly when debugging a ROM from such an archive, etc.
+08-Jun-2013 - AnS - Hexeditor: fixed bugs when saving files while working with ROMs in archives
+27-May-2013 - AnS - Hexeditor: specify Data bank condition when adding a Breakpoint by context menu
+26-May-2013 - AnS - Debugger: added 'T' condition (checks the bank of the data accessed)
+26-May-2013 - AnS - Win32: fixed storing and loading .deb files when working with archived ROMs
+26-May-2013 - AnS - new Lua functions: debugger.hitbreakpoint(), debugger.getcyclescount(), debugger.getinstructionscount(), debugger.resetcyclescount(), debugger.resetinstructionscount()
+26-May-2013 - AnS - Win32: when no script is currently running, Shift+L loads the most recent Lua script
+26-May-2013 - CaH4e3 - fixed mapper 183
+14-May-2013 - CaH4e3 - fixed mapper 253
+13-May-2013 - CaH4e3 - mapper 43
+09-May-2013 - AnS - Video config: changed "Disable hardware acceleration" option to a drop-down list with 3 options: a) No hardware acceleration; b) Create surface in RAM; c) Hardware acceleration. Because it appears that some video cards still blur textures even when stored in RAM.
+29-Apr-2013 - AnS - added checking if archive file has any files in it, because new 7z.dll confuses FDS files with archives (it recognizes the first "F" as a signature of an archive)
+19-Apr-2013 - AnS - Video config: added "Square pixels" option
+19-Apr-2013 - AnS - Video config: added aspect ratio fields for customizing "TV Aspect" ratio, by default it's 4:3
+17-Apr-2013 - AnS - "Auto-resume old play session" now also works with NSFs
+17-Apr-2013 - zeromus - properly savestate NSF
+17-Apr-2013 - zeromus - add missing mmc5 savestate variables
+16-Apr-2013 - AnS - Tracer: added "Log Cycles count" and "Log Instructions count" options
+13-Apr-2013 - AnS - Debugger: scrolling up/down by whole instructions
+12-Apr-2013 - gocha - Lua: fix wrong frequency calculation in sound.get()
+07-Apr-2013 - AnS - Taseditor: comply with Lua movie.rerecordcounting() setting
+01-Apr-2013 - CaH4e3 - mapper 154 - fixed
+26-Mar-2013 - CaH4e3 - mapper 53 - supported ines format of SUPERVISION UNIF board; UNIF 8157 - fix according to hw; UNIF T-262 - fix according to hw
+24-Mar-2013 - CaH4e3 - UNIF DANCE2000 - now emulated properly
+20-Mar-2013 - gocha - link to lua51.dll instead of static linking
+19-Mar-2013 - zeromus - bring some improvements to newppu from bizhawk, and fix vtoggle5/6 back to vtoggle
+19-Mar-2013 - zeromus - fix mapper 28
+17-Mar-2013 - AnS - Replay: removed redundant window update when using "Browse" (fixes #585)
+17-Mar-2013 - CaH4e3 - UNIF DSOUNDV1 - removed due to duplicate of 178 mapper; mapper 178 - added more features of 8/16M carts with 32K SRAM; UNIF 09-034A - added support for a new SMB2j Lite version
+14-Mar-2013 - AnS - Debugger: ported "smart scrolling" from an obscure version of FCEUXD 1.1
+14-Mar-2013 - CaH4e3 - palette ram reading fix for old ppu
+
+---r2869 - FCEUX 2.2.1 Released---
+---March 10 2013---
+
+10-Mar-2013 - prg - SDL: added option to use system minizip
+10-Mar-2013 - prg - updated to use minizip v1.2.7
+10-Mar-2013 - CaH4e3 - CDLogger: improved CHR logging, now it also logs the data when using Old PPU
+02-Mar-2013 - AnS - Hexeditor: fixed ROM coloring when using CDLogger data
+28-Feb-2013 - AnS - PPU/PAL/Input type changing is now disabled when a movie is playing
+28-Feb-2013 - AnS - Cheats: update the window when ROM is changed
+28-Feb-2013 - AnS - show the number of active cheats when a ROM is loaded
+27-Feb-2013 - CaH4e3 - CDLogger: added "Auto-load .CDL when opening the window" option
+27-Feb-2013 - CaH4e3 - MMC5 refixed
+24-Feb-2013 - AnS - CDLogger: added "Auto-save .CDL when closing ROMs" and "Auto-resume logging when loading ROMs" options
+23-Feb-2013 - AnS - Hexeditor: show symbolic names in the window caption
+18-Feb-2013 - CaH4e3 - various mapper improvements; UNIF MALISB - Mali Splash Bomb dump; mapper 19 - Dream Master mirror fix
+18-Feb-2013 - CaH4e3 - fixed mapper 69 low quality sound issue
+11-Feb-2013 - AnS - fixed possible crash when saving the ROM in Hex Editor
+11-Feb-2013 - AnS - Moved "Config->Game Genie" to "Config->Enable->Game Genie ROM"
+03-Feb-2013 - AnS - win32: speed up screen blitting
+02-Feb-2013 - AnS - Added "TV Aspect (4:3)" to Video Config
+21-Jan-2013 - AnS - Taseditor: fixed Bookmarks List height on Windows 7
+21-Jan-2013 - AnS - Taseditor: fixed bug with adding new item to History Log
+20-Jan-2013 - AnS - Taseditor: changed the logic by which the Piano Roll follows Playback cursor, now it doesn't follow it while seeking
+15-Jan-2013 - AnS - Lua: removed "shadow pixels" from gui.text(), made gui.parsecolor() function available for users
+10-Jan-2013 - AnS - Taseditor: Config->Project file saving options
+01-Jan-2013 - zeromus - NameTableViewer: do something reasonable if a 4-screen, table2, table3 mirror mode is chosen when the corresponding nametable ram is not available on the cart (instead of crashing)
+31-Dec-2012 - CaH4e3 - fixed mappers 24, 26, 115
+29-Dec-2012 - AnS - Taseditor: Changed "Compact save" dialog, added 4 options of Greenzone saving
+29-Dec-2012 - AnS - Cheats: added "Add from CHT file..." button
+29-Dec-2012 - AnS - win32: force the entire client area to be invalidated at the beginning of WM_PAINT; this fixes the rare bug with DIRECTDRAWCLIPPER sometimes calculating wrong region (was noticed on some video cards)
+27-Dec-2012 - AnS - Play movie dialog shows New PPU in red if the required setting does not match
+27-Dec-2012 - thezlomus - RAM Search: added "Search ROM" checkbox
+19-Dec-2012 - AnS - win32: remodel "Video config" dialog
+19-Dec-2012 - AnS - win32: fixed restoring maximized window after switching from fullscreen
+18-Dec-2012 - CaH4e3 - fixed mapper 018 and 198
+15-Dec-2012 - AnS - win32: added Config->Enable->Auto-resume old play session
+13-Dec-2012 - AnS - win32: added Emulation Speed->Set custom speed for FrameAdvance
+13-Dec-2012 - AnS - win32: added NES->Emulation Speed->Set FrameAdvance Delay
+13-Dec-2012 - AnS - win32: added NES->Emulation Speed->Set Custom Speed
+12-Dec-2012 - CaH4e3 - finish with mapper to boards conversion
+07-Dec-2012 - CaH4e3 - Tracer: fixed RAM-located code logging when CDLogger options are enabled
+05-Dec-2012 - AnS - fixed zapper and mouse positioning in fullscreen
+04-Dec-2012 - AnS - speed up HUD text drawing
+04-Dec-2012 - AnS - Taseditor: speed up consecutive Recordings (when combining)
+03-Dec-2012 - AnS - Taseditor: fixed accelerators when editing Notes
+03-Dec-2012 - AnS - fixed "X" button in the "Enter New Input" dialog (Hotkey Mapping); changed "Cancel" button to "OK"
+03-Dec-2012 - CaH4e3 - fixed mapper 99
+29-Nov-2012 - zeromus - fix "you ling xing dong" by assigning to mapper 192
+
+---r2768 - FCEUX 2.2.0 Released---
+---November 27 2012---
+
 24-Nov-2012 - AnS - when the New PPU is on, it displays "(NewPPU)" in the window caption
 20-Nov-2012 - AnS - Taseditor: added "Ungreenzone" item to context menu; added "Config->Enable Greenzoning"
 13-Nov-2012 - AnS - Taseditor: changed fm3 format to version 3

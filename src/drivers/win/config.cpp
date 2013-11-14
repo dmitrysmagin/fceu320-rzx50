@@ -46,6 +46,7 @@ extern CFGSTRUCT NetplayConfig[];
 extern CFGSTRUCT InputConfig[];
 extern CFGSTRUCT HotkeyConfig[];
 extern int autoHoldKey, autoHoldClearKey;
+extern int frameAdvance_Delay;
 extern int EnableAutosave, AutosaveQty, AutosaveFrequency;
 extern int AFon, AFoff, AutoFireOffset;
 extern int DesynchAutoFire;
@@ -71,11 +72,14 @@ extern bool Show_FPS;
 extern bool oldInputDisplay;
 extern bool fullSaveStateLoads;
 extern int frameSkipAmt;
+extern int32 fps_scale_frameadvance;
+extern bool symbDebugEnabled;
 
-extern TASEDITOR_CONFIG taseditor_config;
-extern char* recent_projects[];
-// Hacky fix for taseditor_config.last_author
-char* taseditor_config_last_author;
+extern TASEDITOR_CONFIG taseditorConfig;
+extern char* recentProjectsArray[];
+// Hacky fix for taseditor_config.last_author and rom_name_when_closing_emulator
+char* taseditorConfigLastAuthorName;
+char* ResumeROM;
 
 //window positions and sizes:
 extern int ChtPosX,ChtPosY;
@@ -83,16 +87,25 @@ extern int DbgPosX,DbgPosY;
 extern int DbgSizeX,DbgSizeY;
 extern int MemViewSizeX,MemViewSizeY;
 extern int MemView_wndx, MemView_wndy;
+extern bool MemView_HighlightActivity;
+extern unsigned int MemView_HighlightActivity_FadingPeriod;
+extern bool MemView_HighlightActivity_FadeWhenPaused;
 extern int MemFind_wndx, MemFind_wndy;
 extern int NTViewPosX,NTViewPosY;
-extern int PPUViewPosX,PPUViewPosY;
+extern int PPUViewPosX, PPUViewPosY;
+extern bool PPUView_maskUnusedGraphics;
+extern bool PPUView_invertTheMask;
 extern int MainWindow_wndx, MainWindow_wndy;
 extern int MemWatch_wndx, MemWatch_wndy;
 extern int Monitor_wndx, Monitor_wndy;
 extern int logging_options;
 extern int log_lines_option;
 extern int Tracer_wndx, Tracer_wndy;
+extern int Tracer_wndWidth, Tracer_wndHeight;
 extern int CDLogger_wndx, CDLogger_wndy;
+extern bool autoresumeCDLogging;
+extern bool autosaveCDL;
+extern bool autoloadCDL;
 extern int GGConv_wndx, GGConv_wndy;
 extern int MetaPosX,MetaPosY;
 extern int MLogPosX,MLogPosY;
@@ -115,8 +128,8 @@ extern int RomFreezeColorB;
 char* ramWatchRecent[] = {0, 0, 0, 0, 0};
 
 //Structure that contains configuration information
-static CFGSTRUCT fceuconfig[] = {
-
+static CFGSTRUCT fceuconfig[] =
+{
 	ACS(recent_files[0]),
 	ACS(recent_files[1]),
 	ACS(recent_files[2]),
@@ -152,16 +165,19 @@ static CFGSTRUCT fceuconfig[] = {
 	ACS(ramWatchRecent[3]),
 	ACS(ramWatchRecent[4]),
 
-	ACS(recent_projects[0]),
-	ACS(recent_projects[1]),
-	ACS(recent_projects[2]),
-	ACS(recent_projects[3]),
-	ACS(recent_projects[4]),
-	ACS(recent_projects[5]),
-	ACS(recent_projects[6]),
-	ACS(recent_projects[7]),
-	ACS(recent_projects[8]),
-	ACS(recent_projects[9]),
+	ACS(recentProjectsArray[0]),
+	ACS(recentProjectsArray[1]),
+	ACS(recentProjectsArray[2]),
+	ACS(recentProjectsArray[3]),
+	ACS(recentProjectsArray[4]),
+	ACS(recentProjectsArray[5]),
+	ACS(recentProjectsArray[6]),
+	ACS(recentProjectsArray[7]),
+	ACS(recentProjectsArray[8]),
+	ACS(recentProjectsArray[9]),
+
+	AC(AutoResumePlay),
+	ACS(ResumeROM),
 
 	AC(gNoBGFillColor),
 	AC(ntsccol),AC(ntsctint),AC(ntschue),
@@ -174,7 +190,7 @@ static CFGSTRUCT fceuconfig[] = {
 	NAC("sound",soundo),
 	NAC("sicon",status_icon),
 
-    AC(newppu),
+	AC(newppu),
 
 	NACS("odroms",directory_names[0]),
 	NACS("odnonvol",directory_names[1]),
@@ -194,8 +210,8 @@ static CFGSTRUCT fceuconfig[] = {
 	AC(NTSCwinspecial),
 	AC(winsizemulx),
 	AC(winsizemuly),
-	NAC("saspectw987",saspectw),
-	NAC("saspecth987",saspecth),
+	AC(tvAspectX),
+	AC(tvAspectY),
 
 	AC(soundrate),
 	AC(soundbuftime),
@@ -228,7 +244,8 @@ static CFGSTRUCT fceuconfig[] = {
 	NAC("srendlinep",srendlinep),
 	NAC("erendlinep",erendlinep),
 
-	AC(disvaccel),
+	AC(directDrawModeWindowed),
+	AC(directDrawModeFullscreen),
 	AC(winsync),
 	NAC("988fssync",fssync),
 
@@ -251,16 +268,21 @@ static CFGSTRUCT fceuconfig[] = {
 	AC(MemWatchLoadFileOnStart),
 	AC(MemWCollapsed),
 	AC(BindToMain),
+	AC(frameAdvance_Delay),
 	AC(EnableAutosave),
 	AC(AutosaveQty),
 	AC(AutosaveFrequency),
 	AC(frameAdvanceLagSkip),
 	AC(debuggerAutoload),
 	AC(allowUDLR),
+	AC(symbDebugEnabled),
 	AC(debuggerSaveLoadDEBFiles),
 	AC(debuggerDisplayROMoffsets),
+	AC(debuggerFontSize),
+	AC(hexeditorFontSize),
 	AC(fullSaveStateLoads),
 	AC(frameSkipAmt),
+	AC(fps_scale_frameadvance),
 
 	//window positions
 	AC(ChtPosX),
@@ -273,12 +295,17 @@ static CFGSTRUCT fceuconfig[] = {
 	AC(MemViewSizeY),
 	AC(MemView_wndx),
 	AC(MemView_wndy),
+	AC(MemView_HighlightActivity),
+	AC(MemView_HighlightActivity_FadingPeriod),
+	AC(MemView_HighlightActivity_FadeWhenPaused),
 	AC(MemFind_wndx), 
 	AC(MemFind_wndy),
 	AC(NTViewPosX),
 	AC(NTViewPosY),
 	AC(PPUViewPosX),
 	AC(PPUViewPosY),
+	AC(PPUView_maskUnusedGraphics),
+	AC(PPUView_invertTheMask),
 	AC(MainWindow_wndx),
 	AC(MainWindow_wndy),
 	AC(MemWatch_wndx),
@@ -289,8 +316,13 @@ static CFGSTRUCT fceuconfig[] = {
 	AC(log_lines_option),
 	AC(Tracer_wndx),
 	AC(Tracer_wndy),
+	AC(Tracer_wndWidth),
+	AC(Tracer_wndHeight),
 	AC(CDLogger_wndx),
 	AC(CDLogger_wndy),
+	AC(autosaveCDL),
+	AC(autoloadCDL),
+	AC(autoresumeCDLogging),
 	AC(GGConv_wndx),
 	AC(GGConv_wndy),
 	AC(TextHookerPosX),
@@ -307,60 +339,68 @@ static CFGSTRUCT fceuconfig[] = {
 	AC(AFoff),
 	AC(AutoFireOffset),
 	AC(DesynchAutoFire),
-	AC(taseditor_config.wndx),
-	AC(taseditor_config.wndy),
-	AC(taseditor_config.wndwidth),
-	AC(taseditor_config.wndheight),
-	AC(taseditor_config.saved_wndx),
-	AC(taseditor_config.saved_wndy),
-	AC(taseditor_config.saved_wndwidth),
-	AC(taseditor_config.saved_wndheight),
-	AC(taseditor_config.wndmaximized),
-	AC(taseditor_config.findnote_wndx),
-	AC(taseditor_config.findnote_wndy),
-	AC(taseditor_config.follow_playback),
-	AC(taseditor_config.turbo_seek),
-	AC(taseditor_config.show_branch_screenshots),
-	AC(taseditor_config.show_branch_descr),
-	AC(taseditor_config.bind_markers),
-	AC(taseditor_config.empty_marker_notes),
-	AC(taseditor_config.combine_consecutive),
-	AC(taseditor_config.use_1p_rec),
-	AC(taseditor_config.columnset_by_keys),
-	AC(taseditor_config.branch_full_movie),
-	AC(taseditor_config.old_branching_controls),
-	AC(taseditor_config.view_branches_tree),
-	AC(taseditor_config.branch_scr_hud),
-	AC(taseditor_config.restore_position),
-	AC(taseditor_config.adjust_input_due_to_lag),
-	AC(taseditor_config.superimpose),
-	AC(taseditor_config.enable_auto_function),
-	AC(taseditor_config.enable_hot_changes),
-	AC(taseditor_config.greenzone_capacity),
-	AC(taseditor_config.undo_levels),
-	AC(taseditor_config.autosave_period),
-	AC(taseditor_config.jump_to_undo),
-	AC(taseditor_config.follow_note_context),
-	AC(taseditor_config.last_export_type),
-	AC(taseditor_config.last_export_subtitles),
-	AC(taseditor_config.savecompact_binary),
-	AC(taseditor_config.savecompact_markers),
-	AC(taseditor_config.savecompact_bookmarks),
-	AC(taseditor_config.savecompact_greenzone),
-	AC(taseditor_config.savecompact_history),
-	AC(taseditor_config.savecompact_piano_roll),
-	AC(taseditor_config.savecompact_selection),
-	AC(taseditor_config.findnote_matchcase),
-	AC(taseditor_config.findnote_search_up),
-	AC(taseditor_config.draw_input),
-	AC(taseditor_config.enable_greenzoning),
-	AC(taseditor_config.silent_autosave),
-	AC(taseditor_config.autopause_at_finish),
-	AC(taseditor_config.tooltips),
-	AC(taseditor_config.current_pattern),
-	AC(taseditor_config.pattern_skips_lag),
-	AC(taseditor_config.pattern_recording),
-	ACS(taseditor_config_last_author),
+	AC(taseditorConfig.windowX),
+	AC(taseditorConfig.windowY),
+	AC(taseditorConfig.windowWidth),
+	AC(taseditorConfig.windowHeight),
+	AC(taseditorConfig.savedWindowX),
+	AC(taseditorConfig.savedWindowY),
+	AC(taseditorConfig.savedWindowWidth),
+	AC(taseditorConfig.savedWindowHeight),
+	AC(taseditorConfig.windowIsMaximized),
+	AC(taseditorConfig.findnoteWindowX),
+	AC(taseditorConfig.findnoteWindowY),
+	AC(taseditorConfig.findnoteMatchCase),
+	AC(taseditorConfig.findnoteSearchUp),
+	AC(taseditorConfig.followPlaybackCursor),
+	AC(taseditorConfig.turboSeek),
+	AC(taseditorConfig.autoRestoreLastPlaybackPosition),
+	AC(taseditorConfig.superimpose),
+	AC(taseditorConfig.recordingUsePattern),
+	AC(taseditorConfig.enableLuaAutoFunction),
+	AC(taseditorConfig.displayBranchesTree),
+	AC(taseditorConfig.displayBranchScreenshots),
+	AC(taseditorConfig.displayBranchDescriptions),
+	AC(taseditorConfig.enableHotChanges),
+	AC(taseditorConfig.followUndoContext),
+	AC(taseditorConfig.followMarkerNoteContext),
+	AC(taseditorConfig.greenzoneCapacity),
+	AC(taseditorConfig.maxUndoLevels),
+	AC(taseditorConfig.enableGreenzoning),
+	AC(taseditorConfig.autofirePatternSkipsLag),
+	AC(taseditorConfig.autoAdjustInputAccordingToLag),
+	AC(taseditorConfig.drawInputByDragging),
+	AC(taseditorConfig.combineConsecutiveRecordingsAndDraws),
+	AC(taseditorConfig.use1PKeysForAllSingleRecordings),
+	AC(taseditorConfig.useInputKeysForColumnSet),
+	AC(taseditorConfig.bindMarkersToInput),
+	AC(taseditorConfig.emptyNewMarkerNotes),
+	AC(taseditorConfig.oldControlSchemeForBranching),
+	AC(taseditorConfig.branchesRestoreEntireMovie),
+	AC(taseditorConfig.HUDInBranchScreenshots),
+	AC(taseditorConfig.autopauseAtTheEndOfMovie),
+	AC(taseditorConfig.lastExportedInputType),
+	AC(taseditorConfig.lastExportedSubtitlesStatus),
+	AC(taseditorConfig.projectSavingOptions_SaveInBinary),
+	AC(taseditorConfig.projectSavingOptions_SaveMarkers),
+	AC(taseditorConfig.projectSavingOptions_SaveBookmarks),
+	AC(taseditorConfig.projectSavingOptions_SaveHistory),
+	AC(taseditorConfig.projectSavingOptions_SavePianoRoll),
+	AC(taseditorConfig.projectSavingOptions_SaveSelection),
+	AC(taseditorConfig.projectSavingOptions_GreenzoneSavingMode),
+	AC(taseditorConfig.saveCompact_SaveInBinary),
+	AC(taseditorConfig.saveCompact_SaveMarkers),
+	AC(taseditorConfig.saveCompact_SaveBookmarks),
+	AC(taseditorConfig.saveCompact_SaveHistory),
+	AC(taseditorConfig.saveCompact_SavePianoRoll),
+	AC(taseditorConfig.saveCompact_SaveSelection),
+	AC(taseditorConfig.saveCompact_GreenzoneSavingMode),
+	AC(taseditorConfig.autosaveEnabled),
+	AC(taseditorConfig.autosavePeriod),
+	AC(taseditorConfig.autosaveSilent),
+	AC(taseditorConfig.tooltipsEnabled),
+	AC(taseditorConfig.currentPattern),
+	ACS(taseditorConfigLastAuthorName),
 	AC(lagCounterDisplay),
 	AC(oldInputDisplay),
 	AC(movieSubtitles),
@@ -412,8 +452,9 @@ void SaveConfig(const char *filename)
 	{
 		ramWatchRecent[x] = rw_recent_files[x];
 	}
-	// Hacky fix for taseditor_config.last_author
-	taseditor_config_last_author = taseditor_config.last_author;
+	// Hacky fix for taseditor_config.last_author and rom_name_when_closing_emulator
+	taseditorConfigLastAuthorName = taseditorConfig.lastAuthorName;
+	ResumeROM = romNameWhenClosingEmulator;
 	//-----------------------------------
 
 	SaveFCEUConfig(filename,fceuconfig);
@@ -441,11 +482,22 @@ void LoadConfig(const char *filename)
 			rw_recent_files[x][0] = 0;
 		}
 	}
-	// Hacky fix for taseditor_config.last_author
-	if (taseditor_config_last_author)
-		strncpy(taseditor_config.last_author, taseditor_config_last_author, AUTHOR_MAX_LEN-1);
+
+	// Hacky fix for taseditor_config.last_author and rom_name_when_closing_emulator
+	if (taseditorConfigLastAuthorName)
+	{
+		strncpy(taseditorConfig.lastAuthorName, taseditorConfigLastAuthorName, AUTHOR_NAME_MAX_LEN - 1);
+		taseditorConfig.lastAuthorName[AUTHOR_NAME_MAX_LEN - 1] = 0;
+	} else
+	{
+		taseditorConfig.lastAuthorName[0] = 0;
+	}
+
+	if (ResumeROM)
+		strcpy(romNameWhenClosingEmulator, ResumeROM);
 	else
-		taseditor_config.last_author[0] = 0;
+		romNameWhenClosingEmulator[0] = 0;
+
 	//-----------------------------------
 }
 

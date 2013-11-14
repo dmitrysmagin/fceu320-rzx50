@@ -1,14 +1,3 @@
-#include <unistd.h>
-#include <sys/types.h>
-#include <signal.h>
-#include <sys/time.h>
-#include <sys/stat.h>
-#include <string.h>
-#include <strings.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-
 #include "main.h"
 #include "throttle.h"
 #include "config.h"
@@ -26,6 +15,17 @@
 #include <windows.h>
 #endif
 
+#include <unistd.h>
+
+#include <csignal>
+#include <cstring>
+#include <cerrno>
+#include <cstdio>
+#include <cstdlib>
+#include <sys/time.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
 /**
  * Read a custom pallete from a file and load it into the core.
  */
@@ -36,12 +36,18 @@ LoadCPalette(const std::string &file)
 	FILE *fp;
 
 	if(!(fp = FCEUD_UTF8fopen(file.c_str(), "rb"))) {
-		printf(" Error loading custom palette from file: %s\n", file.c_str());
+		char errorMsg[256];
+		strcpy(errorMsg, "Error loading custom palette from file: ");
+		strcat(errorMsg, file.c_str());
+		FCEUD_PrintError(errorMsg);
 		return 0;
 	}
 	size_t result = fread(tmpp, 1, 192, fp);
 	if(result != 192) {
-		printf(" Error reading custom palette from file: %s\n", file.c_str());
+		char errorMsg[256];
+		strcpy(errorMsg, "Error loading custom palette from file: ");
+		strcat(errorMsg, file.c_str());
+		FCEUD_PrintError(errorMsg);
 		return 0;
 	}
 	FCEUI_SetPaletteArray(tmpp);
@@ -150,20 +156,14 @@ InitConfig()
 	config->addOption("slstart", "SDL.ScanLineStart", 0);
 	config->addOption("slend", "SDL.ScanLineEnd", 239);
 
-	const SDL_VideoInfo* vid_info = SDL_GetVideoInfo();
 	// video controls
 	config->addOption('f', "fullscreen", "SDL.Fullscreen", 0);
-	// if we can detect the screen resolultion, use that for the default fullscreen res
-	if(vid_info != NULL)
-	{
-		config->addOption('x', "xres", "SDL.XResolution", vid_info->current_w);
-		config->addOption('y', "yres", "SDL.YResolution", vid_info->current_h);
-	}
-	else
-	{
-		config->addOption('x', "xres", "SDL.XResolution", 512);
-		config->addOption('y', "yres", "SDL.YResolution", 448);
-	}
+
+	// set x/y res to 0 for automatic fullscreen resolution detection (no change)
+	config->addOption('x', "xres", "SDL.XResolution", 0);
+	config->addOption('y', "yres", "SDL.YResolution", 0);
+	config->addOption("SDL.LastXRes", 0);
+	config->addOption("SDL.LastYRes", 0);
 	config->addOption('b', "bpp", "SDL.BitsPerPixel", 32);
 	config->addOption("doublebuf", "SDL.DoubleBuffering", 0);
 	config->addOption("autoscale", "SDL.AutoScale", 1);
@@ -214,6 +214,8 @@ InitConfig()
     
 	// overwrite the config file?
 	config->addOption("no-config", "SDL.NoConfig", 0);
+
+	config->addOption("autoresume", "SDL.AutoResume", 0);
     
 	// video playback
 	config->addOption("playmov", "SDL.Movie", "");
@@ -233,7 +235,13 @@ InitConfig()
 	config->addOption("mute", "SDL.MuteCapture", 0);
     #endif
     
-    
+    // auto load/save on gameload/close
+	config->addOption("loadstate", "SDL.AutoLoadState", INVALID_STATE);
+	config->addOption("savestate", "SDL.AutoSaveState", INVALID_STATE);
+
+    //TODO implement this
+    config->addOption("periodicsaves", "SDL.PeriodicSaves", 0);
+
     
     #ifdef _GTK
 	char* home_dir = getenv("HOME");
@@ -253,7 +261,9 @@ InitConfig()
 	
 	// enable new PPU core
 	config->addOption("newppu", "SDL.NewPPU", 0);
-	
+
+    // quit when a+b+select+start is pressed
+    config->addOption("4buttonexit", "SDL.ABStartSelectExit", 0);
 
 	// GamePad 0 - 3
 	for(unsigned int i = 0; i < GAMEPAD_NUM_DEVICES; i++) {

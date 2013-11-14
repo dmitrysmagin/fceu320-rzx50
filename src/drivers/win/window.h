@@ -13,7 +13,7 @@ struct CreateMovieParameters
 	std::string szFilename;				// on Dialog creation, this is the default filename to display.  On return, this is the filename that the user chose.
 	int recordFrom;				// 0 = "Power-On", 1 = "Reset", 2 = "Now", 3+ = savestate file in szSavestateFilename
 	std::string szSavestateFilename;
-	std::wstring author;
+	std::wstring authorName;
 };
 
 extern char *recent_files[];
@@ -27,12 +27,12 @@ void SetMainWindowText();
 void HideFWindow(int h);
 void SetMainWindowStuff();
 int GetClientAbsRect(LPRECT lpRect);
-void FixWXY(int pref);
+void FixWXY(int pref, bool shift_held = false);
 void ByebyeWindow();
 void DoTimingConfigFix();
 int CreateMainWindow();
 void UpdateCheckedMenuItems();
-bool ALoad(const char* nameo, char* innerFilename=0);
+bool ALoad(const char* nameo, char* innerFilename = 0, bool silent = false);
 void LoadNewGamey(HWND hParent, const char *initialdir);
 int BrowseForFolder(HWND hParent, const char *htext, char *buf);
 void SetMainWindowStuff();

@@ -1,23 +1,3 @@
-#include <unistd.h>
-#include <sys/types.h>
-#include <signal.h>
-#include <sys/time.h>
-#include <sys/stat.h>
-#include <string.h>
-#include <strings.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <iostream>
-#include <fstream>
-#include <limits.h>
-#include <math.h>
-
-#ifdef _GTK
-#include <gtk/gtk.h>
-#include "gui.cpp"
-#endif
-
 #include "main.h"
 #include "throttle.h"
 #include "config.h"
@@ -49,22 +29,43 @@
 #include <windows.h>
 #endif
 
+#ifdef _GTK
+#include <gtk/gtk.h>
+#include "gui.h"
+#endif
+
+#include <unistd.h>
+#include <csignal>
+#include <cstring>
+#include <cerrno>
+#include <cstdio>
+#include <cstdlib>
+#include <climits>
+#include <cmath>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/stat.h>
+#include <iostream>
+#include <fstream>
+
+
 extern double g_fpsScale;
 
 extern bool MaxSpeed;
+
+int isloaded;
 
 bool turbo = false;
 
 int closeFinishedMovie = 0;
 
-int CloseGame(void);
+int eoptions=0;
 
 static int inited = 0;
 
-int eoptions=0;
-
 static void DriverKill(void);
 static int DriverInitialize(FCEUGI *gi);
+uint64 FCEUD_GetTime();
 int gametype = 0;
 #ifdef CREATE_AVI
 int mutecapture;
@@ -72,53 +73,66 @@ int mutecapture;
 static int noconfig;
 
 // -Video Modes Tag- : See --special
-char *DriverUsage="\
-Option         Value   Description\n\
---pal          {0|1}   Use PAL timing.\n\
---newppu       {0|1}   Enable the new PPU core. (WARNING: May break savestates)\n\
---inputcfg     d       Configures input device d on startup.\n\
---input(1,2)   d       Set which input device to emulate for input 1 or 2.\n\
-                         Devices:  gamepad zapper powerpad.0 powerpad.1 arkanoid\n\
---input(3,4)   d       Set the famicom expansion device to emulate for input(3, 4)\n\
-                         Devices: quizking hypershot mahjong toprider ftrainer\n\
-                         familykeyboard oekakids arkanoid shadow bworld 4player\n\
---gamegenie    {0|1}   Enable emulated Game Genie.\n\
---frameskip    x       Set # of frames to skip per emulated frame.\n\
---xres         x       Set horizontal resolution for full screen mode.\n\
---yres         x       Set vertical resolution for full screen mode.\n\
---autoscale    {0|1}   Enable autoscaling in fullscreen. \n\
---keepratio    {0|1}   Keep native NES aspect ratio when autoscaling. \n\
---(x/y)scale   x       Multiply width/height by x. \n\
-                         (Real numbers >0 with OpenGL, otherwise integers >0).\n\
---(x/y)stretch {0|1}   Stretch to fill surface on x/y axis (OpenGL only).\n\
---bpp       {8|16|32}  Set bits per pixel.\n\
---opengl       {0|1}   Enable OpenGL support.\n\
---fullscreen   {0|1}   Enable full screen mode.\n\
---noframe      {0|1}   Hide title bar and window decorations.\n\
---special      {1-4}   Use special video scaling filters\n\
-                         (1 = hq2x 2 = Scale2x 3 = NTSC 2x 4 = hq3x 5 = Scale3x)\n\
---palette      f       Load custom global palette from file f.\n\
---sound        {0|1}   Enable sound.\n\
---soundrate    x       Set sound playback rate to x Hz.\n\
---soundq      {0|1|2}  Set sound quality. (0 = Low 1 = High 2 = Very High)\n\
---soundbufsize x       Set sound buffer size to x ms.\n\
---volume      {0-256}  Set volume to x.\n\
---soundrecord  f       Record sound to file f.\n\
---playmov      f       Play back a recorded FCM/FM2/FM3 movie from filename f.\n\
---pauseframe   x       Pause movie playback at frame x.\n\
---fcmconvert   f       Convert fcm movie file f to fm2.\n\
---ripsubs      f       Convert movie's subtitles to srt\n\
---subtitles    {0,1}   Enable subtitle display\n\
---fourscore    {0,1}   Enable fourscore emulation\n\
---no-config    {0,1}   Use default config file and do not save\n\
---net          s       Connect to server 's' for TCP/IP network play.\n\
---port         x       Use TCP/IP port x for network play.\n\
---user         x       Set the nickname to use in network play.\n\
---pass         x       Set password to use for connecting to the server.\n\
---netkey       s       Use string 's' to create a unique session for the game loaded.\n\
---players      x       Set the number of local players.\n\
---rp2mic       {0,1}   Replace Port 2 Start with microphone (Famicom).\n\
---nogui                Don't load the GTK GUI";
+static const char *DriverUsage=
+"Option         Value   Description\n"
+"--pal          {0|1}   Use PAL timing.\n"
+"--newppu       {0|1}   Enable the new PPU core. (WARNING: May break savestates)\n"
+"--inputcfg     d       Configures input device d on startup.\n"
+"--input(1,2)   d       Set which input device to emulate for input 1 or 2.\n"
+"                         Devices:  gamepad zapper powerpad.0 powerpad.1\n"
+"                         arkanoid\n"
+"--input(3,4)   d       Set the famicom expansion device to emulate for\n"
+"                       input(3, 4)\n"
+"                          Devices: quizking hypershot mahjong toprider ftrainer\n"
+"                          familykeyboard oekakids arkanoid shadow bworld\n"
+"                          4player\n"
+"--gamegenie    {0|1}   Enable emulated Game Genie.\n"
+"--frameskip    x       Set # of frames to skip per emulated frame.\n"
+"--xres         x       Set horizontal resolution for full screen mode.\n"
+"--yres         x       Set vertical resolution for full screen mode.\n"
+"--autoscale    {0|1}   Enable autoscaling in fullscreen. \n"
+"--keepratio    {0|1}   Keep native NES aspect ratio when autoscaling. \n"
+"--(x/y)scale   x       Multiply width/height by x. \n"
+"                         (Real numbers >0 with OpenGL, otherwise integers >0).\n"
+"--(x/y)stretch {0|1}   Stretch to fill surface on x/y axis (OpenGL only).\n"
+"--bpp       {8|16|32}  Set bits per pixel.\n"
+"--opengl       {0|1}   Enable OpenGL support.\n"
+"--fullscreen   {0|1}   Enable full screen mode.\n"
+"--noframe      {0|1}   Hide title bar and window decorations.\n"
+"--special      {1-4}   Use special video scaling filters\n"
+"                         (1 = hq2x 2 = Scale2x 3 = NTSC 2x 4 = hq3x\n"
+"                         5 = Scale3x)\n"
+"--palette      f       Load custom global palette from file f.\n"
+"--sound        {0|1}   Enable sound.\n"
+"--soundrate    x       Set sound playback rate to x Hz.\n"
+"--soundq      {0|1|2}  Set sound quality. (0 = Low 1 = High 2 = Very High)\n"
+"--soundbufsize x       Set sound buffer size to x ms.\n"
+"--volume      {0-256}  Set volume to x.\n"
+"--soundrecord  f       Record sound to file f.\n"
+"--playmov      f       Play back a recorded FCM/FM2/FM3 movie from filename f.\n"
+"--pauseframe   x       Pause movie playback at frame x.\n"
+"--fcmconvert   f       Convert fcm movie file f to fm2.\n"
+"--ripsubs      f       Convert movie's subtitles to srt\n"
+"--subtitles    {0|1}   Enable subtitle display\n"
+"--fourscore    {0|1}   Enable fourscore emulation\n"
+"--no-config    {0|1}   Use default config file and do not save\n"
+"--net          s       Connect to server 's' for TCP/IP network play.\n"
+"--port         x       Use TCP/IP port x for network play.\n"
+"--user         x       Set the nickname to use in network play.\n"
+"--pass         x       Set password to use for connecting to the server.\n"
+"--netkey       s       Use string 's' to create a unique session for the\n"
+"                       game loaded.\n"
+"--players      x       Set the number of local players in a network play\n"
+"                       session.\n"
+"--rp2mic       {0|1}   Replace Port 2 Start with microphone (Famicom).\n"
+"--nogui                Don't load the GTK GUI\n"
+"--4buttonexit {0|1}    exit the emulator when A+B+Select+Start is pressed\n"
+"--loadstate {0-9|>9}   load from the given state when the game is loaded\n"
+"--savestate {0-9|>9}   save to the given state when the game is closed\n"
+"                         to not save/load automatically provide a number\n"
+"                         greater than 9\n"
+"--periodicsaves {0|1}  enable automatic periodic saving.  This will save to\n"
+"                         the state passed to --savestate\n";
 
 
 // these should be moved to the man file
@@ -153,30 +167,18 @@ static void ShowUsage(char *prog)
 #endif
 	puts("");
 	printf("Compiled with SDL version %d.%d.%d\n", SDL_MAJOR_VERSION, SDL_MINOR_VERSION, SDL_PATCHLEVEL );
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+	SDL_version* v; 
+	SDL_GetVersion(v);
+#else
 	const SDL_version* v = SDL_Linked_Version();
+#endif
 	printf("Linked with SDL version %d.%d.%d\n", v->major, v->minor, v->patch);
 #ifdef GTK
 	printf("Compiled with GTK version %d.%d.%d\n", GTK_MAJOR_VERSION, GTK_MINOR_VERSION, GTK_MICRO_VERSION );
 	//printf("Linked with GTK version %d.%d.%d\n", GTK_MAJOR_VERSION, GTK_MINOR_VERSION, GTK_MICRO_VERSION );
 #endif
 	
-}
-
-/**
- * Prints an error string to STDOUT.
- */
-void
-FCEUD_PrintError(char *s)
-{
-	puts(s);
-}
-
-/**
- * Prints the given string to STDOUT.
- */
-void FCEUD_Message(char *s)
-{
-	fputs(s, stdout);
 }
 
 /**
@@ -187,10 +189,20 @@ void FCEUD_Message(char *s)
  */
 int LoadGame(const char *path)
 {
-	CloseGame();
+    if (isloaded){
+        CloseGame();
+    }
 	if(!FCEUI_LoadGame(path, 1)) {
 		return 0;
 	}
+
+    int state_to_load;
+    g_config->getOption("SDL.AutoLoadState", &state_to_load);
+    if (state_to_load >= 0 && state_to_load < 10){
+        FCEUI_SelectState(state_to_load, 0);
+        FCEUI_LoadState(NULL, false);
+    }
+
 	ParseGIInput(GameInfo);
 	RefreshThrottleFPS();
 
@@ -230,7 +242,15 @@ CloseGame()
 	if(!isloaded) {
 		return(0);
 	}
+
+    int state_to_save;
+    g_config->getOption("SDL.AutoSaveState", &state_to_save);
+    if (state_to_save < 10 && state_to_save >= 0){
+        FCEUI_SelectState(state_to_save, 0);
+        FCEUI_SaveState(NULL, false);
+    }
 	FCEUI_CloseGame();
+
 	DriverKill();
 	isloaded = 0;
 	GameInfo = 0;
@@ -246,7 +266,7 @@ CloseGame()
 
 void FCEUD_Update(uint8 *XBuf, int32 *Buffer, int Count);
 
-static void DoFun(int frameskip)
+static void DoFun(int frameskip, int periodic_saves)
 {
 	uint8 *gfx;
 	int32 *sound;
@@ -254,6 +274,10 @@ static void DoFun(int frameskip)
 	static int fskipc = 0;
 	static int opause = 0;
 
+    //TODO peroidic saves, working on it right now
+    if (periodic_saves && FCEUD_GetTime() % PERIODIC_SAVE_INTERVAL < 30){
+        FCEUI_SaveState(NULL, false);
+    }
 #ifdef FRAMESKIP
 	fskipc = (fskipc + 1) % (frameskip + 1);
 #endif
@@ -330,7 +354,7 @@ FCEUD_Update(uint8 *XBuf,
 	{
 	  if(LoggingEnabled == 2)
 	  {
-		int16* MonoBuf = (int16*)malloc(sizeof(*MonoBuf) * Count);
+		int16* MonoBuf = new int16[Count];
 		int n;
 		for(n=0; n<Count; ++n)
 			MonoBuf[n] = Buffer[n] & 0xFFFF;
@@ -340,7 +364,7 @@ FCEUD_Update(uint8 *XBuf,
 		  FSettings.SndRate, 16, 1,
 		  Count
 		 );
-		free(MonoBuf);
+		delete [] MonoBuf;
 	  }
 	  Count /= 2;
 	  if(inited & 1)
@@ -511,14 +535,14 @@ int main(int argc, char *argv[])
 	{
 		if(!strcmp(argv[1], "--help") || !strcmp(argv[1],"-h"))
 		{
-	       ShowUsage(argv[0]);
+            ShowUsage(argv[0]);
 			return 0;
 		}
 	}
 
 	int error, frameskip;
 
-	FCEUD_Message("Starting "FCEU_NAME_AND_VERSION"...\n");
+	FCEUD_Message("Starting " FCEU_NAME_AND_VERSION "...\n");
 
 #ifdef WIN32
 	/* Taken from win32 sdl_main.c */
@@ -573,8 +597,9 @@ int main(int argc, char *argv[])
 	// This is here so that a default fceux.cfg will be created on first
 	// run, even without a valid ROM to play.
 	// Unless, of course, there's actually --no-config given
-	// mbg 8/23/2008 - this is also here so that the inputcfg routines can have a chance to dump the new inputcfg to the fceux.cfg
-	// in case you didnt specify a rom filename
+	// mbg 8/23/2008 - this is also here so that the inputcfg routines can have 
+    // a chance to dump the new inputcfg to the fceux.cfg  in case you didnt 
+    // specify a rom  filename
 	g_config->getOption("SDL.NoConfig", &noconfig);
 	if (!noconfig)
 		g_config->save();
@@ -632,7 +657,57 @@ int main(int argc, char *argv[])
 	  SDL_Quit();
 	  return 0;
 	}
+
+	// If x/y res set to 0, store current display res in SDL.LastX/YRes
+	int yres, xres;
+	g_config->getOption("SDL.XResolution", &xres);
+	g_config->getOption("SDL.YResolution", &yres);
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+	// TODO _ SDL 2.0
+#else
+	const SDL_VideoInfo* vid_info = SDL_GetVideoInfo();
+	if(xres == 0) 
+    {
+        if(vid_info != NULL)
+        {
+			g_config->setOption("SDL.LastXRes", vid_info->current_w);
+        }
+        else
+        {
+			g_config->setOption("SDL.LastXRes", 512);
+        }
+    }
+	else
+	{
+		g_config->setOption("SDL.LastXRes", xres);
+	}	
+    if(yres == 0)
+    {
+        if(vid_info != NULL)
+        {
+			g_config->setOption("SDL.LastYRes", vid_info->current_h);
+        }
+        else
+        {
+			g_config->setOption("SDL.LastYRes", 448);
+        }
+    } 
+	else
+	{
+		g_config->setOption("SDL.LastYRes", yres);
+	}
+#endif
 	
+	int autoResume;
+	g_config->getOption("SDL.AutoResume", &autoResume);
+	if(autoResume)
+	{
+		AutoResumePlay = true;
+	}
+	else
+	{
+		AutoResumePlay = false;
+	}
 	// check to see if recording HUD to AVI is enabled
 	int rh;
 	g_config->getOption("SDL.RecordHUD", &rh);
@@ -805,6 +880,15 @@ int main(int argc, char *argv[])
 		}
 	}
 	
+    int periodic_saves;
+    int save_state;
+    g_config->getOption("SDL.PeriodicSaves", &periodic_saves);
+    g_config->getOption("SDL.AutoSaveState", &save_state);
+    if(periodic_saves && save_state < 10 && save_state >= 0){
+        FCEUI_SelectState(save_state, 0);
+    } else {
+        periodic_saves = 0;
+    }
 	
 #ifdef _S9XLUA_H
 	// load lua script if option passed
@@ -831,7 +915,7 @@ int main(int argc, char *argv[])
 		while(1)
 		{
 			if(GameInfo)
-				DoFun(frameskip);
+				DoFun(frameskip, periodic_saves);
 			else
 				SDL_Delay(1);
 			while(gtk_events_pending())
@@ -841,12 +925,12 @@ int main(int argc, char *argv[])
 	else
 	{
 		while(GameInfo)
-			DoFun(frameskip);
+			DoFun(frameskip, periodic_saves);
 	}
 #else
 	while(GameInfo)
 	{
-		DoFun(frameskip);
+		DoFun(frameskip, periodic_saves);
 	}
 #endif
 	CloseGame();
@@ -894,18 +978,35 @@ void FCEUD_Message(const char *text)
 /**
 * Shows an error message in a message box.
 * (For now: prints to stderr.)
+* 
+* If running in GTK mode, display a dialog message box of the error.
 *
 * @param errormsg Text of the error message.
 **/
 void FCEUD_PrintError(const char *errormsg)
 {
+#ifdef GTK
+	if(gtkIsStarted == true && noGui == 0)
+	{
+		GtkWidget* d;
+		d = gtk_message_dialog_new(GTK_WINDOW(MainWindow), GTK_DIALOG_MODAL, 
+                GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, "%s", errormsg);
+		gtk_dialog_run(GTK_DIALOG(d));
+		gtk_widget_destroy(d);
+	}
+#endif
+
 	fprintf(stderr, "%s\n", errormsg);
 }
 
 
 // dummy functions
 
-#define DUMMY(__f) void __f(void) {printf("%s\n", #__f); FCEU_DispMessage("Not implemented.",0);}
+#define DUMMY(__f) \
+    void __f(void) {\
+        printf("%s\n", #__f);\
+        FCEU_DispMessage("Not implemented.",0);\
+    }
 DUMMY(FCEUD_HideMenuToggle)
 DUMMY(FCEUD_MovieReplayFrom)
 DUMMY(FCEUD_ToggleStatusIcon)

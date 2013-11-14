@@ -422,32 +422,43 @@ void OpenRWRecentFile(int memwRFileNumber)
 	}
 	const char DELIM = '\t';
 	AddressWatcher Temp;
+	Temp.Address = 0;	// default values
+	Temp.Size = 'b';
+	Temp.Type = 'h';
 	char mode;
 	fgets(Str_Tmp,1024,WatchFile);
 	sscanf(Str_Tmp,"%c%*s",&mode);
-	//if ((mode == '1' && !(SegaCD_Started)) || (mode == '2' && !(_32X_Started)))
-	//{
-	//	char Device[8];
-	//	strcpy(Device,(mode > '1')?"32X":"SegaCD");
-	//	sprintf(Str_Tmp,"Warning: %s not started. \nWatches for %s addresses will be ignored.",Device,Device);
-	//	MessageBox(MESSAGEBOXPARENT,Str_Tmp,"Possible Device Mismatch",MB_OK);
-	//}
 	int WatchAdd;
 	fgets(Str_Tmp,1024,WatchFile);
 	sscanf(Str_Tmp,"%d%*s",&WatchAdd);
 	WatchAdd+=WatchCount;
 	for (int i = WatchCount; i < WatchAdd; i++)
 	{
-		while (i < 0)
-			i++;
-		do {
-			fgets(Str_Tmp,1024,WatchFile);
+		if (i < 0) i = 0;
+		memset(Str_Tmp, 0, 1024);
+		do
+		{
+			fgets(Str_Tmp, 1024, WatchFile);
 		} while (Str_Tmp[0] == '\n');
-		sscanf(Str_Tmp,"%*05X%*c%04X%*c%c%*c%c%*c%d",&(Temp.Address),&(Temp.Size),&(Temp.Type),&(Temp.WrongEndian));
-		Temp.WrongEndian = 0;
-		char *Comment = strrchr(Str_Tmp,DELIM) + 1;
-		*strrchr(Comment,'\n') = '\0';
-		InsertWatch(Temp,Comment);
+		sscanf(Str_Tmp, "%*05X%*c%04X%*c%c%*c%c%*c%*c", &(Temp.Address), &(Temp.Size), &(Temp.Type));
+		Temp.WrongEndian = false;
+		char *Comment = strrchr(Str_Tmp, DELIM);
+		if (Comment)
+		{
+			Comment++;
+			char *CommentEnd = strrchr(Comment, '\n');
+			if (CommentEnd)
+			{
+				*CommentEnd = '\0';
+				InsertWatch(Temp, Comment);
+			} else
+			{
+				// the wch file is probably corrupted
+				InsertWatch(Temp, Comment);
+				break;
+			}
+		} else
+			break;	// the wch file is probably corrupted
 	}
 
 	fclose(WatchFile);
@@ -531,8 +542,7 @@ bool Save_Watches()
 	if(dot) *dot = 0;
 	if(Change_File_S(Str_Tmp, applicationPath, "Save Watches", "Watchlist (*.wch)\0*.wch\0All Files (*.*)\0*.*\0\0", "wch", RamWatchHWnd))
 	{
-		FILE *WatchFile = fopen(Str_Tmp,"r+b");
-		if (!WatchFile) WatchFile = fopen(Str_Tmp,"w+b");
+		FILE *WatchFile = fopen(Str_Tmp,"w+b");
 		fputc('\n',WatchFile);
 		strcpy(currentWatch,Str_Tmp);
 		RWAddRecentFile(currentWatch);
@@ -562,8 +572,7 @@ if (currentWatch[0] == NULL) //If there is no currently loaded file, run to Save
 	}
 		
 		strcpy(Str_Tmp,currentWatch);
-		FILE *WatchFile = fopen(Str_Tmp,"r+b");
-		if (!WatchFile) WatchFile = fopen(Str_Tmp,"w+b");
+		FILE *WatchFile = fopen(Str_Tmp,"w+b");
 		fputc('\n',WatchFile);
 		sprintf(Str_Tmp,"%d\n",WatchCount);
 		fputs(Str_Tmp,WatchFile);
@@ -662,13 +671,14 @@ bool ResetWatches()
 {
 	if(!AskSave())
 		return false;
-	for (;WatchCount>=0;WatchCount--)
+	for (;WatchCount >= 0; WatchCount--)
 	{
 		free(rswatches[WatchCount].comment);
 		rswatches[WatchCount].comment = NULL;
 	}
-	WatchCount++;
-	if (RamWatchHWnd) {
+	WatchCount = 0;
+	if (RamWatchHWnd)
+	{
 		ListView_SetItemCount(GetDlgItem(RamWatchHWnd,IDC_WATCHLIST),WatchCount);
 		RefreshWatchListSelectedCountControlStatus(RamWatchHWnd);
 	}

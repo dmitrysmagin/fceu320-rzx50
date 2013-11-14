@@ -60,6 +60,7 @@ extern int vmod;
 extern char* directory_names[14];
 
 char *GetRomName();	//Checks if rom is loaded, if so, outputs the Rom name with no directory path or file extension
+char *GetRomPath();	//Checks if rom is loaded, if so, outputs the Rom path only
 
 ///Contains the names of the default directories.
 static const char *default_directory_names[13] = {
@@ -81,8 +82,11 @@ static const char *default_directory_names[13] = {
 #define NUMBER_OF_DIRECTORIES sizeof(directory_names) / sizeof(*directory_names)
 #define NUMBER_OF_DEFAULT_DIRECTORIES sizeof(default_directory_names) / sizeof(*default_directory_names)
 
-extern double saspectw, saspecth;
+#define TV_ASPECT_DEFAULT_X 4.0
+#define TV_ASPECT_DEFAULT_Y 3.0
+
 extern double winsizemulx, winsizemuly;
+extern double tvAspectX, tvAspectY;
 
 extern int ismaximized;
 extern int soundoptions;

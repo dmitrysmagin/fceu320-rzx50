@@ -1,9 +1,9 @@
 #
 # SConstruct - build script for the SDL port of fceux
 #
-# You can adjust the BoolVariables below to include/exclude features at compile-time
-#
-# You may need to wipe the scons cache ("scons -c") and recompile for some options to take effect.
+# You can adjust the BoolVariables below to include/exclude features 
+# at compile-time.  You may also use arguments to specify the parameters.
+#   ie: scons RELEASE=1 GTK3=1
 #
 # Use "scons" to compile and "scons install" to install.
 #
@@ -12,37 +12,39 @@ import os
 import sys
 import platform 
 
-opts = Variables()
+opts = Variables(None, ARGUMENTS)
 opts.AddVariables( 
+  BoolVariable('DEBUG',     'Build with debugging symbols', 0),
+  BoolVariable('RELEASE',   'Set to 1 to build for release', 1),
   BoolVariable('FRAMESKIP', 'Enable frameskipping', 1),
   BoolVariable('OPENGL',    'Enable OpenGL support', 1),
-  BoolVariable('LSB_FIRST', 'Least signficant byte first (non-PPC)', 1),
-  BoolVariable('DEBUG',     'Build with debugging symbols', 1),
   BoolVariable('LUA',       'Enable Lua support', 1),
-  BoolVariable('SYSTEM_LUA','Use system lua instead of static lua provided with fceux', 1),
+  BoolVariable('GTK', 'Enable GTK2 GUI (SDL only)', 1),
+  BoolVariable('GTK3', 'Enable GTK3 GUI (SDL only)', 0),
   BoolVariable('NEWPPU',    'Enable new PPU core', 1),
   BoolVariable('CREATE_AVI', 'Enable avi creation support (SDL only)', 1),
   BoolVariable('LOGO', 'Enable a logoscreen when creating avis (SDL only)', 1),
-  BoolVariable('GTK', 'Enable GTK2 GUI (SDL only)', 1),
-  BoolVariable('GTK3', 'Enable GTK3 GUI (SDL only)', 0),
-  BoolVariable('CLANG', 'Compile with llvm-clang instead of gcc', 0)
+  BoolVariable('SYSTEM_LUA','Use system lua instead of static lua provided with fceux', 1),
+  BoolVariable('SYSTEM_MINIZIP', 'Use system minizip instead of static minizip provided with fceux', 0),
+  BoolVariable('LSB_FIRST', 'Least signficant byte first (non-PPC)', 1),
+  BoolVariable('CLANG', 'Compile with llvm-clang instead of gcc', 0),
+  BoolVariable('SDL2', 'Compile using SDL2 instead of SDL 1.2 (experimental/non-functional)', 0)
 )
 AddOption('--prefix', dest='prefix', type='string', nargs=1, action='store', metavar='DIR', help='installation prefix')
 
 prefix = GetOption('prefix')
 env = Environment(options = opts)
 
-#### Uncomment this for a public release ###
-env.Append(CPPDEFINES=["PUBLIC_RELEASE"])
-env['DEBUG'] = 0
-############################################
+if env['RELEASE']:
+  env.Append(CPPDEFINES=["PUBLIC_RELEASE"])
+  env['DEBUG'] = 0
 
 # LSB_FIRST must be off for PPC to compile
 if platform.system == "ppc":
   env['LSB_FIRST'] = 0
 
 # Default compiler flags:
-env.Append(CCFLAGS = ['-Wall', '-Wno-write-strings', '-Wno-sign-compare', '-Isrc/lua/src'])
+env.Append(CCFLAGS = ['-Wall', '-Wno-write-strings', '-Wno-sign-compare'])
 
 if os.environ.has_key('PLATFORM'):
   env.Replace(PLATFORM = os.environ['PLATFORM'])
@@ -81,23 +83,46 @@ if env['PLATFORM'] == 'win32':
   env.Append(LIBS = ["rpcrt4", "comctl32", "vfw32", "winmm", "ws2_32", "comdlg32", "ole32", "gdi32", "htmlhelp"])
 else:
   conf = Configure(env)
+  # If libdw is available, compile in backward-cpp support
+  if conf.CheckLib('dw'):
+    conf.env.Append(CCFLAGS = "-DBACKWARD_HAS_DW=1")
+    conf.env.Append(LINKFLAGS = "-ldw")
   if conf.CheckFunc('asprintf'):
     conf.env.Append(CCFLAGS = "-DHAVE_ASPRINTF")
-  assert conf.CheckLibWithHeader('z', 'zlib.h', 'c', 'inflate;', 1), "please install: zlib"
-  if not conf.CheckLib('SDL'):
-    print 'Did not find libSDL or SDL.lib, exiting!'
-    Exit(1)
+  if env['SYSTEM_MINIZIP']:
+    assert conf.CheckLibWithHeader('minizip', 'minizip/unzip.h', 'C', 'unzOpen;', 1), "please install: libminizip"
+    assert conf.CheckLibWithHeader('z', 'zlib.h', 'c', 'inflate;', 1), "please install: zlib"
+    env.Append(CPPDEFINES=["_SYSTEM_MINIZIP"])
+  else:
+    assert conf.CheckLibWithHeader('z', 'zlib.h', 'c', 'inflate;', 1), "please install: zlib"
+  if env['SDL2']:
+    if not conf.CheckLib('SDL2'):
+      print 'Did not find libSDL2 or SDL2.lib, exiting!'
+      Exit(1)
+    env.Append(CPPDEFINES=["_SDL2"])
+    env.ParseConfig('pkg-config sdl2 --cflags --libs')
+  else:
+    if not conf.CheckLib('SDL'):
+      print 'Did not find libSDL or SDL.lib, exiting!'
+      Exit(1)
+    env.ParseConfig('sdl-config --cflags --libs')
   if env['GTK']:
     if not conf.CheckLib('gtk-x11-2.0'):
       print 'Could not find libgtk-2.0, exiting!'
       Exit(1)
     # Add compiler and linker flags from pkg-config
-    env.ParseConfig('pkg-config --cflags --libs gtk+-2.0')
+    config_string = 'pkg-config --cflags --libs gtk+-2.0'
+    if env['PLATFORM'] == 'darwin':
+      config_string = 'PKG_CONFIG_PATH=/opt/X11/lib/pkgconfig/ ' + config_string
+    env.ParseConfig(config_string)
     env.Append(CPPDEFINES=["_GTK2"])
     env.Append(CCFLAGS = ["-D_GTK"])
   if env['GTK3']:
     # Add compiler and linker flags from pkg-config
-    env.ParseConfig('pkg-config --cflags --libs gtk+-3.0')
+    config_string = 'pkg-config --cflags --libs gtk+-3.0'
+    if env['PLATFORM'] == 'darwin':
+      config_string = 'PKG_CONFIG_PATH=/opt/X11/lib/pkgconfig/ ' + config_string
+    env.ParseConfig(config_string)
     env.Append(CPPDEFINES=["_GTK3"])
     env.Append(CCFLAGS = ["-D_GTK"])
 
@@ -115,9 +140,11 @@ else:
     lua_available = False
     if conf.CheckLib('lua5.1'):
       env.Append(LINKFLAGS = ["-ldl", "-llua5.1"])
+      env.Append(CCFLAGS = ["-I/usr/include/lua5.1"])
       lua_available = True
     elif conf.CheckLib('lua'):
       env.Append(LINKFLAGS = ["-ldl", "-llua"])
+      env.Append(CCFLAGS = ["-I/usr/include/lua"])
       lua_available = True
     if lua_available == False:
       print 'Could not find liblua, exiting!'
@@ -136,8 +163,6 @@ else:
   if env['OPENGL'] and conf.CheckLibWithHeader('GL', 'GL/gl.h', 'c', autoadd=1):
     conf.env.Append(CCFLAGS = "-DOPENGL")
   conf.env.Append(CPPDEFINES = ['PSS_STYLE=1'])
-  # parse SDL cflags/libs
-  env.ParseConfig('sdl-config --cflags --libs')
   
   env = conf.Finish()
 
@@ -151,7 +176,7 @@ print "base CPPDEFINES:",env['CPPDEFINES']
 print "base CCFLAGS:",env['CCFLAGS']
 
 if env['DEBUG']:
-  env.Append(CPPDEFINES=["_DEBUG"], CCFLAGS = ['-g'])
+  env.Append(CPPDEFINES=["_DEBUG"], CCFLAGS = ['-g', '-O0'])
 else:
   env.Append(CCFLAGS = ['-O2'])
 
@@ -163,7 +188,8 @@ else:
 Export('env')
 fceux = SConscript('src/SConscript')
 env.Program(target="fceux-net-server", source=["fceux-server/server.cpp", "fceux-server/md5.cpp", "fceux-server/throttle.cpp"])
-# Install rules
+
+# Installation rules
 if prefix == None:
   prefix = "/usr/local"
 
@@ -181,7 +207,7 @@ auxlib_src = 'src/auxlib.lua'
 auxlib_dst = 'bin/auxlib.lua'
 auxlib_inst_dst = prefix + '/share/fceux/auxlib.lua'
 
-fceux_h_src = 'src/drivers/win/help/fceux.chm'
+fceux_h_src = 'output/fceux.chm'
 fceux_h_dst = 'bin/fceux.chm'
 
 env.Command(fceux_h_dst, fceux_h_src, [Copy(fceux_h_dst, fceux_h_src)])
@@ -197,6 +223,12 @@ man_net_dst = prefix + '/share/man/man6/fceux-net-server.6'
 share_src = 'output/'
 share_dst = prefix + '/share/fceux/'
 
+image_src = 'fceux.png'
+image_dst = prefix + '/share/pixmaps'
+
+desktop_src = 'fceux.desktop'
+desktop_dst = prefix + '/share/applications/'
+
 env.Install(prefix + "/bin/", fceux)
 env.Install(prefix + "/bin/", "fceux-net-server")
 # TODO:  Where to put auxlib on "scons install?"
@@ -204,6 +236,6 @@ env.Alias('install', env.Command(auxlib_inst_dst, auxlib_src, [Copy(auxlib_inst_
 env.Alias('install', env.Command(share_dst, share_src, [Copy(share_dst, share_src)]))
 env.Alias('install', env.Command(man_dst, man_src, [Copy(man_dst, man_src)]))
 env.Alias('install', env.Command(man_net_dst, man_net_src, [Copy(man_net_dst, man_net_src)]))
+env.Alias('install', env.Command(image_dst, image_src, [Copy(image_dst, image_src)]))
+env.Alias('install', env.Command(desktop_dst, desktop_src, [Copy(desktop_dst, desktop_src)]))
 env.Alias('install', (prefix + "/bin/"))
-
-

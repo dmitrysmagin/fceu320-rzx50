@@ -25,23 +25,24 @@ THE SOFTWARE.
 #ifndef EMUFILE_H
 #define EMUFILE_H
 
-#include <assert.h>
-#include <stdio.h>
-#include <string.h>
-#include <vector>
-#include <algorithm>
-#include <string>
-#include <stdarg.h>
-
 #include "emufile_types.h"
 
 #ifdef _MSC_VER
 #include <io.h>
 #endif
 
+#include <cassert>
+#include <cstdio>
+#include <cstring>
+#include <cstdarg>
+#include <vector>
+#include <algorithm>
+#include <string>
+
 // wtf ??? these could be macros from stdlib.h, so undefine
 #undef fgetc
 #undef fputc
+
 
 class EMUFILE {
 protected:

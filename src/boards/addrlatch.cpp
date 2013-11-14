@@ -85,18 +85,6 @@ static void Latch_Init(CartInfo *info, void (*proc)(void), readfunc func, uint16
 	AddExState(&latche, 2, 0, "LATC");
 }
 
-//------------------ UNLCC21 ---------------------------
-
-static void UNLCC21Sync(void) {
-	setprg32(0x8000, 0);
-	setchr8(latche & 1);
-	setmirror(MI_0 + ((latche & 2) >> 1));
-}
-
-void UNLCC21_Init(CartInfo *info) {
-	Latch_Init(info, UNLCC21Sync, NULL, 0x0000, 0x8000, 0xFFFF, 0);
-}
-
 //------------------ BMCD1038 ---------------------------
 
 static void BMCD1038Sync(void) {
@@ -173,7 +161,7 @@ void BMCGK192_Init(CartInfo *info) {
 }
 
 //------------------ Map 059 ---------------------------
-// One more forbidden mapper
+// One more forgotten mapper
 static void M59Sync(void) {
 	setprg32(0x8000, (latche >> 4) & 7);
 	setchr8(latche & 0x7);
@@ -189,6 +177,21 @@ static DECLFR(M59Read) {
 
 void Mapper59_Init(CartInfo *info) {
 	Latch_Init(info, M59Sync, M59Read, 0x0000, 0x8000, 0xFFFF, 0);
+}
+
+//------------------ Map 061 ---------------------------
+static void M61Sync(void) {
+	if (((latche & 0x10) << 1) ^ (latche & 0x20)) {
+		setprg16(0x8000, ((latche & 0xF) << 1) | (((latche & 0x20) >> 4)));
+		setprg16(0xC000, ((latche & 0xF) << 1) | (((latche & 0x20) >> 4)));
+	} else
+		setprg32(0x8000, latche & 0xF);
+	setchr8(0);
+	setmirror(((latche >> 7) & 1) ^ 1);
+}
+
+void Mapper61_Init(CartInfo *info) {
+	Latch_Init(info, M61Sync, NULL, 0x0000, 0x8000, 0xFFFF, 0);
 }
 
 //------------------ Map 092 ---------------------------
@@ -233,7 +236,7 @@ void Mapper200_Init(CartInfo *info) {
 //------------------ Map 201 ---------------------------
 
 static void M201Sync(void) {
-	if(latche & 8) {
+	if (latche & 8) {
 		setprg32(0x8000, latche & 3);
 		setchr8(latche & 3);
 	} else {
@@ -288,14 +291,14 @@ static DECLFR(M212Read) {
 }
 
 static void M212Sync(void) {
-	if(latche & 0x4000) {
+	if (latche & 0x4000) {
 		setprg32(0x8000, (latche >> 1) & 3);
 	} else {
 		setprg16(0x8000, latche & 7);
 		setprg16(0xC000, latche & 7);
 	}
 	setchr8(latche & 7);
-	setmirror(((latche >> 3) & 1)^1);
+	setmirror(((latche >> 3) & 1) ^ 1);
 }
 
 void Mapper212_Init(CartInfo *info) {
@@ -370,7 +373,7 @@ static void M227Sync(void) {
 		}
 	}
 
-	setmirror(((latche >> 1) & 1)^1);
+	setmirror(((latche >> 1) & 1) ^ 1);
 	setchr8(0);
 	setprg8r(0x10, 0x6000, 0);
 }
@@ -383,13 +386,13 @@ void Mapper227_Init(CartInfo *info) {
 
 static void M229Sync(void) {
 	setchr8(latche);
-	if(!(latche & 0x1e))
+	if (!(latche & 0x1e))
 		setprg32(0x8000, 0);
 	else {
 		setprg16(0x8000, latche & 0x1F);
 		setprg16(0xC000, latche & 0x1F);
 	}
-	setmirror(((latche >> 5) & 1)^1);
+	setmirror(((latche >> 5) & 1) ^ 1);
 }
 
 void Mapper229_Init(CartInfo *info) {
@@ -400,13 +403,13 @@ void Mapper229_Init(CartInfo *info) {
 
 static void M231Sync(void) {
 	setchr8(0);
-	if(latche & 0x20)
+	if (latche & 0x20)
 		setprg32(0x8000, (latche >> 1) & 0x0F);
 	else {
 		setprg16(0x8000, latche & 0x1E);
 		setprg16(0xC000, latche & 0x1E);
 	}
-	setmirror(((latche >> 7) & 1)^1);
+	setmirror(((latche >> 7) & 1) ^ 1);
 }
 
 void Mapper231_Init(CartInfo *info) {
@@ -445,7 +448,7 @@ static void BMC810544CA1Sync(void) {
 	uint32 bank = latche >> 7;
 	if (latche & 0x40)
 		setprg32(0x8000, bank);
-	else{
+	else {
 		setprg16(0x8000, (bank << 1) | ((latche >> 5) & 1));
 		setprg16(0xC000, (bank << 1) | ((latche >> 5) & 1));
 	}
@@ -483,11 +486,11 @@ void BMCNTD03_Init(CartInfo *info) {
 
 static void BMCG146Sync(void) {
 	setchr8(0);
-	if (latche & 0x800) {   	// UNROM mode
+	if (latche & 0x800) {		// UNROM mode
 		setprg16(0x8000, (latche & 0x1F) | (latche & ((latche & 0x40) >> 6)));
 		setprg16(0xC000, (latche & 0x18) | 7);
 	} else {
-		if (latche & 0x40) {    // 16K mode
+		if (latche & 0x40) {	// 16K mode
 			setprg16(0x8000, latche & 0x1F);
 			setprg16(0xC000, latche & 0x1F);
 		} else {

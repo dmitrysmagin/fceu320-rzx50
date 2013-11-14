@@ -1,7 +1,7 @@
 /* FCE Ultra - NES/Famicom Emulator
  *
  * Copyright notice for this file:
- *  Copyright (C) 2012 CaH4e3
+ *  Copyright (C) 2013 CaH4e3
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,9 @@ static uint8 reg[8];
 static uint8 IRQa;
 static int16 IRQCount, IRQLatch;
 /*
-static uint8 *WRAM=NULL;
+static uint8 *WRAM = NULL;
 static uint32 WRAMSIZE;
-static uint8 *CHRRAM=NULL;
+static uint8 *CHRRAM = NULL;
 static uint32 CHRRAMSIZE;
 */
 
@@ -46,8 +46,8 @@ static DECLFW(MNNNWrite) {
 }
 
 static void MNNNPower(void) {
-//	SetReadHandler(0x6000,0x7fff,CartBR);
-//	SetWriteHandler(0x6000,0x7fff,CartBW);
+//	SetReadHandler(0x6000, 0x7fff, CartBR);
+//	SetWriteHandler(0x6000, 0x7fff, CartBW);
 	SetReadHandler(0x8000, 0xFFFF, CartBR);
 	SetWriteHandler(0x8000, 0xFFFF, MNNNWrite);
 }

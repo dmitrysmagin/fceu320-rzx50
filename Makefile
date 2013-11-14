@@ -12,6 +12,40 @@ CORE_OBJS = \
     
 BOARDS_OBJS = \
 	$(SRC)boards/01-222.o \
+	$(SRC)boards/3d-block.o \
+	$(SRC)boards/09-034a.o \
+	$(SRC)boards/12in1.o \
+	$(SRC)boards/15.o \
+	$(SRC)boards/18.o \
+	$(SRC)boards/28.o \
+	$(SRC)boards/32.o \
+	$(SRC)boards/33.o \
+	$(SRC)boards/34.o \
+	$(SRC)boards/36.o \
+	$(SRC)boards/40.o \
+	$(SRC)boards/41.o \
+	$(SRC)boards/42.o \
+	$(SRC)boards/43.o \
+	$(SRC)boards/46.o \
+	$(SRC)boards/50.o \
+	$(SRC)boards/51.o \
+	$(SRC)boards/57.o \
+	$(SRC)boards/62.o \
+	$(SRC)boards/65.o \
+	$(SRC)boards/67.o \
+	$(SRC)boards/68.o \
+	$(SRC)boards/69.o \
+	$(SRC)boards/71.o \
+	$(SRC)boards/72.o \
+	$(SRC)boards/77.o \
+	$(SRC)boards/79.o \
+	$(SRC)boards/80.o \
+	$(SRC)boards/82.o \
+	$(SRC)boards/88.o \
+	$(SRC)boards/90.o \
+	$(SRC)boards/91.o \
+	$(SRC)boards/96.o \
+	$(SRC)boards/99.o \
 	$(SRC)boards/103.o \
 	$(SRC)boards/106.o \
 	$(SRC)boards/108.o \
@@ -20,20 +54,15 @@ BOARDS_OBJS = \
 	$(SRC)boards/117.o \
 	$(SRC)boards/120.o \
 	$(SRC)boards/121.o \
-	$(SRC)boards/12in1.o \
-	$(SRC)boards/15.o \
 	$(SRC)boards/151.o \
 	$(SRC)boards/156.o \
 	$(SRC)boards/164.o \
 	$(SRC)boards/168.o \
-	$(SRC)boards/17.o \
 	$(SRC)boards/170.o \
 	$(SRC)boards/175.o \
 	$(SRC)boards/176.o \
 	$(SRC)boards/177.o \
 	$(SRC)boards/178.o \
-	$(SRC)boards/179.o \
-	$(SRC)boards/18.o \
 	$(SRC)boards/183.o \
 	$(SRC)boards/185.o \
 	$(SRC)boards/186.o \
@@ -41,6 +70,7 @@ BOARDS_OBJS = \
 	$(SRC)boards/189.o \
 	$(SRC)boards/193.o \
 	$(SRC)boards/199.o \
+	$(SRC)boards/206.o \
 	$(SRC)boards/208.o \
 	$(SRC)boards/222.o \
 	$(SRC)boards/225.o \
@@ -53,27 +83,12 @@ BOARDS_OBJS = \
 	$(SRC)boards/246.o \
 	$(SRC)boards/252.o \
 	$(SRC)boards/253.o \
-	$(SRC)boards/28.o \
-	$(SRC)boards/32.o \
-	$(SRC)boards/33.o \
-	$(SRC)boards/34.o \
-	$(SRC)boards/3d-block.o \
 	$(SRC)boards/411120-c.o \
-	$(SRC)boards/43.o \
-	$(SRC)boards/57.o \
 	$(SRC)boards/603-5052.o \
-	$(SRC)boards/68.o \
 	$(SRC)boards/8157.o \
-	$(SRC)boards/82.o \
 	$(SRC)boards/8237.o \
 	$(SRC)boards/830118C.o \
-	$(SRC)boards/88.o \
-	$(SRC)boards/90.o \
-	$(SRC)boards/91.o \
-	$(SRC)boards/95.o \
-	$(SRC)boards/96.o \
-	$(SRC)boards/99.o \
-	$(SRC)boards/a9711.o \
+	$(SRC)boards/__dummy_mapper.o \
 	$(SRC)boards/a9746.o \
 	$(SRC)boards/ac-08.o \
 	$(SRC)boards/addrlatch.o \
@@ -89,10 +104,11 @@ BOARDS_OBJS = \
 	$(SRC)boards/cityfighter.o \
 	$(SRC)boards/dance2000.o \
 	$(SRC)boards/datalatch.o \
-	$(SRC)boards/deirom.o \
 	$(SRC)boards/dream.o \
 	$(SRC)boards/edu2000.o \
+	$(SRC)boards/emu2413.o \
 	$(SRC)boards/famicombox.o \
+	$(SRC)boards/ffe.o \
 	$(SRC)boards/fk23c.o \
 	$(SRC)boards/ghostbusters63in1.o \
 	$(SRC)boards/gs-2004.o \
@@ -100,7 +116,6 @@ BOARDS_OBJS = \
 	$(SRC)boards/h2288.o \
 	$(SRC)boards/karaoke.o \
 	$(SRC)boards/kof97.o \
-	$(SRC)boards/konami-qtai.o \
 	$(SRC)boards/ks7012.o \
 	$(SRC)boards/ks7013.o \
 	$(SRC)boards/ks7017.o \
@@ -113,10 +128,11 @@ BOARDS_OBJS = \
 	$(SRC)boards/lh32.o \
 	$(SRC)boards/lh53.o \
 	$(SRC)boards/malee.o \
+	$(SRC)boards/mihunche.o \
 	$(SRC)boards/mmc1.o \
+	$(SRC)boards/mmc2and4.o \
 	$(SRC)boards/mmc3.o \
 	$(SRC)boards/mmc5.o \
-	$(SRC)boards/n-c22m.o \
 	$(SRC)boards/n106.o \
 	$(SRC)boards/n625092.o \
 	$(SRC)boards/novel.o \
@@ -127,7 +143,6 @@ BOARDS_OBJS = \
 	$(SRC)boards/sc-127.o \
 	$(SRC)boards/sheroes.o \
 	$(SRC)boards/sl1632.o \
-	$(SRC)boards/smb2j.o \
 	$(SRC)boards/subor.o \
 	$(SRC)boards/super24.o \
 	$(SRC)boards/supervision.o \
@@ -136,8 +151,13 @@ BOARDS_OBJS = \
 	$(SRC)boards/tengen.o \
 	$(SRC)boards/tf-1201.o \
 	$(SRC)boards/transformer.o \
+	$(SRC)boards/vrc1.o \
 	$(SRC)boards/vrc2and4.o \
+	$(SRC)boards/vrc3.o \
+	$(SRC)boards/vrc5.o \
+	$(SRC)boards/vrc6.o \
 	$(SRC)boards/vrc7.o \
+	$(SRC)boards/vrc7p.o \
 	$(SRC)boards/yoko.o
 
 
@@ -146,36 +166,12 @@ INPUT_OBJS = $(SRC)input/arkanoid.o $(SRC)input/bworld.o $(SRC)input/cursor.o \
 	$(SRC)input/mouse.o $(SRC)input/oekakids.o $(SRC)input/powerpad.o $(SRC)input/quiz.o \
 	$(SRC)input/shadow.o $(SRC)input/suborkb.o $(SRC)input/toprider.o $(SRC)input/zapper.o
 
-MAPPERS_OBJS = \
-	$(SRC)mappers/24and26.o \
-	$(SRC)mappers/40.o \
-	$(SRC)mappers/41.o \
-	$(SRC)mappers/42.o \
-	$(SRC)mappers/46.o \
-	$(SRC)mappers/50.o \
-	$(SRC)mappers/51.o \
-	$(SRC)mappers/6.o \
-	$(SRC)mappers/61.o \
-	$(SRC)mappers/62.o \
-	$(SRC)mappers/65.o \
-	$(SRC)mappers/67.o \
-	$(SRC)mappers/69.o \
-	$(SRC)mappers/71.o \
-	$(SRC)mappers/72.o \
-	$(SRC)mappers/73.o \
-	$(SRC)mappers/75.o \
-	$(SRC)mappers/76.o \
-	$(SRC)mappers/77.o \
-	$(SRC)mappers/79.o \
-	$(SRC)mappers/80.o \
-	$(SRC)mappers/85.o \
-	$(SRC)mappers/emu2413.o \
-	$(SRC)mappers/mmc2and4.o
+MAPPERS_OBJS = 
 
 UTILS_OBJS = $(SRC)utils/crc32.o $(SRC)utils/endian.o $(SRC)utils/general.o \
 	$(SRC)utils/guid.o $(SRC)utils/md5.o $(SRC)utils/memory.o $(SRC)utils/unzip.o \
-	$(SRC)utils/xstring.o
-	
+	$(SRC)utils/xstring.o $(SRC)utils/ioapi.o $(SRC)utils/ConvertUTF.o
+
 COMMON_DRIVER_OBJS = $(SRC)drivers/common/args.o $(SRC)drivers/common/cheat.o \
 	$(SRC)drivers/common/config.o $(SRC)drivers/common/configSys.o  $(SRC)drivers/common/nes_ntsc.o
 
@@ -209,23 +205,17 @@ LDFLAGS = -s
 
 W_OPTS	= -Wno-write-strings -Wno-sign-compare
 
-F_OPTS = -falign-functions -falign-loops -falign-labels -falign-jumps \
-	-ffast-math -fsingle-precision-constant -funsafe-math-optimizations \
-	-fomit-frame-pointer -fno-builtin -fno-common \
-	-fstrict-aliasing  -fexpensive-optimizations \
-	-finline -finline-functions -fpeel-loops
+F_OPTS = -fomit-frame-pointer -fno-builtin -fno-common
 
-CC_OPTS	= -O2 -march=mips32 -mtune=r4600 -mno-shared -pipe -G0 $(F_OPTS) $(W_OPTS)
+CC_OPTS	= -O2 -mips32 $(F_OPTS) $(W_OPTS)
 
 CFLAGS += $(CC_OPTS)
 CFLAGS += -DDINGUX \
 	  -DLSB_FIRST \
 	  -DPSS_STYLE=1 \
 	  -DHAVE_ASPRINTF \
-	  -DUSE_ZSNES_FONT \
 	  -DFRAMESKIP \
 	  -D_REENTRANT \
-	  -DSHOWFPS \
 	  -I$(INCLUDEDIR)/SDL -D_GNU_SOURCE=1 -D_REENTRANT
 CXXFLAGS += $(CFLAGS)
 LDFLAGS  += $(CC_OPTS)

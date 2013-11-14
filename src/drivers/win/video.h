@@ -17,6 +17,15 @@
 #include "main.h"
 #include "window.h"
 
+enum DIRECTDRAW_MODES
+{
+	DIRECTDRAW_MODE_SOFTWARE,
+	DIRECTDRAW_MODE_SURFACE_IN_RAM,
+	DIRECTDRAW_MODE_FULL,
+	// ...
+	DIRECTDRAW_MODES_TOTAL
+};
+
 #define VF_DDSTRETCHED     1
 
 #define VEF_LOSTSURFACE 1
@@ -42,15 +51,16 @@ extern vmdef vmodes[11];
 extern int winspecial;
 extern int NTSCwinspecial;
 
-extern int disvaccel;
+extern int directDrawModeWindowed;
+extern int directDrawModeFullscreen;
+
 extern int fssync;
 extern int winsync;
 
 void SetFSVideoMode();
 void FCEUD_BlitScreen(uint8 *XBuf);
 void ConfigVideo();
-void RecreateResizableSurface(int width, int height);
-void RecolorResizableSurface();
+void recalculateBestFitRect(int width, int height);
 int SetVideoMode(int fs);
 void DoVideoConfigFix();
 void FCEUD_BlitScreen(uint8 *XBuf);

@@ -21,10 +21,6 @@
 /// \file
 /// \brief Handles the graphical game display for the SDL implementation.
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-
 #include "sdl.h"
 #include "sdl-opengl.h"
 #include "../common/vidblit.h"
@@ -48,6 +44,10 @@
 #include "gui.h"
 #include <gdk/gdkx.h>
 #endif
+
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
 
 // GLOBALS
 extern Config *g_config;
@@ -147,6 +147,15 @@ void FCEUD_VideoChanged()
 	else
 		PAL = 0;
 }
+
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+int InitVideo(FCEUGI *gi)
+{
+	// This is a big TODO.  Stubbing this off into its own function,
+	// as the SDL surface routines have changed drastically in SDL2
+	// TODO - SDL2
+}
+#else
 /**
  * Attempts to initialize the graphical video display.  Returns 0 on
  * success, -1 on failure.
@@ -170,8 +179,8 @@ InitVideo(FCEUGI *gi)
 	g_config->getOption("SDL.SpecialFilter", &s_sponge);
 	g_config->getOption("SDL.XStretch", &xstretch);
 	g_config->getOption("SDL.YStretch", &ystretch);
-	g_config->getOption("SDL.XResolution", &xres);
-	g_config->getOption("SDL.YResolution", &yres);
+	g_config->getOption("SDL.LastXRes", &xres);
+	g_config->getOption("SDL.LastYRes", &yres);
 	g_config->getOption("SDL.ClipSides", &s_clipSides);
 	g_config->getOption("SDL.NoFrame", &noframe);
 	g_config->getOption("SDL.ShowFPS", &show_fps);
@@ -179,7 +188,9 @@ InitVideo(FCEUGI *gi)
 	// check the starting, ending, and total scan lines
 	FCEUI_GetCurrentVidSystem(&s_srendline, &s_erendline);
 	s_tlines = s_erendline - s_srendline + 1;
-    
+
+	// check if we should auto-set x/y resolution
+
     // check for OpenGL and set the global flags
 #if OPENGL
 	if(s_useOpenGL && !s_sponge) {
@@ -219,8 +230,10 @@ InitVideo(FCEUGI *gi)
     
 	// check if we are rendering fullscreen
 	if(s_fullscreen) {
+		int no_cursor;
+		g_config->getOption("SDL.NoFullscreenCursor", &no_cursor);
 		flags |= SDL_FULLSCREEN;
-		SDL_ShowCursor(0);
+		SDL_ShowCursor(!no_cursor);
 	}
 	else {
 		SDL_ShowCursor(1);
@@ -236,7 +249,7 @@ InitVideo(FCEUGI *gi)
 	// enable double buffering if requested and we have hardware support
 #ifdef OPENGL
 	if(s_useOpenGL) {
-		FCEU_printf("Initializing with OpenGL (Disable with '-opengl 0').\n");
+		FCEU_printf("Initializing with OpenGL (Disable with '--opengl 0').\n");
 		if(doublebuf) {
 			 SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 		}
@@ -490,6 +503,7 @@ InitVideo(FCEUGI *gi)
 	}
 	return 0;
 }
+#endif
 
 /**
  * Toggles the full-screen display.
@@ -576,11 +590,14 @@ static void RedoPalette()
 			SetPaletteBlitToHigh((uint8*)s_psdl);
 		} else
 		{
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+			//TODO - SDL2
+#else
 			SDL_SetPalette(s_screen, SDL_PHYSPAL, s_psdl, 0, 256);
+#endif
 		}
 	}
 }
-
 // XXX soules - console lock/unlock unimplemented?
 
 ///Currently unimplemented.
@@ -689,8 +706,12 @@ BlitScreen(uint8 *XBuf)
 	}
 
 	 // ensure that the display is updated
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+	//TODO - SDL2
+#else
 	SDL_UpdateRect(s_screen, xo, yo,
 				(Uint32)(NWIDTH * s_exs), (Uint32)(s_tlines * s_eys));
+#endif
 
 #ifdef CREATE_AVI
 #if 0 /* PAL INTO NTSC HACK */
@@ -766,10 +787,14 @@ BlitScreen(uint8 *XBuf)
 #endif
 #endif
 
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+	// TODO
+#else
     // have to flip the displayed buffer in the case of double buffering
 	if(s_screen->flags & SDL_DOUBLEBUF) {
 		SDL_Flip(s_screen);
 	}
+#endif
 }
 
 /**

@@ -60,7 +60,7 @@ bool MemWatchLoadOnStart = false;					//Load on Start Flag
 bool MemWatchLoadFileOnStart = false;				//Load last file Flag
 bool BindToMain = false;							//Whether or not FCEUX is in control of this dialog (by default all dialogs in FCEUX aren't)
 
-string memwhelp = "{01ABA5FD-D54A-44EF-961A-42C7AA586D95}"; //Name of memory watch chapter in .chm (sure would be nice to get better names for these!"
+string memwhelp = "MemoryWatch";
 
 //Recent Files Menu globals------------------------------------
 char *memw_recent_files[] = { 0 ,0 ,0 ,0 ,0 };
@@ -416,9 +416,9 @@ static void SaveMemWatch()
 	ofn.lpstrDefExt="txt";
 	char nameo[2048];
 	if (!memwLastFilename[0])
-		strcpy(nameo,GetRomName());
+		strcpy(nameo, mass_replace(GetRomName(), "|", ".").c_str());
 	else
-		strcpy(nameo,memwLastFilename);
+		strcpy(nameo, memwLastFilename);
 	ofn.lpstrFile=nameo;
 	ofn.lpstrDefExt="txt";
 	ofn.nMaxFile=256;

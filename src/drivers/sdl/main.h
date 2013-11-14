@@ -20,8 +20,6 @@
 #ifndef __FCEU_SDL_MAIN_H
 #define __FCEU_SDL_MAIN_H
 
-#include <SDL.h>
-
 #include "../../driver.h"
 #include "../common/config.h"
 #include "../common/args.h"
@@ -37,8 +35,6 @@ extern int eoptions;
 #define EO_PAL		256
 #define EO_LOWPASS	512
 #define EO_AUTOHIDE	1024
-
-extern int NoWaiting;
 
 extern int _sound;
 extern long soundrate;

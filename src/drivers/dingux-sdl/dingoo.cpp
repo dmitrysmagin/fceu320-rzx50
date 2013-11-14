@@ -192,7 +192,7 @@ int LoadGame(const char *path) {
 	RefreshThrottleFPS();
 
 	// Reload game config or default config
-	//g_config->reload(FCEU_MakeFName(FCEUMKF_CFG, 0, 0));
+	g_config->reload(FCEU_MakeFName(FCEUMKF_CFG, 0, 0));
 
 #ifdef FRAMESKIP
 	// Update frameskip value
@@ -342,7 +342,7 @@ static int DriverInitialize(FCEUGI *gi) {
  */
 int FCEUD_DriverReset() {
 	// Save game config file
-	g_config->save(/*FCEU_MakeFName(FCEUMKF_CFG, 0, 0)*/);
+	g_config->save(FCEU_MakeFName(FCEUMKF_CFG, 0, 0));
 
 #ifdef FRAMESKIP
 	// Update frameskip value
@@ -378,7 +378,7 @@ int FCEUD_DriverReset() {
  */
 static void DriverKill() {
 	// Save only game config file
-	g_config->save(/*FCEU_MakeFName(FCEUMKF_CFG, 0, 0)*/);
+	g_config->save(FCEU_MakeFName(FCEUMKF_CFG, 0, 0));
 
 	if (inited & 2)
 		KillJoysticks();

@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <dirent.h>
 
 #include "../../types.h"
 #include "configSys.h"
@@ -395,9 +394,9 @@ Config::setOption(const std::string &name,
 
 int
 Config::getOption(const std::string &name,
-                  std::string *value) const
+                  std::string *value)
 {
-    std::map<std::string, std::string>::const_iterator opt_i;
+    std::map<std::string, std::string>::iterator opt_i;
 
     // confirm that the option exists
     opt_i = _strOptMap.find(name);
@@ -412,9 +411,9 @@ Config::getOption(const std::string &name,
 
 int
 Config::getOption(const std::string &name,
-                  const char **value) const
+                  const char **value)
 {
-    std::map<std::string, std::string>::const_iterator opt_i;
+    std::map<std::string, std::string>::iterator opt_i;
 
     // confirm that the option exists
     opt_i = _strOptMap.find(name);
@@ -429,9 +428,9 @@ Config::getOption(const std::string &name,
 
 int
 Config::getOption(const std::string &name,
-                  int *value) const
+                  int *value)
 {
-    std::map<std::string, int>::const_iterator opt_i;
+    std::map<std::string, int>::iterator opt_i;
 
     // confirm that the option exists
     opt_i = _intOptMap.find(name);
@@ -446,9 +445,9 @@ Config::getOption(const std::string &name,
 
 int
 Config::getOption(const std::string &name,
-                  double *value) const
+                  double *value)
 {
-    std::map<std::string, double>::const_iterator opt_i;
+    std::map<std::string, double>::iterator opt_i;
 
     // confirm that the option exists
     opt_i = _dblOptMap.find(name);
@@ -559,33 +558,6 @@ Config::parse(int argc,
         return error;
     }
 
-	// try to read cfg.d/*
-	std::string cfgd_dir_name = _dir + "/" + "cfg.d/";
-	DIR *d;
-	struct dirent *dir;
-	d = opendir(cfgd_dir_name.c_str());
-	if (d)
-	{
-		while ((dir = readdir(d)) != NULL)
-		{
-			// dont load "." or ".."
-			if(strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0)
-			{
-				continue;
-			}
-						
-			// TODO  0 = good -1 = bad
-			std::string fname = cfgd_dir_name + dir->d_name;
-			printf("Loading auxilary configuration file at %s...\n", fname.c_str());
-			if (_loadFile(fname.c_str()) != 0)
-			{
-				printf("Failed to parse configuration at %s\n", fname.c_str());
-			}
-		}
-
-		closedir(d);
-	}
-
     // parse the arguments
     return _parseArgs(argc, argv);
 }
@@ -604,89 +576,133 @@ char* Config::getConfigDirectory()
 	return strdup(_dir.c_str());
 }
 
-// load and parse the default configuration file
+int 
+Config::reload(const std::string &cfgname)
+{
+   signed int pos, eqPos;
+    std::fstream config;
+    std::map<std::string, int>::iterator int_i;
+    std::map<std::string, double>::iterator dbl_i;
+    std::map<std::string, std::string>::iterator str_i;
+    std::string line, name, value;
+    char buf[1024];
+
+    // set the exception handling to catch i/o errors
+    config.exceptions(std::fstream::badbit);
+
+    try {
+        // open the file for reading (create if it doesn't exist)
+        config.open(cfgname.c_str(), std::ios::in | std::ios::out);
+        if(!config.is_open()) {
+            // XXX file couldn't be opened?
+            return _load();
+        }
+
+        while(!config.eof()) {
+            // read a line
+            config.getline(buf, 1024);
+            line = buf;
+
+            // check line validity
+            eqPos = line.find("=");
+            if(line[0] == '#') {
+                // skip this line
+                continue;
+            }
+
+            // get the name and value for the option
+            pos = line.find(" ");
+            name = line.substr(0, (pos > eqPos) ? eqPos : pos);
+            pos = line.find_first_not_of(" ", eqPos + 1);
+	    if (pos == std::string::npos) value = "";
+	    else value = line.substr(pos);
+
+            // check if the option exists, and if so, set it appropriately
+            str_i = _strOptMap.find(name);
+            dbl_i = _dblOptMap.find(name);
+            int_i = _intOptMap.find(name);
+            if(str_i != _strOptMap.end()) {
+                str_i->second = value;
+            } else if(int_i != _intOptMap.end()) {
+                int_i->second = atol(value.c_str());
+            } else if(dbl_i != _dblOptMap.end()) {
+                dbl_i->second = atof(value.c_str());
+            }
+        }
+
+        // close the file
+        config.close();
+    } catch(std::fstream::failure e) {
+        std::cerr << e.what() << std::endl;
+        return -1;
+    }
+
+    return 0;
+}
+
 int
 Config::_load()
 {
-	std::string configFile = _dir + "/" + cfgFile;
-	bool success = Config::_loadFile(configFile.c_str())!=0;
+    signed int pos, eqPos;
+    std::fstream config;
+    std::map<std::string, int>::iterator int_i;
+    std::map<std::string, double>::iterator dbl_i;
+    std::map<std::string, std::string>::iterator str_i;
+    std::string configFile = _dir + "/" + cfgFile;
+    std::string line, name, value;
+    char buf[1024];
 
-	return success;
-}	
+    // set the exception handling to catch i/o errors
+    config.exceptions(std::fstream::badbit);
 
-// load and parse a given configuration file
-int
-Config::_loadFile(const char* fname)
-{
-	signed int pos, eqPos;
-	std::fstream config;
-	std::map<std::string, int>::iterator int_i;
-	std::map<std::string, double>::iterator dbl_i;
-	std::map<std::string, std::string>::iterator str_i;
-	std::string configFile;
-	// if no filename argument was passed, parse the default configuration file
-	if(fname == NULL)
-	{
-		configFile = _dir + "/" + cfgFile;
-	} else
-	{
-		configFile = fname;
-	}
-	std::string line, name, value;
-	char buf[1024];
+    try {
+        // open the file for reading (create if it doesn't exist)
+        config.open(configFile.c_str(), std::ios::in | std::ios::out);
+        if(!config.is_open()) {
+            // XXX file couldn't be opened?
+            return 0;
+        }
 
-	// set the exception handling to catch i/o errors
-	config.exceptions(std::fstream::badbit);
+        while(!config.eof()) {
+            // read a line
+            config.getline(buf, 1024);
+            line = buf;
 
-	try {
-		// open the file for reading (create if it doesn't exist)
-		config.open(configFile.c_str(), std::ios::in | std::ios::out);
-		if(!config.is_open()) {
-			// XXX file couldn't be opened?
-			return 0;
-			}
+            // check line validity
+            eqPos = line.find("=");
+            if(line[0] == '#') {
+                // skip this line
+                continue;
+            }
 
-		while(!config.eof()) {
-			// read a line
-			config.getline(buf, 1024);
-			line = buf;
+            // get the name and value for the option
+            pos = line.find(" ");
+            name = line.substr(0, (pos > eqPos) ? eqPos : pos);
+            pos = line.find_first_not_of(" ", eqPos + 1);
+	    if (pos == std::string::npos) value = "";
+	    else value = line.substr(pos);
 
-			// check line validity
-			eqPos = line.find("=");
-			if(line[0] == '#') {
-				// skip this line
-				continue;
-			}
+            // check if the option exists, and if so, set it appropriately
+            str_i = _strOptMap.find(name);
+            dbl_i = _dblOptMap.find(name);
+            int_i = _intOptMap.find(name);
+            if(str_i != _strOptMap.end()) {
+                str_i->second = value;
+            } else if(int_i != _intOptMap.end()) {
+                int_i->second = atol(value.c_str());
+            } else if(dbl_i != _dblOptMap.end()) {
+                dbl_i->second = atof(value.c_str());
+            }
+        }
 
-			// get the name and value for the option
-			pos = line.find(" ");
-			name = line.substr(0, (pos > eqPos) ? eqPos : pos);
-			pos = line.find_first_not_of(" ", eqPos + 1);
-			if (pos == std::string::npos)
-				value = "";
-			else value = line.substr(pos);
+        // close the file
+        config.close();
+    } catch(std::fstream::failure e) {
+        std::cerr << e.what() << std::endl;
+        return -1;
+    }
 
-			// check if the option exists, and if so, set it appropriately
-			str_i = _strOptMap.find(name);
-			dbl_i = _dblOptMap.find(name);
-			int_i = _intOptMap.find(name);
-			if(str_i != _strOptMap.end()) {
-				str_i->second = value;
-			} else if(int_i != _intOptMap.end()) {
-				int_i->second = atol(value.c_str());
-			} else if(dbl_i != _dblOptMap.end()) {
-				dbl_i->second = atof(value.c_str());
-			}
-		}
-
-		// close the file
-		config.close();
-	} catch(std::fstream::failure e) {
-		std::cerr << e.what() << std::endl;
-		return -1;
-	}
-
-	return 0;
+    return 0;
 }
 
 /**
@@ -695,53 +711,94 @@ Config::_loadFile(const char* fname)
 int
 Config::save()
 {
-	std::fstream config;
-	std::map<std::string, int>::iterator int_i;
-	std::map<std::string, double>::iterator dbl_i;
-	std::map<std::string, std::string>::iterator str_i;
-	std::string configFile = _dir + "/" + cfgFile;
-	char buf[1024];
+    std::fstream config;
+    std::map<std::string, int>::iterator int_i;
+    std::map<std::string, double>::iterator dbl_i;
+    std::map<std::string, std::string>::iterator str_i;
+    std::string configFile = _dir + "/" + cfgFile;
+    char buf[1024];
 
-	// set the exception handling to catch i/o errors
-	config.exceptions(std::ios::failbit | std::ios::badbit);
+    // set the exception handling to catch i/o errors
+    config.exceptions(std::ios::failbit | std::ios::badbit);
 
-	try
-	{
-		// open the file, truncate and for write
-		config.open(configFile.c_str(), std::ios::out | std::ios::trunc);
+    try {
+        // open the file, truncate and for write
+        config.open(configFile.c_str(), std::ios::out | std::ios::trunc);
 
-		// write a warning
-		strcpy(buf, "# Auto-generated\n# SDL keysyms defined in /usr/include/SDL/SDL_keysym.h\n# getSDLKey can be found \
-            in the source directory and can assist in remapping hotkeys\n#\n");
-		config.write(buf, strlen(buf));
+        // write a warning
+        strcpy(buf, "# Auto-generated\n");
+        config.write(buf, strlen(buf));
 
-		// write each configuration setting
-		for(int_i = _intOptMap.begin(); int_i != _intOptMap.end(); int_i++) 
-		{
-			snprintf(buf, 1024, "%s = %d\n",
-				int_i->first.c_str(), int_i->second);
-			config.write(buf, strlen(buf));
-		}
-		for(dbl_i = _dblOptMap.begin(); dbl_i != _dblOptMap.end(); dbl_i++) 
-		{
-			snprintf(buf, 1024, "%s = %f\n",
-				dbl_i->first.c_str(), dbl_i->second);
-			config.write(buf, strlen(buf));
-		}
-		for(str_i = _strOptMap.begin(); str_i != _strOptMap.end(); str_i++) 
-		{
-			snprintf(buf, 1024, "%s = %s\n",
-				str_i->first.c_str(), str_i->second.c_str());
-			config.write(buf, strlen(buf));
-		}
+        // write each configuration setting
+        for(int_i = _intOptMap.begin(); int_i != _intOptMap.end(); int_i++) {
+            snprintf(buf, 1024, "%s = %d\n",
+                     int_i->first.c_str(), int_i->second);
+            config.write(buf, strlen(buf));
+        }
+        for(dbl_i = _dblOptMap.begin(); dbl_i != _dblOptMap.end(); dbl_i++) {
+            snprintf(buf, 1024, "%s = %f\n",
+                     dbl_i->first.c_str(), dbl_i->second);
+            config.write(buf, strlen(buf));
+        }
+        for(str_i = _strOptMap.begin(); str_i != _strOptMap.end(); str_i++) {
+            snprintf(buf, 1024, "%s = %s\n",
+                     str_i->first.c_str(), str_i->second.c_str());
+            config.write(buf, strlen(buf));
+        }
 
-		// close the file
-		config.close();
-	} catch(std::fstream::failure e)
-	{
-		std::cerr << e.what() << std::endl;
-		return -1;
-	}
+        // close the file
+        config.close();
+    } catch(std::fstream::failure e) {
+        std::cerr << e.what() << std::endl;
+        return -1;
+    }
 
-	return 0;
+    return 0;
+}
+
+int
+Config::save(const std::string &name)
+{
+    std::fstream config;
+    std::map<std::string, int>::iterator int_i;
+    std::map<std::string, double>::iterator dbl_i;
+    std::map<std::string, std::string>::iterator str_i;
+    char buf[1024];
+
+    // set the exception handling to catch i/o errors
+    config.exceptions(std::ios::failbit | std::ios::badbit);
+
+    try {
+        // open the file, truncate and for write
+        config.open(name.c_str(), std::ios::out | std::ios::trunc);
+
+        // write a warning
+        strcpy(buf, "# Auto-generated\n");
+        config.write(buf, strlen(buf));
+
+        // write each configuration setting
+        for(int_i = _intOptMap.begin(); int_i != _intOptMap.end(); int_i++) {
+            snprintf(buf, 1024, "%s = %d\n",
+                     int_i->first.c_str(), int_i->second);
+            config.write(buf, strlen(buf));
+        }
+        for(dbl_i = _dblOptMap.begin(); dbl_i != _dblOptMap.end(); dbl_i++) {
+            snprintf(buf, 1024, "%s = %f\n",
+                     dbl_i->first.c_str(), dbl_i->second);
+            config.write(buf, strlen(buf));
+        }
+        for(str_i = _strOptMap.begin(); str_i != _strOptMap.end(); str_i++) {
+            snprintf(buf, 1024, "%s = %s\n",
+                     str_i->first.c_str(), str_i->second.c_str());
+            config.write(buf, strlen(buf));
+        }
+
+        // close the file
+        config.close();
+    } catch(std::fstream::failure e) {
+        std::cerr << e.what() << std::endl;
+        return -1;
+    }
+
+    return 0;
 }

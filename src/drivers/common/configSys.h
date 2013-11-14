@@ -20,7 +20,6 @@ private:
     int _addOption(char, const std::string &, const std::string &, int);
     int _addOption(const std::string &, const std::string &, int);
     int _load(void);
-	int _loadFile(const char* fname);
     int _parseArgs(int, char **);
 
 public:
@@ -32,6 +31,11 @@ public:
 public:
     Config(std::string d) : _dir(d) { }
     ~Config() { }
+
+    /**
+     * Reloads configuration file with given filename
+     */
+    int reload(const std::string &);
 
     /**
      * Adds a configuration option.  All options must be added before
@@ -66,10 +70,10 @@ public:
     int setOption(const std::string &, double);
     int setOption(const std::string &, void (*)(const std::string &));
 
-    int getOption(const std::string &, std::string *) const;
-    int getOption(const std::string &, const char **) const;
-    int getOption(const std::string &, int *) const;
-    int getOption(const std::string &, double *) const;
+    int getOption(const std::string &, std::string *);
+    int getOption(const std::string &, const char **);
+    int getOption(const std::string &, int *);
+    int getOption(const std::string &, double *);
 
     /**
      * Parse the arguments.  Also read in the configuration file and
@@ -89,6 +93,11 @@ public:
      * configuration file.
      */
     int save();
+    
+    /**
+     * Like save with given filename
+     */
+    int save(const std::string &);
 };
 
 #endif // !__CONFIGSYS_H

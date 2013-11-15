@@ -34,19 +34,6 @@ static void soundrate_update(unsigned long key) {
 	g_config->setOption("SDL.Sound.Rate", rates[i]);
 }
 
-// Sound thread priority
-static void priority_update(unsigned long key) {
-	int val;
-	g_config->getOption("SDL.Sound.Priority", &val);
-
-	if (key == DINGOO_RIGHT)
-		val = val < 19 ? val + 1 : -20;
-	if (key == DINGOO_LEFT)
-		val = val > -20 ? val - 1 : 19;
-
-	g_config->setOption("SDL.Sound.Priority", val);
-}
-
 // Custom palette
 static void lowpass_update(unsigned long key) {
 	int val, tmp;
@@ -141,7 +128,6 @@ static void pcm_update(unsigned long key) {
 static SettingEntry sd_menu[] = {
 	{ "Toggle sound", "Enable sound", "SDL.Sound", sound_update },
 	{ "Sound rate",	"Sound playback rate (Hz)", "SDL.Sound.Rate", soundrate_update },
-	//{ "Sound priority", "Sets sound thread priority", "SDL.Sound.Priority",	priority_update },
 	{ "Lowpass", "Enables low-pass filter",	"SDL.Sound.LowPass", lowpass_update },
 	{ "Volume", "Sets global volume", "SDL.Sound.Volume", volume_update },
 	{ "Triangle volume", "Sets Triangle volume", "SDL.Sound.TriangleVolume", triangle_update },

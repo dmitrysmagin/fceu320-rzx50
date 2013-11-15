@@ -108,46 +108,6 @@ static void custom_update(unsigned long key) {
 	g_config->setOption("SDL.Palette", cpalette);
 }
 
-// Sound hardware volume
-static void hwvolume_update(unsigned long key) {
-	int val, tmp;
-	g_config->getOption("SDL.HWVolume", &tmp);
-
-	val = tmp;
-	if (key == DINGOO_RIGHT)
-		val = val < 100 ? val + 5 : 100;
-	if (key == DINGOO_LEFT)
-		val = val > 0 ? val - 5 : 0;
-
-	g_config->setOption("SDL.HWVolume", val);
-}
-
-// Cpu rate
-static void cpu_update(unsigned long key) {
-	int val;
-	g_config->getOption("SDL.CpuRate", &val);
-
-	if (key == DINGOO_RIGHT)
-		val = val < 420 ? val + 12 : 420;
-	if (key == DINGOO_LEFT)
-		val = val > 204 ? val - 12 : 204;
-
-	g_config->setOption("SDL.CpuRate", val);
-}
-
-// Brightness
-static void bright_update(unsigned long key) {
-	int val;
-	g_config->getOption("SDL.Brightness", &val);
-
-	if (key == DINGOO_RIGHT)
-		val = val < 100 ? val + 5 : 100;
-	if (key == DINGOO_LEFT)
-		val = val > 10 ? val - 5 : 10;
-
-	g_config->setOption("SDL.Brightness", val);
-}
-
 /* MAIN SETTINGS MENU */
 
 static SettingEntry

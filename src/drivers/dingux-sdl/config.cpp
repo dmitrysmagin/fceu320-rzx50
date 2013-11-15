@@ -129,11 +129,6 @@ Config * InitConfig() {
 	config->addOption("soundrecord", "SDL.Sound.RecordFile", "");
 	config->addOption("soundbufsize", "SDL.Sound.BufSize", 30);
 	config->addOption("lowpass", "SDL.Sound.LowPass", 0);
-	config->addOption("soundp", "SDL.Sound.Priority", 19);
-
-	config->addOption("hwvolume", "SDL.HWVolume", 95);
-	config->addOption("hwclock", "SDL.CpuRate", 420);
-	config->addOption("hwbrightness", "SDL.Brightness", 50);
 
 	config->addOption('g', "gamegenie", "SDL.GameGenie", 0);
 	config->addOption("pal", "SDL.PAL", 0);

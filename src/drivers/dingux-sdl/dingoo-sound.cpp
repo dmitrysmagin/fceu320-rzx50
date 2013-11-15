@@ -77,7 +77,7 @@ int InitSound()
 {
     int sound, soundrate, soundbufsize, soundvolume, soundtrianglevolume,
             soundsquare1volume, soundsquare2volume, soundnoisevolume,
-            soundpcmvolume, soundq, soundp, lowpass, samples;
+            soundpcmvolume, soundq, lowpass, samples;
 
 
     FCEUI_printf("Initializing audio...\n");
@@ -106,7 +106,6 @@ int InitSound()
     g_config->getOption("SDL.Sound.Square2Volume", &soundsquare2volume);
     g_config->getOption("SDL.Sound.NoiseVolume", &soundnoisevolume);
     g_config->getOption("SDL.Sound.PCMVolume", &soundpcmvolume);
-    g_config->getOption("SDL.Sound.Priority", &soundp);
     g_config->getOption("SDL.Sound.LowPass", &lowpass);
 
     spec.freq = soundrate;

@@ -9,10 +9,7 @@
 
 #include "../dface.h"
 
-#include "bitmap.h"
 #include "font.h"
-
-#include "gfceu320.h" 
 
 // ...
 extern SDL_Surface* screen;
@@ -26,7 +23,7 @@ typedef struct _menu_entry {
 } MenuEntry;
 
 SDL_Surface *gui_screen;
-static struct bitmap16 *g_bg;
+static SDL_Surface *g_bg;
 static uint16 *g_psdl;
 static unsigned short vbuffer[320 * 240];
 static uint8 g_preview[256 * 256 + 8];
@@ -92,9 +89,12 @@ int parsekey(unsigned long code, int repeat = 0)
 	return 0;
 }
 
-void draw_bg(unsigned short *screen, struct bitmap16 *bg) 
+void draw_bg(unsigned short *screen, SDL_Surface *bg) 
 {
-	memcpy(screen, bg->data, 320 * 240 * sizeof(unsigned short));
+	if(bg)
+		SDL_BlitSurface(bg, NULL, gui_screen, NULL);
+	else
+		SDL_FillRect(gui_screen, NULL, (1<<11) | (8<<5) | 10);
 }
 
 int update_time()
@@ -285,9 +285,7 @@ int FCEUGUI_Init(FCEUGI *gi)
 	if(!gui_screen) printf("Error creating surface gui\n");
 
 	// Load bg image
-	g_bg = load_bmp_16bpp(gfceu320_bg, 320, 240);
-	if (g_bg == NULL)
-		return -1;
+	g_bg = SDL_LoadBMP("./bg.bmp");
 
 	if (InitFont() < 0)
 		return -2;
@@ -318,7 +316,7 @@ void FCEUGUI_Reset(FCEUGI *gi) {
 void FCEUGUI_Kill() {
 	// free stuff
 	if (g_bg)
-		free_bitmap_16bpp(g_bg);
+		SDL_FreeSurface(g_bg);
 	KillFont();
 }
 
@@ -391,49 +389,49 @@ void FCEUGUI_Run() {
 			draw_bg(vbuffer, g_bg);
 
 			// Draw time and battery every minute
-			DrawText(vbuffer, g_time, 148, 5);
-			DrawText(vbuffer, g_battery, 214, 5);
+			DrawText(gui_screen, g_time, 148, 5);
+			DrawText(gui_screen, g_battery, 214, 5);
 
 			if (index == 3 || index == 4) {
 				// Draw state preview
 				draw_preview(vbuffer, 185, 100);
 				if (!g_ispreview)
-					DrawChar(vbuffer, SP_NOPREVIEW, 207, 135);
+					DrawChar(gui_screen, SP_NOPREVIEW, 207, 135);
 			}
 
 			if (index == 5) {
 				draw_shot_preview(vbuffer, 185, 100);
 			}
 
-			DrawChar(vbuffer, SP_ROM, 40, 38);
-			DrawText(vbuffer, g_romname, 86, 37);
+			DrawChar(gui_screen, SP_ROM, 40, 38);
+			DrawText(gui_screen, g_romname, 86, 37);
 
 			// Draw menu
 			for (i = 0, y = 72; i < 8; i++, y += 16) {
-				DrawText(vbuffer, main_menu[i].name, 50, y);
+				DrawText(gui_screen, main_menu[i].name, 50, y);
 			}
 
 			// Draw info
-			DrawText(vbuffer, main_menu[index].info, 16, 225);
+			DrawText(gui_screen, main_menu[index].info, 16, 225);
 
 			// Draw selector
-			DrawChar(vbuffer, SP_SELECTOR, 34, spy);
+			DrawChar(gui_screen, SP_SELECTOR, 34, spy);
 
 			// If save/load state render slot preview and number
 			if (index == 3 || index == 4) {
 				char tmp[32];
 				sprintf(tmp, "Slot %d", g_slot);
-				DrawText(vbuffer, tmp, 208, 80);
+				DrawText(gui_screen, tmp, 208, 80);
 
 				if (g_slot > 0)
-					DrawChar(vbuffer, SP_LEFTARROW, 168, 133);
+					DrawChar(gui_screen, SP_LEFTARROW, 168, 133);
 				if (g_slot < 9)
-					DrawChar(vbuffer, SP_RIGHTARROW, 286, 133);
+					DrawChar(gui_screen, SP_RIGHTARROW, 286, 133);
 			}
 
 			// If screenshot render current frame preview
 			if (index == 5) {
-				DrawText(vbuffer, "Preview", 204, 80);
+				DrawText(gui_screen, "Preview", 204, 80);
 			}
 
 			g_dirty = 0;

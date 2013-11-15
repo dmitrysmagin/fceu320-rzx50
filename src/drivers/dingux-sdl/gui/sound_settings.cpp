@@ -209,32 +209,32 @@ int RunSoundSettings() {
 			draw_bg(vbuffer, g_bg);
 
 			// Draw time and battery every minute
-			DrawText(vbuffer, g_time, 148, 5);
-			DrawText(vbuffer, g_battery, 214, 5);
+			DrawText(gui_screen, g_time, 148, 5);
+			DrawText(gui_screen, g_battery, 214, 5);
 
-			DrawChar(vbuffer, SP_SOUND_SETTINGS, 40, 38);
+			DrawChar(gui_screen, SP_SOUND_SETTINGS, 40, 38);
 
 			// Draw menu
 			for (i = offset_start, y = 70; i < offset_end; i++, y += 15) {
-				DrawText(vbuffer, sd_menu[i].name, 60, y);
+				DrawText(gui_screen, sd_menu[i].name, 60, y);
 
 				g_config->getOption(sd_menu[i].option, &itmp);
 				sprintf(tmp, "%d", itmp);
 
-				DrawText(vbuffer, tmp, 210, y);
+				DrawText(gui_screen, tmp, 210, y);
 			}
 
 			// Draw info
-			DrawText(vbuffer, sd_menu[index].info, 16, 225);
+			DrawText(gui_screen, sd_menu[index].info, 16, 225);
 
 			// Draw selector
-			DrawChar(vbuffer, SP_SELECTOR, 44, spy);
+			DrawChar(gui_screen, SP_SELECTOR, 44, spy);
 
 			// Draw offset marks
 			if (offset_start > 0)
-				DrawChar(vbuffer, SP_UPARROW, 274, 62);
+				DrawChar(gui_screen, SP_UPARROW, 274, 62);
 			if (offset_end < menu_size)
-				DrawChar(vbuffer, SP_DOWNARROW, 274, 203);
+				DrawChar(gui_screen, SP_DOWNARROW, 274, 203);
 
 			g_dirty = 0;
 		}

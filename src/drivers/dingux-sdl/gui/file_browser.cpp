@@ -140,34 +140,34 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 			draw_bg(vbuffer, g_bg);
 
 			// Draw time and battery every minute
-			DrawText(vbuffer, g_time, 148, 5);
-			DrawText(vbuffer, g_battery, 214, 5);
+			DrawText(gui_screen, g_time, 148, 5);
+			DrawText(gui_screen, g_battery, 214, 5);
 
-			DrawChar(vbuffer, SP_BROWSER, 40, 38);
+			DrawChar(gui_screen, SP_BROWSER, 40, 38);
 
 			// Draw file list
 			for (i = offset_start, y = 70; i < offset_end; i++, y += 15) {
-				DrawText(vbuffer, list->GetName(i), 36, y);
+				DrawText(gui_screen, list->GetName(i), 36, y);
 			}
 
 			// Draw info
 			if (info)
-				DrawText(vbuffer, info, 16, 225);
+				DrawText(gui_screen, info, 16, 225);
 			else {
 				if (list->GetSize(index) == -1)
-					DrawText(vbuffer, "Open folder?", 16, 225);
+					DrawText(gui_screen, "Open folder?", 16, 225);
 				else
-					DrawText(vbuffer, "Open file?", 16, 225);
+					DrawText(gui_screen, "Open file?", 16, 225);
 			}
 
 			// Draw selector
-			DrawChar(vbuffer, SP_SELECTOR, 20, spy);
+			DrawChar(gui_screen, SP_SELECTOR, 20, spy);
 
 			// Draw offset marks
 			if (offset_start > 0)
-				DrawChar(vbuffer, SP_UPARROW, 274, 62);
+				DrawChar(gui_screen, SP_UPARROW, 274, 62);
 			if (offset_end < list->Size())
-				DrawChar(vbuffer, SP_DOWNARROW, 274, 203);
+				DrawChar(gui_screen, SP_DOWNARROW, 274, 203);
 
 			g_dirty = 0;
 		}

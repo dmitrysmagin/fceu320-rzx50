@@ -19,7 +19,7 @@ enum {
 
 int InitFont();
 void KillFont();
-int DrawChar(unsigned short *dest, uint8 c, int x, int y);
-void DrawText(unsigned short *dest, const char *textmsg, int x, int y);
+int DrawChar(SDL_Surface *dest, uint8 c, int x, int y);
+void DrawText(SDL_Surface *dest, const char *textmsg, int x, int y);
 
 #endif

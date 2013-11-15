@@ -2,15 +2,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <SDL/SDL.h>
 
 #include "../dingoo.h"
 #include "../dingoo-video.h"
 
 #include "../dface.h"
 
-#include "bitmap.h"
 #include "font.h"
-#include "gfceu320.h"
 
 typedef struct _letter
 {
@@ -19,10 +18,10 @@ typedef struct _letter
 } Letter;
 
 static int g_max_height = 13;
-static bitmap16 *g_font;
+static SDL_Surface *g_font;
 static Letter g_letters[] =
 {
-    /*" "*/ {0,0,2,12,0,5},
+	/*" "*/ {0,0,2,12,0,5},
 	/*"!"*/ {2,0,5,12,1,2},
 	/*"""*/ {7,0,7,12,1,1},
 	/*"#"*/ {14,0,9,12,0,0},
@@ -124,75 +123,63 @@ static Letter g_letters[] =
 	/*NOPREVIEW*/ {145,25,54,8,0,0},
 	/*LEFTARROW*/ {132,34,12,11,0,0},
 	/*RIGHTARROW*/ {145,34,12,11,0,0},
-    /*UPARROW*/ {160,36,9,6,0,0},
-    /*DOWNARROW*/ {171,36,9,6,0,0},
-    /*MAINSETTINGS*/ {132,70,94,12,0,0},
-    /*VIDEOSETTINGS*/ {132,58,99,12,0,0},
-    /*SOUNDSETTINGS*/ {132,46,103,12,0,0},
-    /*BROWSER*/ {132,82,89,12,0,0}
+	/*UPARROW*/ {160,36,9,6,0,0},
+	/*DOWNARROW*/ {171,36,9,6,0,0},
+	/*MAINSETTINGS*/ {132,70,94,12,0,0},
+	/*VIDEOSETTINGS*/ {132,58,99,12,0,0},
+	/*SOUNDSETTINGS*/ {132,46,103,12,0,0},
+	/*BROWSER*/ {132,82,89,12,0,0}
 };
 
 int InitFont()
 {
-    // Load font image
-    g_font = load_bmp_16bpp(gfceu320_sprites, 240, 240);
-    if (g_font == NULL) return -1;
+	// Load font image
+	g_font = SDL_LoadBMP("./sp.bmp");
+	if(g_font == NULL) return -1;
 
-    return 0;
+	int color_key = SDL_MapRGB(g_font->format, 255, 0, 255);
+	SDL_SetColorKey(g_font, SDL_SRCCOLORKEY, color_key);
+
+	return 0;
 }
 
 void KillFont()
 {
-    free_bitmap_16bpp(g_font);
+	SDL_FreeSurface(g_font);
 }
 
-#define COLOR_KEY 	dingoo_video_color15(255, 0 , 255)
-int DrawChar(unsigned short *dest, uint8 c, int x, int y)
+int DrawChar(SDL_Surface *dest, uint8 c, int x, int y)
 {
-    Letter *l = &g_letters[c];
+	Letter *l = &g_letters[c];
+	SDL_Rect src, dst;
 
-    int x0, y0;
+	dst.x = x;
+	dst.y = y;
+	src.x = l->x;
+	src.y = l->y;
+	src.w = l->w;
+	src.h = l->h;
 
-    register int l_w = (x + l->w) > 320 ? 320 - x : l->w;
-    register int src_inc = g_font->width - l->w;
-    register int dst_inc = 320 - l->w;
-    register uint16 *src = (uint16 *)g_font->data;
-    register uint16 *dst = (uint16 *)dest;
+	SDL_BlitSurface(g_font, &src, dest, &dst);
 
-    x += l->pre;
-
-    src += (g_font->width)*l->y + l->x;
-    dst += 320*y + x;
-
-    for(y0 = 0; y0 < l->h; y0++) {
-        for(x0 = 0; x0 < l_w; x0++) {
-  	        if (*src != COLOR_KEY) 
-		        *dst = *src;
-    	    src++;
-   	        dst++;
-        }
-        
-        dst += dst_inc;
-	    src += src_inc;
-    }
-    
-    return l->w + l->pos;
+	return l->w + l->pos;
 } 
 
-void DrawText(unsigned short *dest, const char *textmsg, int x, int y)
+void DrawText(SDL_Surface *dest, const char *textmsg, int x, int y)
 {
-    if( textmsg == NULL ) return;
+	if( textmsg == NULL ) return;
 
-    char *str = (char *)textmsg;
-    int x0 = x, y0 = y; 
-    for(;*str;str++) {
-	    if (*str == '\n') y0 += g_max_height;
-    	else {
-	        uint8 c = (*str-32)&0x7F;
-            x0 += DrawChar(dest,c,x0,y0);
+	char *str = (char *)textmsg;
+	int x0 = x, y0 = y; 
+	for(; *str; str++) {
+		if(*str == '\n')
+			y0 += g_max_height;
+		else {
+			uint8 c = (*str - 32) & 0x7F;
+			x0 += DrawChar(dest, c, x0, y0);
 
-            if( x0 > 320 ) break;
-	    }
-    }
+			if(x0 > 320) break;
+		}
+	}
 }
 

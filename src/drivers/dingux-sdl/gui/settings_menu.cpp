@@ -83,21 +83,21 @@ int RunSettingsMenu() {
 			draw_bg(vbuffer, g_bg);
 
 			// Draw time and battery every minute
-			DrawText(vbuffer, g_time, 148, 5);
-			DrawText(vbuffer, g_battery, 214, 5);
+			DrawText(gui_screen, g_time, 148, 5);
+			DrawText(gui_screen, g_battery, 214, 5);
 
-			DrawChar(vbuffer, SP_SETTINGS, 40, 38);
+			DrawChar(gui_screen, SP_SETTINGS, 40, 38);
 
 			// Draw menu
 			for (i = 0, y = 76; i < 4; i++, y += 16) {
-				DrawText(vbuffer, settings_menu[i].name, 50, y);
+				DrawText(gui_screen, settings_menu[i].name, 50, y);
 			}
 
 			// Draw info
-			DrawText(vbuffer, settings_menu[index].info, 16, 225);
+			DrawText(gui_screen, settings_menu[index].info, 16, 225);
 
 			// Draw selector
-			DrawChar(vbuffer, SP_SELECTOR, 34, spy);
+			DrawChar(gui_screen, SP_SELECTOR, 34, spy);
 
 			g_dirty = 0;
 		}

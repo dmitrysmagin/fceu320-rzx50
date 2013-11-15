@@ -29,8 +29,6 @@ static unsigned short vbuffer[320 * 240];
 static uint8 g_preview[256 * 256 + 8];
 static uint8 g_ispreview;
 static char g_romname[32] = "";
-static char g_time[16] = "";
-static char g_battery[16] = "";
 static int g_dirty = 1;
 int g_slot = 0; // make it accessible from input.cpp
 static int g_romtype;
@@ -101,11 +99,6 @@ int update_time()
 {
 
 	return 1; // always set g_dirty
-}
-
-void update_battery() 
-{
-	strcpy(g_battery, "100%");
 }
 
 // Include additional files
@@ -329,11 +322,6 @@ void FCEUGUI_Run() {
 
 	g_dirty = 1;
 	while (!done) {
-		// Get time and battery every second
-		if (update_time()) {
-			update_battery();
-			g_dirty = 1;
-		}
 
 		// Parse input
 		readkey();
@@ -387,10 +375,6 @@ void FCEUGUI_Run() {
 		// Draw stuff
 		if (g_dirty) {
 			draw_bg(vbuffer, g_bg);
-
-			// Draw time and battery every minute
-			DrawText(gui_screen, g_time, 148, 5);
-			DrawText(gui_screen, g_battery, 214, 5);
 
 			if (index == 3 || index == 4) {
 				// Draw state preview

@@ -120,12 +120,6 @@ int RunVideoSettings()
 
 	g_dirty = 1;
 	while (!done) {
-		// Get time and battery every second
-		if (update_time()) {
-			 update_battery();
-			g_dirty = 1;
-		}
-
 		// Parse input
 		readkey();
 		if (parsekey(DINGOO_B)) done = 1;
@@ -155,10 +149,6 @@ int RunVideoSettings()
 		if( g_dirty ) 
 		{
 			draw_bg(vbuffer, g_bg);
-
-			// Draw time and battery every minute
-			DrawText(gui_screen, g_time, 148, 5);
-			DrawText(gui_screen, g_battery, 214, 5);
 
 			DrawChar(gui_screen, SP_VIDEO_SETTINGS, 40, 38); 
 

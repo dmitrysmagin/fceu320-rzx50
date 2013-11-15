@@ -37,12 +37,6 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 
 	g_dirty = 1;
 	while (1) {
-		// Get time and battery every second
-		if (update_time()) {
-			update_battery();
-			g_dirty = 1;
-		}
-
 		// Parse input
 		readkey();
 		// TODO - put exit keys
@@ -138,10 +132,6 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 		// Draw stuff
 		if (g_dirty) {
 			draw_bg(vbuffer, g_bg);
-
-			// Draw time and battery every minute
-			DrawText(gui_screen, g_time, 148, 5);
-			DrawText(gui_screen, g_battery, 214, 5);
 
 			DrawChar(gui_screen, SP_BROWSER, 40, 38);
 

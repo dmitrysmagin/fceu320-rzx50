@@ -160,7 +160,6 @@ static void ShowUsage(char *prog) {
 	puts ("--mute        {0|1}     Mutes FCEUX while still passing the audio stream to\n					   mencoder.");
 #endif
 	puts("");
-	printf("Compiled with Slaanesh's Minimal Library");
 }
 
 /**

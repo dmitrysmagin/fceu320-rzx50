@@ -1,6 +1,3 @@
-BUILDTARGET = dingux
-
-MINIMAL_DRIVER = 1
 
 SRC = src/
 
@@ -221,7 +218,7 @@ CXXFLAGS += $(CFLAGS)
 LDFLAGS  += $(CC_OPTS) -static-libgcc -static-libstdc++
 LIBS = -mconsole -L$(LIBDIR) -lmingw32 -lSDL -lz
 
-TARGET = fceu320.exe
+TARGET = fceux.exe
 
 all: $(TARGET)
 

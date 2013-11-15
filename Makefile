@@ -1,6 +1,4 @@
 
-BUILDTARGET = dingux
-
 SRC = src/
 
 CORE_OBJS = \
@@ -220,7 +218,7 @@ CXXFLAGS += $(CFLAGS)
 LDFLAGS  += $(CC_OPTS)
 LIBS = -lz -lm -lstdc++ -lgcov -lSDL -lpthread
 
-TARGET = fceu320.dge
+TARGET = fceux
 
 all: $(TARGET)
 

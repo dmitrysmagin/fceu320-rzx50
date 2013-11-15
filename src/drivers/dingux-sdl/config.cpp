@@ -59,7 +59,7 @@ static void CreateDirs(const std::string &dir) {
 
 #if defined(WIN32) || defined(NEED_MINGW_HACKS)
 	mkdir(dir.c_str());
-	for(x = 0; x < 6; x++) {
+	for(x = 0; x < 7; x++) {
 		subdir = dir + PSS + subs[x];
 		mkdir(subdir.c_str());
 	}

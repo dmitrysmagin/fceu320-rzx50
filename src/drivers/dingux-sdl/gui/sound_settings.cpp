@@ -34,6 +34,19 @@ static void soundrate_update(unsigned long key) {
 	g_config->setOption("SDL.Sound.Rate", rates[i]);
 }
 
+// Sound quality
+static void soundhq_update(unsigned long key) {
+	int val;
+	g_config->getOption("SDL.Sound.Quality", &val);
+
+	if (key == DINGOO_RIGHT)
+		val = val < 2 ? val + 1 : 0;
+	if (key == DINGOO_LEFT)
+		val = val > 0 ? val - 1 : 2;
+
+	g_config->setOption("SDL.Sound.Quality", val);
+}
+
 // Custom palette
 static void lowpass_update(unsigned long key) {
 	int val, tmp;
@@ -128,6 +141,7 @@ static void pcm_update(unsigned long key) {
 static SettingEntry sd_menu[] = {
 	{ "Toggle sound", "Enable sound", "SDL.Sound", sound_update },
 	{ "Sound rate",	"Sound playback rate (Hz)", "SDL.Sound.Rate", soundrate_update },
+	{ "Quality", "Sound quality", "SDL.Sound.Quality", soundhq_update},
 	{ "Lowpass", "Enables low-pass filter",	"SDL.Sound.LowPass", lowpass_update },
 	{ "Volume", "Sets global volume", "SDL.Sound.Volume", volume_update },
 	{ "Triangle volume", "Sets Triangle volume", "SDL.Sound.TriangleVolume", triangle_update },
@@ -142,8 +156,8 @@ int RunSoundSettings() {
 	static int spy = 74;
 	int done = 0, y, i;
 
-	int max_entries = 8;
-	int menu_size = 9;
+	int max_entries = 9;
+	int menu_size = 10;
 
 	static int offset_start = 0;
 	static int offset_end = menu_size > max_entries ? max_entries : menu_size;

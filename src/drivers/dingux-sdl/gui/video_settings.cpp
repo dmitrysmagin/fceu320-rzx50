@@ -34,6 +34,18 @@ static void clip_update(unsigned long key)
 	g_config->setOption("SDL.ClipSides", val);
 }
 
+// PPU emulation
+static void newppu_update(unsigned long key)
+{
+	int val, tmp;
+	g_config->getOption("SDL.NewPPU", &tmp);
+
+	if (key == DINGOO_RIGHT) val = 1;
+	if (key == DINGOO_LEFT) val = 0;
+
+	g_config->setOption("SDL.NewPPU", val);
+}
+
 // NTSC TV's colors
 static void ntsc_update(unsigned long key)
 {
@@ -100,11 +112,10 @@ static SettingEntry vd_menu[] =
 {
 	{"Video scaling", "Select video scale mode", "SDL.Fullscreen", fullscreen_update},
 	{"Clip sides", "Clips left and right columns", "SDL.ClipSides", clip_update},
-	
+	{"New PPU", "New PPU emulation engine", "SDL.NewPPU", newppu_update},
 	{"NTSC Palette", "Emulate NTSC TV's colors", "SDL.NTSCpalette", ntsc_update},
 	{"Tint", "Sets tint for NTSC color", "SDL.Tint", tint_update},
 	{"Hue", "Sets hue for NTSC color", "SDL.Hue", hue_update},
-
 	{"Scanline start", "The first drawn scanline", "SDL.ScanLineStart", slstart_update},
 	{"Scanline end", "The last drawn scanline", "SDL.ScanLineEnd", slend_update},
 };
@@ -153,7 +164,7 @@ int RunVideoSettings()
 			DrawChar(gui_screen, SP_VIDEO_SETTINGS, 40, 38); 
 
 			// Draw menu
-			for(i=0,y=70;i < 7;i++,y+=15) {
+			for(i=0,y=70;i < 8;i++,y+=15) {
 				DrawText(gui_screen, vd_menu[i].name, 60, y);
 		
 				g_config->getOption(vd_menu[i].option, &itmp);

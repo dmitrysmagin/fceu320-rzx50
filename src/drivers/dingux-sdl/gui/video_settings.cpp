@@ -148,7 +148,7 @@ int RunVideoSettings()
 		// Draw stuff
 		if( g_dirty ) 
 		{
-			draw_bg(vbuffer, g_bg);
+			draw_bg(g_bg);
 
 			DrawChar(gui_screen, SP_VIDEO_SETTINGS, 40, 38); 
 

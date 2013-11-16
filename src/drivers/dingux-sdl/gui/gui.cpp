@@ -25,7 +25,6 @@ typedef struct _menu_entry {
 SDL_Surface *gui_screen;
 static SDL_Surface *g_bg;
 static uint16 *g_psdl;
-static unsigned short vbuffer[320 * 240];
 static uint8 g_preview[256 * 256 + 8];
 static uint8 g_ispreview;
 static char g_romname[32] = "";
@@ -87,7 +86,7 @@ int parsekey(unsigned long code, int repeat = 0)
 	return 0;
 }
 
-void draw_bg(unsigned short *screen, SDL_Surface *bg) 
+void draw_bg(SDL_Surface *bg) 
 {
 	if(bg)
 		SDL_BlitSurface(bg, NULL, gui_screen, NULL);
@@ -274,7 +273,7 @@ int FCEUGUI_Init(FCEUGI *gi)
 {
 
 	// create 565 RGB surface
-	gui_screen = SDL_CreateRGBSurfaceFrom(vbuffer, 320, 240, 16, 640, 0xf800, 0x7e0, 0x1f, 0);
+	gui_screen = SDL_CreateRGBSurface(SDL_SWSURFACE, 320, 240, 16, 0xf800, 0x7e0, 0x1f, 0);
 	if(!gui_screen) printf("Error creating surface gui\n");
 
 	// Load bg image
@@ -310,6 +309,8 @@ void FCEUGUI_Kill() {
 	// free stuff
 	if (g_bg)
 		SDL_FreeSurface(g_bg);
+	if (gui_screen)
+		SDL_FreeSurface(gui_screen);
 	KillFont();
 }
 
@@ -374,17 +375,17 @@ void FCEUGUI_Run() {
 		// Must draw bg only when needed
 		// Draw stuff
 		if (g_dirty) {
-			draw_bg(vbuffer, g_bg);
+			draw_bg(g_bg);
 
 			if (index == 3 || index == 4) {
 				// Draw state preview
-				draw_preview(vbuffer, 185, 100);
+				draw_preview((unsigned short *)gui_screen->pixels, 185, 100);
 				if (!g_ispreview)
 					DrawChar(gui_screen, SP_NOPREVIEW, 207, 135);
 			}
 
 			if (index == 5) {
-				draw_shot_preview(vbuffer, 185, 100);
+				draw_shot_preview((unsigned short *)gui_screen->pixels, 185, 100);
 			}
 
 			DrawChar(gui_screen, SP_ROM, 40, 38);

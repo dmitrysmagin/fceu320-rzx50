@@ -131,7 +131,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 
 		// Draw stuff
 		if (g_dirty) {
-			draw_bg(vbuffer, g_bg);
+			draw_bg(g_bg);
 
 			DrawChar(gui_screen, SP_BROWSER, 40, 38);
 

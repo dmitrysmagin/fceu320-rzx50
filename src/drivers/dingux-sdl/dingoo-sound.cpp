@@ -56,7 +56,7 @@ static void fillaudio(void *udata, uint8 *stream, int len) // len == spec.sample
     while (len) {
         int32 sample = 0;
         if (s_BufferIn) {
-            sample = s_Buffer[s_BufferRead];
+            sample = s_Buffer[s_BufferRead] & 0xFFFF;
             s_BufferRead = (s_BufferRead + 1) % s_BufferSize;
             s_BufferIn--;
             sample |= (sample << 16);

@@ -8,7 +8,8 @@ extern Config *g_config;
 static char *scale_tag[] = {
 		"Original",
 		"Aspect",
-		"Fullscreen"
+		"FS Fast",
+		"FS Smooth"
 };
 
 static void fullscreen_update(unsigned long key)
@@ -16,7 +17,7 @@ static void fullscreen_update(unsigned long key)
 	int val;
 	g_config->getOption("SDL.Fullscreen", &val);
 
-	if (key == DINGOO_RIGHT) val = val < 2 ? val+1 : 2;
+	if (key == DINGOO_RIGHT) val = val < 3 ? val+1 : 3;
 	if (key == DINGOO_LEFT) val = val > 0 ? val-1 : 0;
    
 	g_config->setOption("SDL.Fullscreen", val);

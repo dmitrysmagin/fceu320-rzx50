@@ -16,9 +16,21 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 	int index;
 	int offset_start, offset_end;
 	static int max_entries = 8;
+	int justsavedromdir = 0;
 
 	static int spy;
 	int y, i;
+	
+	// Try to get a saved romdir from a config file
+	char* home = getenv("HOME");
+	char romcfgfile [128];
+	sprintf (romcfgfile, "%s/.fceux/romdir.cfg", home);
+	FILE * pFile;
+	pFile = fopen (romcfgfile,"r+");
+	if (pFile != NULL) {
+		fgets (s_LastDir , 128 , pFile);
+		fclose (pFile);
+	}
 
 	// Create file list
 	FileList *list = new FileList(source ? source : s_LastDir, types);
@@ -60,6 +72,19 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 
 		if (parsekey(DINGOO_X)) {
 			return 0;
+		}
+		
+		if (parsekey(DINGOO_SELECT)) {
+			// Save the current romdir in a config file
+			char* home = getenv("HOME");
+			char romcfgfile [128];
+			strncpy(s_LastDir, list->GetCurDir(), 128);
+			sprintf (romcfgfile, "%s/.fceux/romdir.cfg", home);
+			FILE * pFile;
+			pFile = fopen (romcfgfile,"w+");
+			fputs (s_LastDir,pFile);
+			fclose (pFile);
+			justsavedromdir = 1;
 		}
 
 		if (size > 0) {
@@ -144,10 +169,15 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 			if (info)
 				DrawText(gui_screen, info, 16, 225);
 			else {
-				if (list->GetSize(index) == -1)
-					DrawText(gui_screen, "Open folder?", 16, 225);
-				else
-					DrawText(gui_screen, "Open file?", 16, 225);
+				if (justsavedromdir == 1){
+					DrawText(gui_screen, "ROM Dir Saved!", 16, 225);
+				} else {
+					if (list->GetSize(index) == -1)
+						DrawText(gui_screen, "Open folder?", 16, 225);
+					else
+						DrawText(gui_screen, "Open file?", 16, 225);
+				}
+				justsavedromdir = 0;
 			}
 
 			// Draw selector

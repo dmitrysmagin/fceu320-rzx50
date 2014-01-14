@@ -54,13 +54,13 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 		// TODO - put exit keys
 
 		// Go to previous folder or return ...
-		if (parsekey(DINGOO_B) || parsekey(DINGOO_LEFT)) {
+		if (parsekey(DINGOO_B)) {
 			list->Enter(-1);
 			goto RESTART;
 		}
 
 		// Enter folder or select rom ...
-		if (parsekey(DINGOO_A) || parsekey(DINGOO_RIGHT)) {
+		if (parsekey(DINGOO_A)) {
 			if (list->GetSize(index) == -1) {
 				list->Enter(index);
 				goto RESTART;
@@ -121,7 +121,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 				}
 			}
 
-			if (parsekey(DINGOO_L, 1)) {
+			if (parsekey(DINGOO_LEFT, 1)) {
 				if (index > offset_start) {
 					index = offset_start;
 
@@ -135,7 +135,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 					goto RESTART;
 			}
 
-			if (parsekey(DINGOO_R, 1)) {
+			if (parsekey(DINGOO_RIGHT, 1)) {
 				if (index < offset_end-1) {
 					index = offset_end-1;
 

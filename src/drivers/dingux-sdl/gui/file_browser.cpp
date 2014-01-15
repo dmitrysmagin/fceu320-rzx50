@@ -39,7 +39,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 
 	RESTART:
 
-	spy = 74;
+	spy = 72;
 
 	size = list->Size();
 
@@ -101,7 +101,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 						index = size - 1;
 						offset_end = size;
 						offset_start = size <= max_entries ? 0 : offset_end - max_entries;
-						spy = 74 + 15*(index - offset_start);
+						spy = 72 + 15*(index - offset_start);
 					}
 			}
 
@@ -117,7 +117,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 					index = 0;
 					offset_start = 0;
 					offset_end = size <= max_entries ? size : max_entries;
-					spy = 74;
+					spy = 72;
 				}
 			}
 
@@ -125,7 +125,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 				if (index > offset_start) {
 					index = offset_start;
 
-					spy = 74;
+					spy = 72;
 
 				} else if (index - max_entries >= 0){
 						index -= max_entries;
@@ -139,7 +139,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 				if (index < offset_end-1) {
 					index = offset_end-1;
 
-					spy = 74 + 15*(index-offset_start);
+					spy = 72 + 15*(index-offset_start);
 
 				} else if (offset_end + max_entries <= size) {
 						index += max_entries;
@@ -147,7 +147,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 						offset_start += max_entries;
 				} else {
 					index = size - 1;
-					spy = 74 + 15*(max_entries-1);
+					spy = 72 + 15*(max_entries-1);
 					offset_end = size;
 					offset_start = offset_end - max_entries;
 				}
@@ -157,37 +157,46 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 		// Draw stuff
 		if (g_dirty) {
 			draw_bg(g_bg);
+			
+			//Draw Top and Bottom Bars
+			DrawChar(gui_screen, SP_SELECTOR, 0, 37);
+			DrawChar(gui_screen, SP_SELECTOR, 81, 37);
+			DrawChar(gui_screen, SP_SELECTOR, 0, 225);
+			DrawChar(gui_screen, SP_SELECTOR, 81, 225);
+			DrawText(gui_screen, "B - Go Back", 235, 225);
+			DrawChar(gui_screen, SP_LOGO, 12, 9);
+			
+			// Draw selector
+			DrawChar(gui_screen, SP_SELECTOR, 4, spy);
+			DrawChar(gui_screen, SP_SELECTOR, 81, spy);
 
-			DrawChar(gui_screen, SP_BROWSER, 40, 38);
+			DrawText(gui_screen, "ROM Browser", 8, 37);
 
 			// Draw file list
-			for (i = offset_start, y = 70; i < offset_end; i++, y += 15) {
-				DrawText(gui_screen, list->GetName(i), 36, y);
+			for (i = offset_start, y = 72; i < offset_end; i++, y += 15) {
+				DrawText(gui_screen, list->GetName(i), 8, y);
 			}
 
 			// Draw info
 			if (info)
-				DrawText(gui_screen, info, 16, 225);
+				DrawText(gui_screen, info, 8, 225);
 			else {
 				if (justsavedromdir == 1){
-					DrawText(gui_screen, "ROM Dir Saved!", 16, 225);
+					DrawText(gui_screen, "ROM dir successfully saved!", 8, 225);
 				} else {
 					if (list->GetSize(index) == -1)
-						DrawText(gui_screen, "Open folder?", 16, 225);
+						DrawText(gui_screen, "SELECT - Save ROM dir", 8, 225);
 					else
-						DrawText(gui_screen, "Open file?", 16, 225);
+						DrawText(gui_screen, "SELECT - Save ROM dir", 8, 225);
 				}
 				justsavedromdir = 0;
 			}
 
-			// Draw selector
-			DrawChar(gui_screen, SP_SELECTOR, 20, spy);
-
 			// Draw offset marks
 			if (offset_start > 0)
-				DrawChar(gui_screen, SP_UPARROW, 274, 62);
+				DrawChar(gui_screen, SP_UPARROW, 157, 57);
 			if (offset_end < list->Size())
-				DrawChar(gui_screen, SP_DOWNARROW, 274, 203);
+				DrawChar(gui_screen, SP_DOWNARROW, 157, 197);
 
 			g_dirty = 0;
 		}

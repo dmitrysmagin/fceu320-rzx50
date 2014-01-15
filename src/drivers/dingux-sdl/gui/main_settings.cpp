@@ -127,7 +127,7 @@ static SettingEntry
 
 int RunMainSettings() {
 	static int index = 0;
-	static int spy = 74;
+	static int spy = 72;
 	int done = 0, y, i;
 
 	int max_entries = 8;
@@ -164,7 +164,7 @@ int RunMainSettings() {
 				index = menu_size-1;
 				offset_end = menu_size;
 				offset_start = menu_size <= max_entries ? 0 : offset_end - max_entries;
-				spy = 74 + 15*(index - offset_start);
+				spy = 72 + 15*(index - offset_start);
 			}
 		}
 
@@ -183,7 +183,7 @@ int RunMainSettings() {
 				index = 0;
 				offset_start = 0;
 				offset_end = menu_size <= max_entries ? menu_size : max_entries;
-				spy = 74;
+				spy = 72;
 			}
 		}
 
@@ -194,11 +194,23 @@ int RunMainSettings() {
 		// Draw stuff
 		if (g_dirty) {
 			draw_bg(g_bg);
+			
+			//Draw Top and Bottom Bars
+			DrawChar(gui_screen, SP_SELECTOR, 0, 37);
+			DrawChar(gui_screen, SP_SELECTOR, 81, 37);
+			DrawChar(gui_screen, SP_SELECTOR, 0, 225);
+			DrawChar(gui_screen, SP_SELECTOR, 81, 225);
+			DrawText(gui_screen, "B - Go Back", 235, 225);
+			DrawChar(gui_screen, SP_LOGO, 12, 9);
+			
+			// Draw selector
+			DrawChar(gui_screen, SP_SELECTOR, 56, spy);
+			DrawChar(gui_screen, SP_SELECTOR, 77, spy);
 
-			DrawChar(gui_screen, SP_MAIN_SETTINGS, 40, 38);
+			DrawText(gui_screen, "Main Settings", 8, 37);
 
 			// Draw menu
-			for (i = offset_start, y = 70; i < offset_end; i++, y += 15) {
+			for (i = offset_start, y = 72; i < offset_end; i++, y += 15) {
 				DrawText(gui_screen, st_menu[i].name, 60, y);
 
 				g_config->getOption(st_menu[i].option, &itmp);
@@ -222,10 +234,7 @@ int RunMainSettings() {
 			}
 
 			// Draw info
-			DrawText(gui_screen, st_menu[index].info, 16, 225);
-
-			// Draw selector
-			DrawChar(gui_screen, SP_SELECTOR, 44, spy);
+			DrawText(gui_screen, st_menu[index].info, 8, 225);
 
 			// Draw offset marks
 			if (offset_start > 0)

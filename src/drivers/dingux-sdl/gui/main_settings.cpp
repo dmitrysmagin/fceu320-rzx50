@@ -17,6 +17,14 @@ static void pal_update(unsigned long key) {
 
 // TODO - Open game genie screen
 static void gg_update(unsigned long key) {
+	int val;
+
+	if (key == DINGOO_RIGHT)
+		val = 1;
+	if (key == DINGOO_LEFT)
+		val = 0;
+
+	g_config->setOption("SDL.GameGenie", val);
 }
 
 static void sprite_limit_update(unsigned long key) {

@@ -8,7 +8,8 @@ extern Config *g_config;
 static char *scale_tag[] = {
 		"Original",
 		"Aspect",
-		"Fullscreen"
+		"FS Fast",
+		"FS Smooth"
 };
 
 static void fullscreen_update(unsigned long key)
@@ -16,7 +17,7 @@ static void fullscreen_update(unsigned long key)
 	int val;
 	g_config->getOption("SDL.Fullscreen", &val);
 
-	if (key == DINGOO_RIGHT) val = val < 2 ? val+1 : 2;
+	if (key == DINGOO_RIGHT) val = val < 3 ? val+1 : 3;
 	if (key == DINGOO_LEFT) val = val > 0 ? val-1 : 0;
    
 	g_config->setOption("SDL.Fullscreen", val);
@@ -123,7 +124,7 @@ static SettingEntry vd_menu[] =
 int RunVideoSettings()
 {
 	static int index = 0;
-	static int spy = 74;
+	static int spy = 72;
 	int done = 0, y, i;
 
 	char tmp[32];
@@ -140,7 +141,7 @@ int RunVideoSettings()
 				spy -= 15;
 			} else {
 				index = 6;
-				spy = 74 + 15*index;
+				spy = 72 + 15*index;
 			}
 		}
 
@@ -150,7 +151,7 @@ int RunVideoSettings()
 				spy += 15;
 			} else {
 				index = 0;
-				spy = 74;
+				spy = 72;
 			}
 		}
 		if (parsekey(DINGOO_RIGHT, 1) || parsekey(DINGOO_LEFT, 1))
@@ -160,11 +161,23 @@ int RunVideoSettings()
 		if( g_dirty ) 
 		{
 			draw_bg(g_bg);
+			
+			//Draw Top and Bottom Bars
+			DrawChar(gui_screen, SP_SELECTOR, 0, 37);
+			DrawChar(gui_screen, SP_SELECTOR, 81, 37);
+			DrawChar(gui_screen, SP_SELECTOR, 0, 225);
+			DrawChar(gui_screen, SP_SELECTOR, 81, 225);
+			DrawText(gui_screen, "B - Go Back", 235, 225);
+			DrawChar(gui_screen, SP_LOGO, 12, 9);
+			
+			// Draw selector
+			DrawChar(gui_screen, SP_SELECTOR, 56, spy);
+			DrawChar(gui_screen, SP_SELECTOR, 77, spy);
 
-			DrawChar(gui_screen, SP_VIDEO_SETTINGS, 40, 38); 
+			DrawText(gui_screen, "Video Settings", 8, 37); 
 
 			// Draw menu
-			for(i=0,y=70;i < 8;i++,y+=15) {
+			for(i=0,y=72;i < 8;i++,y+=15) {
 				DrawText(gui_screen, vd_menu[i].name, 60, y);
 		
 				g_config->getOption(vd_menu[i].option, &itmp);
@@ -173,14 +186,11 @@ int RunVideoSettings()
 				} 
 				else sprintf(tmp, "%d", itmp);
 
-				DrawText(gui_screen, tmp, 224, y);
+				DrawText(gui_screen, tmp, 210, y);
 			}
 
 			// Draw info
-			DrawText(gui_screen, vd_menu[index].info, 16, 225);
-
-			// Draw selector 
-			DrawChar(gui_screen, SP_SELECTOR, 44, spy);
+			DrawText(gui_screen, vd_menu[index].info, 8, 225);
 
 			g_dirty = 0;
 		}

@@ -37,7 +37,7 @@ static MenuEntry
 
 int RunSettingsMenu() {
 	static int index = 0;
-	static int spy = 80;
+	static int spy = 72;
 	int done = 0, y, i;
 
 	g_dirty = 1;
@@ -53,7 +53,7 @@ int RunSettingsMenu() {
 				spy -= 16;
 			} else {
 				index = 3;
-				spy = 80 + 16*index;
+				spy = 72 + 16*index;
 			}
 		}
 
@@ -63,7 +63,7 @@ int RunSettingsMenu() {
 				spy += 16;
 			} else {
 				index = 0;
-				spy = 80;
+				spy = 72;
 			}
 		}
 
@@ -75,19 +75,28 @@ int RunSettingsMenu() {
 		// Draw stuff
 		if (g_dirty) {
 			draw_bg(g_bg);
+			
+			//Draw Top and Bottom Bars
+			DrawChar(gui_screen, SP_SELECTOR, 0, 37);
+			DrawChar(gui_screen, SP_SELECTOR, 81, 37);
+			DrawChar(gui_screen, SP_SELECTOR, 0, 225);
+			DrawChar(gui_screen, SP_SELECTOR, 81, 225);
+			DrawText(gui_screen, "B - Go Back", 235, 225);
+			DrawChar(gui_screen, SP_LOGO, 12, 9);
+			
+			// Draw selector
+			DrawChar(gui_screen, SP_SELECTOR, 56, spy);
+			DrawChar(gui_screen, SP_SELECTOR, 77, spy);
 
-			DrawChar(gui_screen, SP_SETTINGS, 40, 38);
+			DrawText(gui_screen, "Settings", 8, 37);
 
 			// Draw menu
-			for (i = 0, y = 76; i < 4; i++, y += 16) {
-				DrawText(gui_screen, settings_menu[i].name, 50, y);
+			for (i = 0, y = 72; i < 4; i++, y += 16) {
+				DrawText(gui_screen, settings_menu[i].name, 60, y);
 			}
 
 			// Draw info
-			DrawText(gui_screen, settings_menu[index].info, 16, 225);
-
-			// Draw selector
-			DrawChar(gui_screen, SP_SELECTOR, 34, spy);
+			DrawText(gui_screen, settings_menu[index].info, 8, 225);
 
 			g_dirty = 0;
 		}

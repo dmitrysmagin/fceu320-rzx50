@@ -322,7 +322,13 @@ void BlitScreen(uint8 *XBuf) {
 
 	register uint8 *pBuf = XBuf;
 
-	if(s_fullscreen == 2) { // fullscreen
+	if(s_fullscreen == 3) { // fullscreen smooth
+		if (s_clipSides) {
+			upscale_320x240_bilinearish_clip((uint32 *)screen->pixels, (uint8 *)XBuf + 256 * 8, 256);
+		} else {
+			upscale_320x240_bilinearish_noclip((uint32 *)screen->pixels, (uint8 *)XBuf + 256 * 8, 256);
+		}
+	} else if(s_fullscreen == 2) { // fullscreen
 		switch(screen->w) {
 			case 480: upscale_480x272((uint32 *)screen->pixels, (uint8 *)XBuf + 256 * 8); break;
 			case 400: upscale_384x240((uint32 *)screen->pixels, (uint8 *)XBuf + 256 * 8); break;

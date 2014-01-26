@@ -316,7 +316,7 @@ void FCEUGUI_Kill() {
 
 void FCEUGUI_Run() {
 	static int index = 0;
-	static int spy = 76;
+	static int spy = 72;
 	int done = 0, y, i;
 
 	load_preview();
@@ -335,7 +335,7 @@ void FCEUGUI_Run() {
 				spy -= 16;
 			} else {
 				index = 7;
-				spy = 76 + 16*index;
+				spy = 72 + 16*index;
 			}
 		}
 
@@ -345,7 +345,7 @@ void FCEUGUI_Run() {
 				spy += 16;
 			} else {
 				index = 0;
-				spy = 76;
+				spy = 72;
 			}
 		}
 
@@ -376,47 +376,58 @@ void FCEUGUI_Run() {
 		// Draw stuff
 		if (g_dirty) {
 			draw_bg(g_bg);
+			
+			//Draw Top and Bottom Bars
+			DrawChar(gui_screen, SP_SELECTOR, 0, 37);
+			DrawChar(gui_screen, SP_SELECTOR, 81, 37);
+			DrawChar(gui_screen, SP_SELECTOR, 0, 225);
+			DrawChar(gui_screen, SP_SELECTOR, 81, 225);
+			DrawText(gui_screen, "B - Go Back", 235, 225);
+			DrawChar(gui_screen, SP_LOGO, 12, 9);
+			
+			// Draw selector
+			DrawChar(gui_screen, SP_SELECTOR, 56, spy);
+			DrawChar(gui_screen, SP_SELECTOR, 77, spy);
 
 			if (index == 3 || index == 4) {
 				// Draw state preview
+				DrawChar(gui_screen, SP_PREVIEWBLOCK, 184, 73);
 				draw_preview((unsigned short *)gui_screen->pixels, 185, 100);
 				if (!g_ispreview)
 					DrawChar(gui_screen, SP_NOPREVIEW, 207, 135);
 			}
 
 			if (index == 5) {
+				DrawChar(gui_screen, SP_PREVIEWBLOCK, 184, 73);
 				draw_shot_preview((unsigned short *)gui_screen->pixels, 185, 100);
 			}
 
-			DrawChar(gui_screen, SP_ROM, 40, 38);
-			DrawText(gui_screen, g_romname, 86, 37);
+			DrawText(gui_screen, "Now Playing:", 8, 37);
+			DrawText(gui_screen, g_romname, 96, 37);
 
 			// Draw menu
 			for (i = 0, y = 72; i < 8; i++, y += 16) {
-				DrawText(gui_screen, main_menu[i].name, 50, y);
+				DrawText(gui_screen, main_menu[i].name, 60, y);
 			}
 
 			// Draw info
-			DrawText(gui_screen, main_menu[index].info, 16, 225);
-
-			// Draw selector
-			DrawChar(gui_screen, SP_SELECTOR, 34, spy);
+			DrawText(gui_screen, main_menu[index].info, 8, 225);
 
 			// If save/load state render slot preview and number
 			if (index == 3 || index == 4) {
 				char tmp[32];
 				sprintf(tmp, "Slot %d", g_slot);
-				DrawText(gui_screen, tmp, 208, 80);
+				DrawText(gui_screen, tmp, 212, 80);
 
 				if (g_slot > 0)
-					DrawChar(gui_screen, SP_LEFTARROW, 168, 133);
+					DrawChar(gui_screen, SP_LEFTARROW, 197, 83);
 				if (g_slot < 9)
-					DrawChar(gui_screen, SP_RIGHTARROW, 286, 133);
+					DrawChar(gui_screen, SP_RIGHTARROW, 259, 83);
 			}
 
 			// If screenshot render current frame preview
 			if (index == 5) {
-				DrawText(gui_screen, "Preview", 204, 80);
+				DrawText(gui_screen, "Preview", 207, 80);
 			}
 
 			g_dirty = 0;

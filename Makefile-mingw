@@ -223,6 +223,8 @@ TARGET = fceux.exe
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
+	@mkdir -p bin/
+	@cp src/drivers/dingux-sdl/gui/*.bmp bin/
 	@echo Linking $@...
 	@echo $(LD) $(LDFLAGS) $(OBJS) -o bin/$@
 	$(LD) $(LDFLAGS) $(OBJS) $(LIBS) -o bin/$@

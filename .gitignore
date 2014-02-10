@@ -1,0 +1,5 @@
+*.o
+*.dge
+*.bat
+*.opk
+bin/*

@@ -8,6 +8,40 @@
 extern SDL_Surface* screen;
 extern Config *g_config;
 
+s32 LoadLastSelectedRomPos() // Try to get the last selected rom position from a config file
+{
+	char* home = getenv("HOME");
+	char lastselfile [128];
+	s32 savedval = 0;
+	sprintf (lastselfile, "%s/.fceux/lastselected.cfg", home);
+	FILE * pFile;
+	pFile = fopen (lastselfile,"r+");
+	if (pFile != NULL) {
+		fscanf (pFile, "%i", &savedval);
+		fclose (pFile);
+	}
+	return savedval;
+}
+
+void SaveLastSelectedRomPos(s32 pospointer) // Save the last selected rom position in a config file
+{
+	char* home = getenv("HOME");
+	char lastselfile [128];
+	sprintf (lastselfile, "%s/.fceux/lastselected.cfg", home);
+	FILE * pFile;
+	pFile = fopen (lastselfile,"w+");
+	fprintf (pFile, "%i", pospointer);
+	fclose (pFile);
+}
+
+void DelLastSelectedRomPos() // Remove the last selected rom position config file
+{
+	char* home = getenv("HOME");
+	char lastselfile [128];
+	sprintf (lastselfile, "%s/.fceux/lastselected.cfg", home);
+	remove (lastselfile);
+}
+
 static char s_LastDir[128] = "/";
 int RunFileBrowser(char *source, char *outname, const char *types[],
 		const char *info) {
@@ -44,8 +78,21 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 	size = list->Size();
 
 	index = 0;
+	index = LoadLastSelectedRomPos();
 	offset_start = 0;
 	offset_end = size > max_entries ? max_entries : size;
+	if (index >= (size - 1)) { //go to end of list
+		index = size - 1;
+		offset_end = size;
+		offset_start = size <= max_entries ? 0 : offset_end - max_entries;
+		spy = 72 + 15*(index - offset_start);
+	} else if (index > (max_entries - 2)) {
+		offset_start = index - (max_entries - 1);
+		offset_end = offset_start + max_entries;
+		spy = 72 + 15*(max_entries - 1);
+	} else {
+		spy = 72 + (15*index);
+	}
 
 	g_dirty = 1;
 	while (1) {
@@ -55,16 +102,19 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 
 		// Go to previous folder or return ...
 		if (parsekey(DINGOO_B)) {
+			DelLastSelectedRomPos();
 			list->Enter(-1);
 			goto RESTART;
 		}
 
 		// Enter folder or select rom ...
 		if (parsekey(DINGOO_A)) {
-			if (list->GetSize(index) == -1) {
+			if (list->GetSize(index) == -1) { //enter folder
+				DelLastSelectedRomPos();
 				list->Enter(index);
 				goto RESTART;
-			} else {
+			} else { //select rom
+				SaveLastSelectedRomPos(index);
 				strncpy(outname, list->GetPath(index), 128);
 				break;
 			}
@@ -85,6 +135,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 			fputs (s_LastDir,pFile);
 			fclose (pFile);
 			justsavedromdir = 1;
+			DelLastSelectedRomPos();
 		}
 
 		if (size > 0) {
@@ -97,7 +148,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 						index--;
 						offset_start--;
 						offset_end--;
-					} else {
+					} else {                          //go to end of list
 						index = size - 1;
 						offset_end = size;
 						offset_start = size <= max_entries ? 0 : offset_end - max_entries;
@@ -113,7 +164,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 					index++;
 					offset_start++;
 					offset_end++;
-				} else {
+				} else {                    //go to beginning of list
 					index = 0;
 					offset_start = 0;
 					offset_end = size <= max_entries ? size : max_entries;
@@ -131,8 +182,17 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 						index -= max_entries;
 						offset_start -= max_entries;
 						offset_end = offset_start + max_entries;
-				} else
-					goto RESTART;
+				} else if (index <= 0){                    //go to end of list
+						index = size - 1;
+						offset_end = size;
+						offset_start = size <= max_entries ? 0 : offset_end - max_entries;
+						spy = 72 + 15*(index - offset_start);
+				} else {                                  //go to beginning of list
+					index = 0;
+					offset_start = 0;
+					offset_end = size <= max_entries ? size : max_entries;
+					spy = 72;
+				}
 			}
 
 			if (parsekey(DINGOO_RIGHT, 1)) {
@@ -145,7 +205,12 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 						index += max_entries;
 						offset_end += max_entries;
 						offset_start += max_entries;
-				} else {
+				} else if (index >= size -1) {         //go to beginning of list
+						index = 0;
+						offset_start = 0;
+						offset_end = size <= max_entries ? size : max_entries;
+						spy = 72;
+				} else {                               //go to end of list
 					index = size - 1;
 					spy = 72 + 15*(max_entries-1);
 					offset_end = size;

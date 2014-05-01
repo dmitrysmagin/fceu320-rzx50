@@ -16,7 +16,9 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 	int index;
 	int offset_start, offset_end;
 	static int max_entries = 8;
+	int scrollModifier = 5;
 	int justsavedromdir = 0;
+	int scrollMult;
 
 	static int spy;
 	int y, i;
@@ -37,6 +39,8 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 	if (list == NULL)
 		return 0;
 
+	scrollModifier *= max_entries;
+
 	RESTART:
 
 	spy = 72;
@@ -46,6 +50,8 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 	index = 0;
 	offset_start = 0;
 	offset_end = size > max_entries ? max_entries : size;
+
+	
 
 	g_dirty = 1;
 	while (1) {
@@ -89,20 +95,32 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 
 		if (size > 0) {
 			// Move through file list
+
+			if (parsekey(DINGOO_R, 0)) {
+				index = size - 1;
+				spy = 72 + 15*(max_entries-1);
+				offset_end = size;
+				offset_start = offset_end - max_entries;
+			}
+
+			if (parsekey(DINGOO_L, 0)) {
+				goto RESTART;
+			}
+
 			if (parsekey(DINGOO_UP, 1)) {
-					if (index > offset_start){
-						index--;
-						spy -= 15;
-					} else if (offset_start > 0) {
-						index--;
-						offset_start--;
-						offset_end--;
-					} else {
-						index = size - 1;
-						offset_end = size;
-						offset_start = size <= max_entries ? 0 : offset_end - max_entries;
-						spy = 72 + 15*(index - offset_start);
-					}
+				if (index > offset_start){
+					index--;
+					spy -= 15;
+				} else if (offset_start > 0) {
+					index--;
+					offset_start--;
+					offset_end--;
+				} else {
+					index = size - 1;
+					offset_end = size;
+					offset_start = size <= max_entries ? 0 : offset_end - max_entries;
+					spy = 72 + 15*(index - offset_start);
+				}
 			}
 
 			if (parsekey(DINGOO_DOWN, 1)) {
@@ -127,9 +145,9 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 
 					spy = 72;
 
-				} else if (index - max_entries >= 0){
-						index -= max_entries;
-						offset_start -= max_entries;
+				} else if (index - scrollModifier >= 0){
+						index -= scrollModifier;
+						offset_start -= scrollModifier;
 						offset_end = offset_start + max_entries;
 				} else
 					goto RESTART;
@@ -141,10 +159,10 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 
 					spy = 72 + 15*(index-offset_start);
 
-				} else if (offset_end + max_entries <= size) {
-						index += max_entries;
-						offset_end += max_entries;
-						offset_start += max_entries;
+				} else if (offset_end + scrollModifier <= size) {
+						index += scrollModifier;
+						offset_end += scrollModifier;
+						offset_start += scrollModifier;
 				} else {
 					index = size - 1;
 					spy = 72 + 15*(max_entries-1);
@@ -201,7 +219,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 			g_dirty = 0;
 		}
 
-		SDL_Delay(16);
+		SDL_Delay(4);
 
 		// Update real screen
 		FCEUGUI_Flip();

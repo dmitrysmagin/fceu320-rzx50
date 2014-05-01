@@ -50,12 +50,17 @@ void readkey()
 	SDL_Event event;
 
 	last_key = g_key;
-	g_key = 0;
 
 	// loop, handling all pending events
 	while(SDL_PollEvent(&event))
 		switch(event.type) {
+			case SDL_KEYUP:
+				SDL_EnableKeyRepeat(0,0);
+				g_key = 0;
+				return;
 			case SDL_KEYDOWN:
+				//SDL_EnableKeyRepeat(500, SDL_DEFAULT_REPEAT_INTERVAL);
+				SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
 				g_key = event.key.keysym.sym;
 				return;
 		}
@@ -329,7 +334,7 @@ void FCEUGUI_Run() {
 		if (parsekey(DINGOO_B))
 			done = 1;
 
-		if (parsekey(DINGOO_UP, 1)) {
+		if (parsekey(DINGOO_UP, 0)) {
 			if (index > 0) {
 				index--;
 				spy -= 16;
@@ -339,7 +344,7 @@ void FCEUGUI_Run() {
 			}
 		}
 
-		if (parsekey(DINGOO_DOWN, 1)) {
+		if (parsekey(DINGOO_DOWN, 0)) {
 			if (index < 7) {
 				index++;
 				spy += 16;
@@ -355,7 +360,7 @@ void FCEUGUI_Run() {
 		}
 
 		if (index == 3 || index == 4) {
-			if (parsekey(DINGOO_RIGHT, 1)) {
+			if (parsekey(DINGOO_RIGHT, 0)) {
 				if (g_slot < 9) {
 					g_slot++;
 					FCEUI_SelectState(g_slot, 0);
@@ -363,7 +368,7 @@ void FCEUGUI_Run() {
 				}
 			}
 
-			if (parsekey(DINGOO_LEFT, 1)) {
+			if (parsekey(DINGOO_LEFT, 0)) {
 				if (g_slot > 0) {
 					g_slot--;
 					FCEUI_SelectState(g_slot, 0);

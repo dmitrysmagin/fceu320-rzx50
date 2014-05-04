@@ -194,7 +194,7 @@ static int load_rom() {
 	char filename[128], romname[128];
 	int error;
 
-	#ifdef DINGUX_ON_WIN32
+	#ifdef WIN32
 	if (!RunFileBrowser("d:\\", filename, types)) {
 	#else
 	if (!RunFileBrowser(NULL, filename, types)) {

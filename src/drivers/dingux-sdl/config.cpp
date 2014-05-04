@@ -22,7 +22,7 @@
 #include "dingoo-video.h"
 #include "dummy-netplay.h"
 
-#if defined(WIN32) //&& !defined(DINGUX_ON_WIN32)
+#ifdef WIN32
 #include <windows.h>
 #endif
 
@@ -87,7 +87,7 @@ static void GetBaseDirectory(std::string &dir)
 	if (home) {
 		dir = std::string(home) + "/.fceux";
 	} else {
-#if defined(WIN32) //&& !defined(DINGUX_ON_WIN32)
+#ifdef WIN32
 		home = new char[MAX_PATH + 1];
 		GetModuleFileName(NULL, home, MAX_PATH + 1);
 

@@ -101,7 +101,7 @@ static void custom_update(unsigned long key) {
 	const char *types[] = { ".pal", NULL };
 	char palname[128] = "";
 
-	#ifdef DINGUX_ON_WIN32
+	#ifdef WIN32
 	if (!RunFileBrowser("d:\\", palname, types, "Choose nes palette (.pal)")) 
 	#else
 	if (!RunFileBrowser("/usr/local/home/.fceux", palname, types, "Choose nes palette (.pal)")) 

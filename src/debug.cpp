@@ -507,7 +507,7 @@ void BreakHit(int bp_num, bool force)
 
 	FCEUI_SetEmulationPaused(EMULATIONPAUSED_PAUSED); //mbg merge 7/19/06 changed to use EmulationPaused()
 
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	FCEUD_DebugBreakpoint(bp_num);
 #endif
 }
@@ -791,7 +791,7 @@ void DebugCycle()
 	if(debug_loggingCD)
 		LogCDData(opcode, A, size);
 
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	//This needs to be windows only or else the linux build system will fail since logging is declared in a
 	//windows source file
 	FCEUD_TraceInstruction(opcode, size);

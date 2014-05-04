@@ -36,7 +36,7 @@
 #include "fceulua.h"
 #endif
 
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 #include "drivers/win/common.h" //For DirectX constants
 #include "drivers/win/input.h"
 #endif
@@ -253,7 +253,7 @@ void FCEU_PutImage(void)
 
 			// This doesn't work in anything except windows for now.
 			// It doesn't get set anywhere in other ports.
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 			if (!oldInputDisplay) ci = FCEUMOV_Mode(MOVIEMODE_PLAY) ? 0:GetGamepadPressedImmediate() >> (controller * 8);
 			else ci = 0;
 

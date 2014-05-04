@@ -43,7 +43,7 @@
 #include "../videolog/nesvideos-piece.h"
 #endif
 
-#if defined(WIN32) //&& !defined(DINGUX_ON_WIN32)
+#ifdef WIN32
 #include <windows.h>
 #endif
 
@@ -532,7 +532,7 @@ int FCEUD_LoadMovie(const char *name, char *romname) {
 /**
  * The main loop for the SDL.
  */
-#ifdef DINGUX_ON_WIN32
+#ifdef WIN32
 #undef main
 #endif
 int main(int argc, char *argv[]) {
@@ -541,7 +541,7 @@ int main(int argc, char *argv[]) {
 
 	FCEUD_Message("\nStarting "FCEU_NAME_AND_VERSION"...\n");
 
-#if defined(WIN32) //&& !defined(DINGUX_ON_WIN32)
+#ifdef WIN32
 	/* Taken from win32 sdl_main.c */
 	SDL_SetModuleHandle(GetModuleHandle(NULL));
 #endif
@@ -758,7 +758,7 @@ int main(int argc, char *argv[]) {
 
 		InitVideo(0); inited |= 4; // Hack to init video mode before running gui
 
-		#ifdef DINGUX_ON_WIN32
+		#ifdef WIN32
 		if (!RunFileBrowser("D:\\", filename, types)) {
 		#else
 		if (!RunFileBrowser(NULL, filename, types)) {

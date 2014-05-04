@@ -134,8 +134,8 @@ typedef uint8 (*readfunc)(uint32 A);
 
 #include "utils/endian.h"
 
-// PUT THIS HERE?
-#if defined(DINGUX) && !defined(DINGUX_ON_WIN32)
+// Detect if gcc supports wchar_t
+#ifndef _GLIBCXX_USE_WCHAR_T
 #define wstring string
 #endif
 

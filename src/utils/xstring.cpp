@@ -628,7 +628,7 @@ namespace UtfConverter
         {
             throw std::exception();
         }
-#if defined(DINGUX) && !defined(WIN32)
+#ifndef _GLIBCXX_USE_WCHAR_T
         return "";
 #else
         return L"";
@@ -757,7 +757,7 @@ std::wstring mbstowcs(std::string str) // UTF8->UTF32
 	try {
 		return UtfConverter::FromUtf8(str);
 	} catch(std::exception) {
-#if defined(DINGUX) && !defined(WIN32)
+#ifndef _GLIBCXX_USE_WCHAR_T
 		return "(failed UTF-8 conversion)";
 #else
 		return L"(failed UTF-8 conversion)";

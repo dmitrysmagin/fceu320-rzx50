@@ -46,7 +46,7 @@ void FCEU_WriteWaveData(int32 *Buffer, int Count)
  if(soundlog)
 	 wsize+=fwrite(temp,1,Count*sizeof(int16),soundlog);
 
-	#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+	#if defined(WIN32) && !defined(DINGUX)
 	if(FCEUI_AviIsRecording())
 	{
 		FCEUI_AviSoundUpdate((void*)temp, Count);

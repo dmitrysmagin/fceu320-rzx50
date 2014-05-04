@@ -36,7 +36,7 @@
 #include "fds.h"
 #include "driver.h"
 
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 #include "drivers/win/main.h"
 #include "drivers/win/memwatch.h"
 #include "drivers/win/cheat.h"
@@ -860,7 +860,7 @@ static void CommandSelectSaveSlot(void)
 {
 	if (FCEUMOV_Mode(MOVIEMODE_TASEDITOR))
 	{
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 		handleEmuCmdByTaseditor(execcmd);
 #endif
 	} else
@@ -878,7 +878,7 @@ static void CommandStateSave(void)
 {
 	if (FCEUMOV_Mode(MOVIEMODE_TASEDITOR))
 	{
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 		handleEmuCmdByTaseditor(execcmd);
 #endif
 	} else
@@ -899,7 +899,7 @@ static void CommandStateLoad(void)
 {
 	if (FCEUMOV_Mode(MOVIEMODE_TASEDITOR))
 	{
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 		handleEmuCmdByTaseditor(execcmd);
 #endif
 	} else
@@ -962,7 +962,7 @@ void LagCounterToggle(void)
 
 static void LaunchTasEditor(void)
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	extern bool enterTASEditor();
 	enterTASEditor();
 #endif
@@ -970,56 +970,56 @@ static void LaunchTasEditor(void)
 
 static void LaunchMemoryWatch(void)
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	CreateMemWatch();
 #endif
 }
 
 static void LaunchDebugger(void)
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	DoDebug(0);
 #endif
 }
 
 static void LaunchNTView(void)
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	DoNTView();
 #endif
 }
 
 static void LaunchPPU(void)
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	DoPPUView();
 #endif
 }
 
 static void LaunchHex(void)
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	DoMemView();
 #endif
 }
 
 static void LaunchTraceLogger(void)
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	DoTracer();
 #endif
 }
 
 static void LaunchCodeDataLogger(void)
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	DoCDLogger();
 #endif
 }
 
 static void LaunchCheats(void)
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	extern HWND pwindow;
 	ConfigCheats(pwindow);
 #endif
@@ -1027,7 +1027,7 @@ static void LaunchCheats(void)
 
 static void LaunchRamWatch(void)
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	extern void OpenRamWatch();	//adelikat: Blah blah hacky, I know
 	OpenRamWatch();
 #endif
@@ -1035,14 +1035,14 @@ static void LaunchRamWatch(void)
 
 static void LaunchRamSearch(void)
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	extern void OpenRamSearch();
 	OpenRamSearch();
 #endif
 }
 
 static void RamSearchOpLT(void) {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	if (GameInfo)
 	{
 		extern void SetSearchType(int SearchType);
@@ -1054,7 +1054,7 @@ static void RamSearchOpLT(void) {
 }
 
 static void RamSearchOpGT(void) {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	if (GameInfo)
 	{
 		extern void SetSearchType(int SearchType);
@@ -1066,7 +1066,7 @@ static void RamSearchOpGT(void) {
 }
 
 static void RamSearchOpLTE(void) {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	if (GameInfo)
 	{
 		extern void SetSearchType(int SearchType);
@@ -1078,7 +1078,7 @@ static void RamSearchOpLTE(void) {
 }
 
 static void RamSearchOpGTE(void) {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	if (GameInfo)
 	{
 		extern void SetSearchType(int SearchType);
@@ -1090,7 +1090,7 @@ static void RamSearchOpGTE(void) {
 }
 
 static void RamSearchOpEQ(void) {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	if (GameInfo)
 	{
 		extern void SetSearchType(int SearchType);
@@ -1102,7 +1102,7 @@ static void RamSearchOpEQ(void) {
 }
 
 static void RamSearchOpNE(void) {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	if (GameInfo)
 	{
 		extern void SetSearchType(int SearchType);
@@ -1120,7 +1120,7 @@ static void FA_SkipLag(void)
 
 static void OpenRom(void)
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	extern HWND hAppWnd;
 	LoadNewGamey(hAppWnd, 0);
 #endif
@@ -1128,14 +1128,14 @@ static void OpenRom(void)
 
 static void CloseRom(void)
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	CloseGame();
 #endif
 }
 
 static void ReloadRom(void)
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	if (FCEUMOV_Mode(MOVIEMODE_TASEDITOR))
 	{
 		// load most recent project
@@ -1167,14 +1167,14 @@ static void UndoRedoSavestate(void)
 
 static void FCEUI_DoExit(void)
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	DoFCEUExit();
 #endif
 }
 
 void ToggleFullscreen()
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	extern int SetVideoMode(int fs);		//adelikat: Yeah, I know, hacky
 	extern void UpdateCheckedMenuItems();
 
@@ -1190,20 +1190,20 @@ void ToggleFullscreen()
 
 static void TaseditorRewindOn(void)
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	mustRewindNow = true;
 #endif
 }
 static void TaseditorRewindOff(void)
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	mustRewindNow = false;
 #endif
 }
 
 static void TaseditorCommand(void)
 {
-#if defined(WIN32) && !defined(DINGUX_ON_WIN32)
+#if defined(WIN32) && !defined(DINGUX)
 	if (FCEUMOV_Mode(MOVIEMODE_TASEDITOR))
 		handleEmuCmdByTaseditor(execcmd);
 #endif

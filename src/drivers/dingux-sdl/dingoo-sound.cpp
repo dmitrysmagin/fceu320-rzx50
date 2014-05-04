@@ -115,7 +115,7 @@ int InitSound()
     spec.callback = fillaudio;
     spec.userdata = 0;
 
-    while(spec.samples < (soundrate / 60) * 1) spec.samples += 256;
+    while(spec.samples < (soundrate / 60) * 1) spec.samples <<= 1;
 
     s_BufferSize = spec.samples * 4 * 8;
 

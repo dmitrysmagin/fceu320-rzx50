@@ -1,10 +1,8 @@
 
-Makefile - use this to build for dingux and opendingux
-Makefile-mingw - use this to compile dingux version on win32 platform (useful for debugging)
+Makefile
+    - use this to compile dingux version on desktop (useful for debugging)
 
-When building for OpenDingux you must comment out the line 
-#define _GLIBCXX_USE_WCHAR_T 1 
-in opendingux-toolchain/usr/mipsel-unknown-linux-uclibc/include/c++/4.7.1/mipsel-unknown-linux-uclibc/bits/c++config.h
-otherwise the compilation will fail
+Makefile.dingux
+    - use this to build for dingux and opendingux
 
 Dmitry Smagin exmortis(at)yandex.ru

@@ -59,8 +59,7 @@ void readkey()
 				g_key = 0;
 				return;
 			case SDL_KEYDOWN:
-				//SDL_EnableKeyRepeat(500, SDL_DEFAULT_REPEAT_INTERVAL);
-				SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
+				SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY + 100, SDL_DEFAULT_REPEAT_INTERVAL);
 				g_key = event.key.keysym.sym;
 				return;
 		}

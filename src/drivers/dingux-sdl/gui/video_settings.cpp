@@ -140,13 +140,13 @@ int RunVideoSettings()
 				index--; 
 				spy -= 15;
 			} else {
-				index = 6;
+				index = 7;
 				spy = 72 + 15*index;
 			}
 		}
 
 		if (parsekey(DINGOO_DOWN, 1)) {
-			if (index < 6) {
+			if (index < 7) {
 				index++;
 				spy += 15;
 			} else {

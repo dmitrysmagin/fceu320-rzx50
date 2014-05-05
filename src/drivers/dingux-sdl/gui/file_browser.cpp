@@ -16,7 +16,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 	int index;
 	int offset_start, offset_end;
 	static int max_entries = 8;
-	int scrollModifier = 5;
+	int scrollModifier = 4;
 	int justsavedromdir = 0;
 	int scrollMult;
 
@@ -39,6 +39,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 	if (list == NULL)
 		return 0;
 
+	
 	scrollModifier *= max_entries;
 
 	RESTART:

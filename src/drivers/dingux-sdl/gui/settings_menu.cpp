@@ -10,6 +10,9 @@ typedef struct _setting_entry {
 #include "main_settings.cpp"
 #include "video_settings.cpp"
 #include "sound_settings.cpp"
+#include "control_settings.cpp"
+
+#define SETTINGS_MENUSIZE 5
 
 static int cmd_main_settings() {
 	return RunMainSettings();
@@ -23,6 +26,10 @@ static int cmd_sound_settings() {
 	return RunSoundSettings();
 }
 
+static int cmd_control_settings() {
+	return RunControlSettings();
+}
+
 static int cmd_config_save() {
 	extern Config *g_config;
 	g_config->save();
@@ -33,6 +40,7 @@ static MenuEntry
 		{ "Main Setup", "Change fceux main config", cmd_main_settings },
 		{ "Video Setup", "Change video config", cmd_video_settings },
 		{ "Sound Setup", "Change sound config", cmd_sound_settings },
+		{ "Control Setup", "Change control config", cmd_control_settings },
 		{ "Save config as default",	"Override default config", cmd_config_save } };
 
 int RunSettingsMenu() {
@@ -52,13 +60,13 @@ int RunSettingsMenu() {
 				index--;
 				spy -= 16;
 			} else {
-				index = 3;
+				index = SETTINGS_MENUSIZE - 1;
 				spy = 72 + 16*index;
 			}
 		}
 
 		if (parsekey(DINGOO_DOWN, 1)) {
-			if (index < 3) {
+			if (index < SETTINGS_MENUSIZE - 1) {
 				index++;
 				spy += 16;
 			} else {
@@ -91,7 +99,7 @@ int RunSettingsMenu() {
 			DrawText(gui_screen, "Settings", 8, 37);
 
 			// Draw menu
-			for (i = 0, y = 72; i < 4; i++, y += 16) {
+			for (i = 0, y = 72; i < SETTINGS_MENUSIZE; i++, y += 16) {
 				DrawText(gui_screen, settings_menu[i].name, 60, y);
 			}
 

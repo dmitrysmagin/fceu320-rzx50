@@ -58,6 +58,8 @@ static int cspec = 0;
 
 extern int gametype;
 
+static bool MenuRequested = false;
+
 static int frameAdvanceKey = 0;
 
 /**
@@ -294,11 +296,15 @@ static void KeyboardCommands() {
 		FCEUI_SetRenderPlanes(true, state);
 	}
 
-	// L shift - enter GUI
-	if (_keyonly(DINGOO_L)) { // maps to SDLK_TAB
+	// L (SDLK_TAB), Start+Select or Power flick (SDLK_HOME) - enter GUI
+	if (_keyonly(DINGOO_L)
+	 || MenuRequested
+	 || (ispressed(DINGOO_START) && ispressed(DINGOO_SELECT))) {
 		SilenceSound(1);
+		MenuRequested = false;
 		FCEUGUI_Run();
 		SilenceSound(0);
+		return;
 	}
 
 	// R shift + combokeys
@@ -643,6 +649,14 @@ static void UpdatePhysicalInput()
                 default:
                     FCEU_printf("Warning: unknown hotkey event %d\n", event.user.code);
             }
+            break;
+        case SDL_KEYDOWN:
+            if (event.key.keysym.sym == DINGOO_MENU)
+                // Because a KEYUP is sent straight after the KEYDOWN for the
+                // Power switch, SDL_GetKeyState will not ever see this.
+                // Keep a record of it.
+                MenuRequested = true;
+            break;
         default:
             // do nothing
             break;

@@ -447,4 +447,7 @@ void FCEUGUI_Run() {
 
 	// Clear screen
 	dingoo_clear_video();
+
+	g_key = 0;
+	counter = 0;
 }

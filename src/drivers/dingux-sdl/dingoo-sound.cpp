@@ -117,7 +117,7 @@ int InitSound()
 
     while(spec.samples < (soundrate / 60) * 1) spec.samples <<= 1;
 
-    s_BufferSize = spec.samples * 4 * 8;
+    s_BufferSize = spec.samples * 4;
 
     s_Buffer = (int16 *) malloc(sizeof(int16) * s_BufferSize);
     if (!s_Buffer) return 0;

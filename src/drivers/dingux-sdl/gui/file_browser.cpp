@@ -22,7 +22,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 
 	static int spy;
 	int y, i;
-	
+
 	// Try to get a saved romdir from a config file
 	char* home = getenv("HOME");
 	char romcfgfile [128];
@@ -39,20 +39,15 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 	if (list == NULL)
 		return 0;
 
-	
 	scrollModifier *= max_entries;
 
-	RESTART:
-
-	spy = 72;
-
+RESTART:
 	size = list->Size();
 
+	spy = 72;
 	index = 0;
 	offset_start = 0;
 	offset_end = size > max_entries ? max_entries : size;
-
-	
 
 	g_dirty = 1;
 	while (1) {
@@ -80,7 +75,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 		if (parsekey(DINGOO_X)) {
 			return 0;
 		}
-		
+
 		if (parsekey(DINGOO_SELECT)) {
 			// Save the current romdir in a config file
 			char* home = getenv("HOME");
@@ -98,10 +93,11 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 			// Move through file list
 
 			if (parsekey(DINGOO_R, 0)) {
+				int iSmartOffsetAdj = ((size <= max_entries) ? size : max_entries);
 				index = size - 1;
-				spy = 72 + 15*(max_entries-1);
+				spy = 72 + 15*(iSmartOffsetAdj-1);
 				offset_end = size;
-				offset_start = offset_end - max_entries;
+				offset_start = offset_end - iSmartOffsetAdj;
 			}
 
 			if (parsekey(DINGOO_L, 0)) {
@@ -165,10 +161,11 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 						offset_end += scrollModifier;
 						offset_start += scrollModifier;
 				} else {
+					int iSmartOffsetAdj = ((size <= max_entries) ? size : max_entries);
 					index = size - 1;
-					spy = 72 + 15*(max_entries-1);
+					spy = 72 + 15*(iSmartOffsetAdj-1);
 					offset_end = size;
-					offset_start = offset_end - max_entries;
+					offset_start = offset_end - iSmartOffsetAdj;
 				}
 			}
 		}
@@ -176,7 +173,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 		// Draw stuff
 		if (g_dirty) {
 			draw_bg(g_bg);
-			
+
 			//Draw Top and Bottom Bars
 			DrawChar(gui_screen, SP_SELECTOR, 0, 37);
 			DrawChar(gui_screen, SP_SELECTOR, 81, 37);
@@ -184,7 +181,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 			DrawChar(gui_screen, SP_SELECTOR, 81, 225);
 			DrawText(gui_screen, "B - Go Back", 235, 225);
 			DrawChar(gui_screen, SP_LOGO, 12, 9);
-			
+
 			// Draw selector
 			DrawChar(gui_screen, SP_SELECTOR, 4, spy);
 			DrawChar(gui_screen, SP_SELECTOR, 81, spy);
@@ -224,7 +221,7 @@ int RunFileBrowser(char *source, char *outname, const char *types[],
 
 		// Update real screen
 		FCEUGUI_Flip();
-		
+
 	}
 
 	if (source == NULL)

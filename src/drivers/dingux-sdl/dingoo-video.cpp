@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <SDL/SDL.h>
 
 #include "dingoo.h"
@@ -49,6 +50,7 @@ static int s_curbpp;
 static int s_srendline, s_erendline;
 static int s_tlines;
 static int s_inited;
+static bool s_VideoModeSet = false;
 
 static int s_clipSides;
 int s_fullscreen;
@@ -78,6 +80,12 @@ static struct Color s_cpsdl[256];
 #define BLUR_GREEN	30
 #define BLUR_BLUE	20
 
+#ifdef SDL_TRIPLEBUF
+#  define DINGOO_MULTIBUF SDL_TRIPLEBUF
+#else
+#  define DINGOO_MULTIBUF SDL_DOUBLEBUF
+#endif
+
 /**
  * Attempts to destroy the graphical video display.  Returns 0 on
  * success, -1 on failure.
@@ -93,7 +101,6 @@ int KillVideo() {
 	if (s_inited == 0)
 		return -1;
 
-	SDL_FreeSurface(screen);
 	SDL_FreeSurface(nes_screen);
 	s_inited = 0;
 	return 0;
@@ -149,7 +156,7 @@ int InitVideo(FCEUGI *gi) {
 		}
 
 	// initialize dingoo video mode
-	{
+	if (!s_VideoModeSet) {
 		uint32 vm = 0; // 0 - 320x240, 1 - 400x240, 2 - 480x272
 
 		#define NUMOFVIDEOMODES 3
@@ -164,9 +171,10 @@ int InitVideo(FCEUGI *gi) {
 
 		for(vm = NUMOFVIDEOMODES-1; vm >= 0; vm--)
 		{
-			if(SDL_VideoModeOK(VModes[vm].x, VModes[vm].y, 16, SDL_HWSURFACE | SDL_DOUBLEBUF) != 0)
+			if(SDL_VideoModeOK(VModes[vm].x, VModes[vm].y, 16, SDL_HWSURFACE | DINGOO_MULTIBUF) != 0)
 			{
-				screen = SDL_SetVideoMode(VModes[vm].x, VModes[vm].y, 16, SDL_HWSURFACE | SDL_DOUBLEBUF);
+				screen = SDL_SetVideoMode(VModes[vm].x, VModes[vm].y, 16, SDL_HWSURFACE | DINGOO_MULTIBUF);
+				s_VideoModeSet = true;
 				break;
 			}
 		}
@@ -425,10 +433,14 @@ void FCEUI_SetAviDisableMovieMessages(bool disable) {
 	disableMovieMessages = disable;
 }
 
-//clear both screens (for double buffer)
+//clear all screens (for multiple-buffering)
 void dingoo_clear_video(void) {
 	SDL_FillRect(screen,NULL,SDL_MapRGBA(screen->format, 0, 0, 0, 255));
 	SDL_Flip(screen);
 	SDL_FillRect(screen,NULL,SDL_MapRGBA(screen->format, 0, 0, 0, 255));
 	SDL_Flip(screen);
+#ifdef SDL_TRIPLEBUF
+	SDL_FillRect(screen,NULL,SDL_MapRGBA(screen->format, 0, 0, 0, 255));
+	SDL_Flip(screen);
+#endif
 }

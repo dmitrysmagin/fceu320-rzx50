@@ -271,18 +271,25 @@ static void DoFun(int fskip) {
 		if (!fpsthrottle) {
 			// Fill up the audio buffer with up to 6 frames dropped.
 			int FramesSkipped = 0;
-			while (GetBufferedSound() < GetBufferSize() * 3 / 2
+			while (GameInfo
+			    && GetBufferedSound() < GetBufferSize() * 3 / 2
 			    && ++FramesSkipped < 6) {
 				FCEUI_Emulate(&gfx, &sound, &ssize, 1);
 				FCEUD_Update(NULL, sound, ssize);
 			}
 
 			// Force at least one frame to be displayed.
-			// Then render all frames while audio is sufficient.
-			do {
+			if (GameInfo) {
 				FCEUI_Emulate(&gfx, &sound, &ssize, 0);
 				FCEUD_Update(gfx, sound, ssize);
-			} while (GetBufferedSound() > GetBufferSize() * 3 / 2);
+			}
+
+			// Then render all frames while audio is sufficient.
+			while (GameInfo
+			    && GetBufferedSound() > GetBufferSize() * 3 / 2) {
+				FCEUI_Emulate(&gfx, &sound, &ssize, 0);
+				FCEUD_Update(gfx, sound, ssize);
+			}
 		}
 		else {
 			FCEUI_Emulate(&gfx, &sound, &ssize, 0);

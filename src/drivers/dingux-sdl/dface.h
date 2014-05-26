@@ -13,7 +13,8 @@ int InitSound();
 void WriteSound(int32 *Buffer, int Count);
 int KillSound(void);
 uint32 GetMaxSound(void);
-uint32 GetWriteSound(void);
+uint32 GetBufferSize(void);
+uint32 GetBufferedSound(void);
 
 void SilenceSound(int s); /* DOS and SDL */
 

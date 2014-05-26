@@ -258,18 +258,6 @@ int CloseGame() {
 
 void FCEUD_Update(uint8 *XBuf, int32 *Buffer, int Count);
 
-struct timeval start;
-
-unsigned int GetTicks (void)
-{
-	unsigned int ticks;
-	struct timeval now;
-
-	gettimeofday(&now, NULL);
-	ticks=(now.tv_sec-start.tv_sec)*1000000 + now.tv_usec-start.tv_usec;
-	return ticks;
-}
-
 static void DoFun(int fskip) {
 	uint8 *gfx;
 	int32 *sound;
@@ -278,34 +266,28 @@ static void DoFun(int fskip) {
 	int done = 0, timer = 0, ticks = 0, tick = 0, fps = 0;
 	unsigned int frame_limit = 60, frametime = 16667;
 
-	//frame_limit = (PAL ? 50 : 60);
-	//frametime = (PAL ? 20000 : 16667);
-
-	gettimeofday(&start, NULL);
-
 	while (GameInfo) {
-		int now, i;
+		/* Frameskip decision based on the audio buffer */
+		if (!fpsthrottle) {
+			// Fill up the audio buffer with up to 6 frames dropped.
+			int FramesSkipped = 0;
+			while (GetBufferedSound() < GetBufferSize() * 3 / 2
+			    && ++FramesSkipped < 6) {
+				FCEUI_Emulate(&gfx, &sound, &ssize, 1);
+				FCEUD_Update(NULL, sound, ssize);
+			}
 
-		timer = GetTicks() / frametime;
-		now = timer;
-		ticks = now - done;
-
-		if(fpsthrottle) ticks = 1;
-
-		if(ticks < 1) continue;
-		if(ticks > 10) ticks = 10;
-
-		for (i = 0; i < ticks - 1; i++) {
-			FCEUI_Emulate(&gfx, &sound, &ssize, 1);
-			FCEUD_Update(NULL, sound, ssize);
+			// Force at least one frame to be displayed.
+			// Then render all frames while audio is sufficient.
+			do {
+				FCEUI_Emulate(&gfx, &sound, &ssize, 0);
+				FCEUD_Update(gfx, sound, ssize);
+			} while (GetBufferedSound() > GetBufferSize() * 3 / 2);
 		}
-
-		if(ticks >= 1) {
+		else {
 			FCEUI_Emulate(&gfx, &sound, &ssize, 0);
 			FCEUD_Update(gfx, sound, ssize);
 		}
-
-		done = now;
 	}
 
 }
@@ -394,9 +376,11 @@ static void DriverKill() {
  */
 void FCEUD_Update(uint8 *XBuf, int32 *Buffer, int Count)
 {
-	if (XBuf && (inited & 4)) BlitScreen(XBuf);
-
+	// Write the audio before the screen, because writing the screen induces
+	// a delay after double-buffering.
 	if (Count) WriteSound(Buffer, Count);
+
+	if (XBuf && (inited & 4)) BlitScreen(XBuf);
 
 	FCEUD_UpdateInput();
 }

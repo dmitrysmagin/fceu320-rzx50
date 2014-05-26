@@ -155,10 +155,17 @@ uint32 GetMaxSound(void) {
 }
 
 /**
- * Returns the amount of free space in the audio buffer.
+ * Returns the size of the audio buffer used by one SDL callback.
  */
-uint32 GetWriteSound(void) {
-    return (s_BufferSize - s_BufferIn);
+uint32 GetBufferSize(void) {
+    return spec.samples;
+}
+
+/**
+ * Returns the amount of used space in the audio buffer.
+ */
+uint32 GetBufferedSound(void) {
+    return s_BufferIn;
 }
 
 /**
@@ -185,6 +192,11 @@ void WriteSound(int32 *buf, int Count)
     }
 _exit:
     SDL_UnlockAudio();
+
+    // If we have too much audio, wait a bit before accepting more.
+    // This keeps the lag in check.
+    while (GetBufferedSound() > 3 * GetBufferSize())
+        usleep(1000);
 }
 
 /**
@@ -194,7 +206,7 @@ void SilenceSound(int n)
 {
     // Not needed, the callback will write silence to buffer anyway
     // otherwise it causes noticable lag
-    //SDL_PauseAudio(n);  
+    SDL_PauseAudio(n);  
 }
 
 /**

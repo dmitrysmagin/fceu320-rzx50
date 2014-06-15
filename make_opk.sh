@@ -8,7 +8,7 @@ cat > default.gcw0.desktop <<EOF
 [Desktop Entry]
 Name=Fceux
 Comment=NES/Famicom emulator
-Exec=fceux
+Exec=fceux %f
 Terminal=false
 Type=Application
 MimeType=application/zip;application/x-nes-rom;

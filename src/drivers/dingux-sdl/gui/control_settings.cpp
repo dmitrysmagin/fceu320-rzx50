@@ -1,7 +1,7 @@
 // Externals
 extern Config *g_config;
 
-#define CONTROL_MENUSIZE 5
+#define CONTROL_MENUSIZE 6
 
 /* MENU COMMANDS */
 
@@ -42,12 +42,25 @@ static void setTurboA(unsigned long key)
 	UpdateInput(g_config);
 }
 
+static void MergeControls(unsigned long key)
+{
+	int val;
+
+	if (key == DINGOO_RIGHT)
+		val = 1;
+	if (key == DINGOO_LEFT)
+		val = 0;
+
+	g_config->setOption("SDL.MergeControls", val);
+}
+
 static void resetMappings(unsigned long key)
 {
 	g_config->setOption("SDL.Input.GamePad.0A", DefaultGamePad[0][0]);
 	g_config->setOption("SDL.Input.GamePad.0B", DefaultGamePad[0][1]);
 	g_config->setOption("SDL.Input.GamePad.0TurboA", DefaultGamePad[0][8]);
 	g_config->setOption("SDL.Input.GamePad.0TurboB", DefaultGamePad[0][9]);
+	g_config->setOption("SDL.MergeControls", 0);
 	UpdateInput(g_config);
 }
 /* CONTROL SETTING MENU */
@@ -58,6 +71,7 @@ static SettingEntry cm_menu[] =
 	{"Button A", "Map input for A", "SDL.Input.GamePad.0A", setA},
 	{"Turbo B", "Map input for Turbo B", "SDL.Input.GamePad.0TurboB", setTurboB},
 	{"Turbo A", "Map input for Turbo A", "SDL.Input.GamePad.0TurboA", setTurboA},
+	{"Merge P1/P2", "Control both players at once", "SDL.MergeControls", MergeControls},
 	{"Reset defaults", "Reset default control mappings", "", resetMappings},
 };
 
@@ -74,14 +88,17 @@ int RunControlSettings()
 		// Parse input
 		readkey();
 		if (parsekey(DINGOO_SELECT)) {
-			editMode = 1;
-			DrawText(gui_screen, ">>", 185, spy);
-			g_dirty = 0;
+			if(index < 4) // Allow edit mode only for button mapping menu items
+			{
+				editMode = 1;
+				DrawText(gui_screen, ">>", 185, spy);
+				g_dirty = 0;
+			}
 		}
 
 		if (!editMode) {
 			if (parsekey(DINGOO_A)) {
-				if (index == 4) {
+				if (index > 3) {
 					cm_menu[index].update(g_key);
 				}
 			}
@@ -90,8 +107,8 @@ int RunControlSettings()
 				int iBtn1 = -1;
 				int iBtn2 = -1;
 				err = 1;
-				for ( int i = 0; i < 4; i++ ) {
-					for ( int y = 0; y < 4; y++ ) {
+				for ( int i = 0; i < 5; i++ ) {
+					for ( int y = 0; y < 5; y++ ) {
 						g_config->getOption(cm_menu[i].option, &iBtn1);
 						if (i != y) {
 							g_config->getOption(cm_menu[y].option, &iBtn2);
@@ -125,6 +142,18 @@ int RunControlSettings()
 				} else {
 					index = 0;
 					spy = 72;
+				}
+			}
+
+	   		if (parsekey(DINGOO_LEFT, 1)) {
+				if (index == 4) {
+					cm_menu[index].update(g_key);
+				}
+			}
+
+	   		if (parsekey(DINGOO_RIGHT, 1)) {
+				if (index == 4) {
+					cm_menu[index].update(g_key);
 				}
 			}
 		}
@@ -163,6 +192,7 @@ int RunControlSettings()
 			for(i=0,y=72;i < CONTROL_MENUSIZE;i++,y+=15) {
 				int iBtnVal = -1;
 				char cBtn[32];
+				int mergeValue;
 
 				DrawText(gui_screen, cm_menu[i].name, 60, y);
 				
@@ -170,6 +200,12 @@ int RunControlSettings()
 				
 				if (i == CONTROL_MENUSIZE-1)
 					sprintf(cBtn, "%s", "");
+				else if (i == CONTROL_MENUSIZE-2)
+				{
+					int mergeValue;
+					g_config->getOption("SDL.MergeControls", &mergeValue);
+					sprintf(cBtn, "%d", mergeValue);
+				}
 				else if (iBtnVal == DefaultGamePad[0][0])
 					sprintf(cBtn, "%s", "GCW_A");
 				else if (iBtnVal == DefaultGamePad[0][1])

@@ -235,8 +235,12 @@ int RunSoundSettings() {
 				DrawText(gui_screen, sd_menu[i].name, 60, y);
 
 				g_config->getOption(sd_menu[i].option, &itmp);
-				sprintf(tmp, "%d", itmp);
 
+				if (!strncmp(sd_menu[i].name, "Toggle sound", 12) \
+				|| !strncmp(sd_menu[i].name, "Lowpass", 7)) {
+					sprintf(tmp, "%s", itmp ? "on" : "off");
+				} else
+					sprintf(tmp, "%d", itmp);
 				DrawText(gui_screen, tmp, 210, y);
 			}
 

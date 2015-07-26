@@ -236,8 +236,10 @@ int RunMainSettings() {
 					else
 						strncpy(tmp, palname.substr(path_sz + 1, sz - 1
 								- path_sz).c_str(), 32);
-				} else
+				} else if (!strncmp(st_menu[i].name, "Mouse speed", 11)) {
 					sprintf(tmp, "%d", itmp);
+				} else
+					sprintf(tmp, "%s", itmp ? "on" : "off");
 				DrawText(gui_screen, tmp, 210, y);
 			}
 

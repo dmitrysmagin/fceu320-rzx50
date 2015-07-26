@@ -183,7 +183,12 @@ int RunVideoSettings()
 				g_config->getOption(vd_menu[i].option, &itmp);
 				if (!strncmp(vd_menu[i].name, "Video scaling", 5)) {
 					sprintf(tmp, "%s", scale_tag[itmp]);
-				} 
+				}
+				else if (!strncmp(vd_menu[i].name, "Clip sides", 10) \
+					|| !strncmp(vd_menu[i].name, "New PPU", 7)   \
+					|| !strncmp(vd_menu[i].name, "NTSC Palette", 12)) {
+					sprintf(tmp, "%s", itmp ? "on" : "off");
+				}
 				else sprintf(tmp, "%d", itmp);
 
 				DrawText(gui_screen, tmp, 210, y);

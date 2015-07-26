@@ -204,7 +204,7 @@ int RunControlSettings()
 				{
 					int mergeValue;
 					g_config->getOption("SDL.MergeControls", &mergeValue);
-					sprintf(cBtn, "%d", mergeValue);
+					sprintf(cBtn, "%s", mergeValue ? "on" : "off");
 				}
 				else if (iBtnVal == DefaultGamePad[0][0])
 					sprintf(cBtn, "%s", "GCW_A");

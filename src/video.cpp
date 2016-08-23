@@ -37,7 +37,7 @@
 #include "fceulua.h"
 #endif
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX)
 #include "drivers/win/common.h" //For DirectX constants
 #include "drivers/win/input.h"
 #endif
@@ -271,7 +271,7 @@ void FCEU_PutImage(void)
 
 			// This doesn't work in anything except windows for now.
 			// It doesn't get set anywhere in other ports.
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX)
 			if (!oldInputDisplay) ci = FCEUMOV_Mode(MOVIEMODE_PLAY) ? 0:GetGamepadPressedImmediate() >> (controller * 8);
 			else ci = 0;
 
@@ -569,7 +569,11 @@ int SaveSnapshot(void)
 	int x,u,y;
 	FILE *pp=NULL;
 	uint8 *compmem=NULL;
+#ifdef DINGUX
+	uLongf compmemsize=(totallines*263+12);
+#else
 	uLongf compmemsize=(totallines*263+12)*3;
+#endif
 
 	if(!(compmem=(uint8 *)FCEU_malloc(compmemsize)))
 		return 0;
@@ -604,7 +608,11 @@ int SaveSnapshot(void)
 		chunko[7]=totallines;			// Height
 
 		chunko[8]=8;				// 8 bits per sample(24 bits per pixel)
+#ifdef DINGUX
+		chunko[9]=3;				// Color type; indexed 8-bit
+#else
 		chunko[9]=2;				// Color type; RGB triplet
+#endif
 		chunko[10]=0;				// compression: deflate
 		chunko[11]=0;				// Basic adapative filter set(though none are used).
 		chunko[12]=0;				// No interlace.
@@ -613,11 +621,25 @@ int SaveSnapshot(void)
 			goto PNGerr;
 	}
 
+#ifdef DINGUX
+	{
+		uint8 pdata[256*3];
+		for(x=0;x<256;x++)
+			FCEUD_GetPalette(x,pdata+x*3,pdata+x*3+1,pdata+x*3+2);
+		if(!WritePNGChunk(pp,256*3,"PLTE",pdata))
+			goto PNGerr;
+	}
+#endif
+
 	{
 		uint8 *tmp=XBuf+FSettings.FirstSLine*256;
 		uint8 *dest,*mal,*mork;
 
+#ifdef DINGUX
+		int bufsize = (totallines<<8)+totallines;
+#else
 		int bufsize = (256*3+1)*totallines;
+#endif
 		if(!(mal=mork=dest=(uint8 *)FCEU_dmalloc(bufsize)))
 			goto PNGerr;
 		//   mork=dest=XBuf;
@@ -626,6 +648,10 @@ int SaveSnapshot(void)
 		{
 			*dest=0;			// No filter.
 			dest++;
+#ifdef DINGUX
+			for(x=256;x;x--,tmp++,dest++)
+				*dest=*tmp;
+#else
 			for(x=256;x;x--)
 			{
 				u32 color = ModernDeemphColorMap(tmp,XBuf,1,1);
@@ -634,6 +660,7 @@ int SaveSnapshot(void)
 				*dest++=(color>>0x00)&0xFF;
 				tmp++;
 			}
+#endif
 		}
 
 		if(compress(compmem,&compmemsize,mork,bufsize)!=Z_OK)
@@ -782,7 +809,12 @@ static int boopcount = 0;
 
 void ShowFPS(void)
 {
+#ifdef DINGUX
+	extern int showfps; // in dingoo.cpp
+	if (!showfps)
+#else
 	if(Show_FPS == false)
+#endif
 		return;
 	uint64 da = FCEUD_GetTime() - boop[boopcount];
 	char fpsmsg[16];

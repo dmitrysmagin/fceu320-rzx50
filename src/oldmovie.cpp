@@ -589,7 +589,11 @@ EFCM_CONVERTRESULT convert_fcm(MovieData& md, std::string fname)
 
 	md.romFilename = readNullTerminatedAscii(fp);
 
+#ifndef _GLIBCXX_USE_WCHAR_T
+	md.comments.push_back("author  " + mbstowcs(readNullTerminatedAscii(fp)));
+#else
 	md.comments.push_back(L"author  " + mbstowcs(readNullTerminatedAscii(fp)));
+#endif
 
 		//int metadata_length = savestate_offset - MOVIE_V1_HEADER_SIZE;
 	//uint8* metadata = new uint8[metadata_length];

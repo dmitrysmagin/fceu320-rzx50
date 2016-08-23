@@ -219,7 +219,7 @@ W_OPTS	= -Wno-write-strings -Wno-sign-compare
 
 F_OPTS = -fomit-frame-pointer -fno-builtin -fno-common
 
-CC_OPTS	= -O3 -flto $(F_OPTS) $(W_OPTS)
+CC_OPTS	= -O2 -mips32 $(F_OPTS) $(W_OPTS)
 
 CFLAGS += $(CC_OPTS)
 CFLAGS += -DDINGUX \

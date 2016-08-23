@@ -83,6 +83,13 @@ int mutecapture;
 #endif
 static int noconfig;
 
+int pal_emulation;
+int dendy;
+bool swapDuty;
+
+// originally in src/drivers/common/vidblit.cpp
+bool   paldeemphswap   = 0;
+
 char* DriverUsage = "\
 		Option         Value   Description\n\
 		--pal          {0|1}   Use PAL timing.\n\

@@ -42,7 +42,7 @@ int LoadCPalette(const std::string &file) {
 		printf(" Error reading custom palette from file: %s\n", file.c_str());
 		return 0;
 	}
-	FCEUI_SetPaletteArray(tmpp);
+	FCEUI_SetUserPalette(tmpp, 192);
 	fclose(fp);
 	return 1;
 }

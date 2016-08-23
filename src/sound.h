@@ -51,7 +51,7 @@ extern int32 WaveFinal[2048+512];
 extern int32 WaveHi[];
 extern uint32 soundtsinc;
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX)
 extern volatile int datacount, undefinedcount;
 extern int debug_loggingCD;
 extern unsigned char *cdloggerdata;

@@ -138,7 +138,7 @@ void FCEU_PutImage(void);
 void FCEU_PutImageDummy(void);
 #endif
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX)
 extern void UpdateCheckedMenuItems();
 extern void PushCurrentVideoSettings();
 #endif

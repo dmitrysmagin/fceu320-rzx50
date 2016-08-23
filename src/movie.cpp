@@ -25,7 +25,7 @@
 #include "drivers/videolog/nesvideos-piece.h"
 #endif
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX)
 #include <windows.h>
 #include "./drivers/win/common.h"
 #include "./drivers/win/window.h"
@@ -762,7 +762,7 @@ void FCEUI_StopMovie()
 	freshMovie = false;					//No longer a fresh movie loaded
 	if (bindSavestate) AutoSS = false;	//If bind movies to savestates is true, then there is no longer a valid auto-save to load
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX)
 	SetMainWindowText();
 #endif
 }
@@ -858,7 +858,7 @@ bool FCEUI_LoadMovie(const char *fname, bool _read_only, int _pauseframe)
 		return true;	//adelikat: file did not fail to load, so return true (false is only for file not exist/unable to open errors
 	}
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX)
 	//Fix relative path if necessary and then add to the recent movie menu
 	extern std::string BaseDirectory;
 
@@ -912,7 +912,7 @@ bool FCEUI_LoadMovie(const char *fname, bool _read_only, int _pauseframe)
 	else
 		FCEU_DispMessage("Replay started Read+Write.",0);
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX)
 	SetMainWindowText();
 #endif
 
@@ -933,7 +933,7 @@ static void openRecordingMovie(const char* fname)
 	if(!osRecordingMovie)
 		FCEU_PrintError("Error opening movie output file: %s",fname);
 	strcpy(curMovieFilename, fname);
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX)
 	//Add to the recent movie menu
 	AddRecentMovieFile(fname);
 #endif
@@ -956,7 +956,11 @@ void FCEUI_SaveMovie(const char *fname, EMOVIE_FLAG flags, std::wstring author)
 	currFrameCounter = 0;
 	LagCounterReset();
 	FCEUMOV_CreateCleanMovie();
+#ifndef _GLIBCXX_USE_WCHAR_T
+	if(author != "") currMovieData.comments.push_back("author " + author);
+#else
 	if(author != L"") currMovieData.comments.push_back(L"author " + author);
+#endif
 
 	if(flags & MOVIE_FLAG_FROM_POWERON)
 	{
@@ -987,7 +991,7 @@ void FCEUI_SaveMovie(const char *fname, EMOVIE_FLAG flags, std::wstring author)
 //either dumps the current joystick state or loads one state from the movie
 void FCEUMOV_AddInputState()
 {
-#ifdef _WIN32
+#if defined(WIN32) && !defined(DINGUX)
 	if (movieMode == MOVIEMODE_TASEDITOR)
 	{
 		// if movie length is less or equal to currFrame, pad it with empty frames
@@ -1197,7 +1201,7 @@ bool FCEUMOV_ReadState(EMUFILE* is, uint32 size)
 	{
 		if (currMovieData.loadFrameCount >= 0)
 		{
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX)
 			int result = MessageBox(hAppWnd, "This movie is a TAS Editor project file.\nIt can be modified in TAS Editor only.\n\nOpen it in TAS Editor now?", "Movie Replay", MB_YESNO);
 			if (result == IDYES)
 				mustEngageTaseditor = true;
@@ -1285,7 +1289,7 @@ bool FCEUMOV_ReadState(EMUFILE* is, uint32 size)
 		if(tempMovieData.guid != currMovieData.guid)
 		{
 			//mbg 8/18/08 - this code  can be used to turn the error message into an OK/CANCEL
-			#ifdef WIN32
+			#if defined(WIN32) && !defined(DINGUX)
 				std::string msg = "There is a mismatch between savestate's movie and current movie.\ncurrent: " + currMovieData.guid.toString() + "\nsavestate: " + tempMovieData.guid.toString() + "\n\nThis means that you have loaded a savestate belonging to a different movie than the one you are playing now.\n\nContinue loading this savestate anyway?";
 				extern HWND pwindow;
 				int result = MessageBox(pwindow,msg.c_str(),"Error loading savestate",MB_OKCANCEL);
@@ -1515,7 +1519,7 @@ void FCEUI_MoviePlayFromBeginning(void)
 {
 	if (movieMode == MOVIEMODE_TASEDITOR)
 	{
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX)
 		handleEmuCmdByTaseditor(EMUCMD_MOVIE_PLAY_FROM_BEGINNING);
 #endif
 	} else if (movieMode != MOVIEMODE_INACTIVE)
@@ -1542,7 +1546,7 @@ void FCEUI_MoviePlayFromBeginning(void)
 			//currMovieData.loadSavestateFrom(&currMovieData.savestate); //TODO: make something like this work instead so it doesn't have to reload
 		}
 	}
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX)
 	SetMainWindowText();
 #endif
 }

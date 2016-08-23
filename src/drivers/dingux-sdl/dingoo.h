@@ -16,4 +16,9 @@ int FCEUD_DriverReset();
 
 void FCEUI_FDSFlip(void);
 
+extern int dendy;
+extern int pal_emulation;
+extern bool swapDuty;
+extern bool paldeemphswap;
+
 #endif

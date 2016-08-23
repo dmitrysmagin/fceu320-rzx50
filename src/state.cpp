@@ -43,7 +43,7 @@
 #endif
 
 //TODO - we really need some kind of global platform-specific options api
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX)
 #include "drivers/win/main.h"
 #include "drivers/win/ram_search.h"
 #include "drivers/win/ramwatch.h"
@@ -311,7 +311,7 @@ static bool ReadStateChunks(EMUFILE* is, int32 totalsize)
 
 				//MBG TODO - can this be moved to a better place?
 				//does it even make sense, displaying XBuf when its XBackBuf we just loaded?
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX)
 				else
 				{
 					FCEUD_BlitScreen(XBuf);
@@ -794,7 +794,7 @@ bool FCEUSS_Load(const char *fname, bool display_message)
 		}
 		#endif
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(DINGUX)
 	Update_RAM_Search(); // Update_RAM_Watch() is also called.
 #endif
 

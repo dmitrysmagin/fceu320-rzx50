@@ -14,6 +14,7 @@ BOARDS_OBJS = \
 	$(SRC)boards/09-034a.o \
 	$(SRC)boards/12in1.o \
 	$(SRC)boards/15.o \
+	$(SRC)boards/158B.o \
 	$(SRC)boards/18.o \
 	$(SRC)boards/28.o \
 	$(SRC)boards/32.o \
@@ -86,6 +87,7 @@ BOARDS_OBJS = \
 	$(SRC)boards/8157.o \
 	$(SRC)boards/8237.o \
 	$(SRC)boards/830118C.o \
+	$(SRC)boards/8in1.o \
 	$(SRC)boards/__dummy_mapper.o \
 	$(SRC)boards/a9746.o \
 	$(SRC)boards/ac-08.o \
@@ -97,14 +99,20 @@ BOARDS_OBJS = \
 	$(SRC)boards/bmc42in1r.o \
 	$(SRC)boards/bmc64in1nr.o \
 	$(SRC)boards/bmc70in1.o \
+	$(SRC)boards/BMW8544.o \
 	$(SRC)boards/bonza.o \
 	$(SRC)boards/bs-5.o \
 	$(SRC)boards/cityfighter.o \
+	$(SRC)boards/coolboy.o \
 	$(SRC)boards/dance2000.o \
 	$(SRC)boards/datalatch.o \
 	$(SRC)boards/dream.o \
 	$(SRC)boards/edu2000.o \
+	$(SRC)boards/eh8813a.o \
 	$(SRC)boards/emu2413.o \
+	$(SRC)boards/et-100.o \
+	$(SRC)boards/et-4320.o \
+	$(SRC)boards/F-15.o \
 	$(SRC)boards/famicombox.o \
 	$(SRC)boards/ffe.o \
 	$(SRC)boards/fk23c.o \
@@ -112,10 +120,14 @@ BOARDS_OBJS = \
 	$(SRC)boards/gs-2004.o \
 	$(SRC)boards/gs-2013.o \
 	$(SRC)boards/h2288.o \
+	$(SRC)boards/hp898f.o \
+	$(SRC)boards/inlnsf.o \
 	$(SRC)boards/karaoke.o \
 	$(SRC)boards/kof97.o \
+	$(SRC)boards/ks7010.o \
 	$(SRC)boards/ks7012.o \
 	$(SRC)boards/ks7013.o \
+	$(SRC)boards/ks7016.o \
 	$(SRC)boards/ks7017.o \
 	$(SRC)boards/ks7030.o \
 	$(SRC)boards/ks7031.o \
@@ -136,8 +148,10 @@ BOARDS_OBJS = \
 	$(SRC)boards/novel.o \
 	$(SRC)boards/onebus.o \
 	$(SRC)boards/pec-586.o \
+	$(SRC)boards/rt-01.o \
 	$(SRC)boards/sa-9602b.o \
 	$(SRC)boards/sachen.o \
+	$(SRC)boards/sb-2000.o \
 	$(SRC)boards/sc-127.o \
 	$(SRC)boards/sheroes.o \
 	$(SRC)boards/sl1632.o \
@@ -149,6 +163,7 @@ BOARDS_OBJS = \
 	$(SRC)boards/tengen.o \
 	$(SRC)boards/tf-1201.o \
 	$(SRC)boards/transformer.o \
+	$(SRC)boards/unrom512.o \
 	$(SRC)boards/vrc1.o \
 	$(SRC)boards/vrc2and4.o \
 	$(SRC)boards/vrc3.o \
@@ -160,8 +175,9 @@ BOARDS_OBJS = \
 
 INPUT_OBJS = $(SRC)input/arkanoid.o $(SRC)input/bworld.o $(SRC)input/cursor.o \
 	$(SRC)input/fkb.o $(SRC)input/ftrainer.o $(SRC)input/hypershot.o $(SRC)input/mahjong.o \
-	$(SRC)input/mouse.o $(SRC)input/oekakids.o $(SRC)input/powerpad.o $(SRC)input/quiz.o \
-	$(SRC)input/shadow.o $(SRC)input/suborkb.o $(SRC)input/toprider.o $(SRC)input/zapper.o
+	$(SRC)input/mouse.o $(SRC)input/oekakids.o $(SRC)input/pec586kb.o \
+	$(SRC)input/powerpad.o $(SRC)input/quiz.o $(SRC)input/shadow.o $(SRC)input/snesmouse.o \
+	$(SRC)input/suborkb.o $(SRC)input/toprider.o $(SRC)input/zapper.o
 
 MAPPERS_OBJS = 
 

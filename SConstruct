@@ -14,8 +14,8 @@ import platform
 
 opts = Variables(None, ARGUMENTS)
 opts.AddVariables( 
-  BoolVariable('DEBUG',     'Build with debugging symbols', 0),
-  BoolVariable('RELEASE',   'Set to 1 to build for release', 1),
+  BoolVariable('DEBUG',     'Build with debugging symbols', 1),
+  BoolVariable('RELEASE',   'Set to 1 to build for release', 0),
   BoolVariable('FRAMESKIP', 'Enable frameskipping', 1),
   BoolVariable('OPENGL',    'Enable OpenGL support', 1),
   BoolVariable('LUA',       'Enable Lua support', 1),
@@ -24,7 +24,7 @@ opts.AddVariables(
   BoolVariable('NEWPPU',    'Enable new PPU core', 1),
   BoolVariable('CREATE_AVI', 'Enable avi creation support (SDL only)', 1),
   BoolVariable('LOGO', 'Enable a logoscreen when creating avis (SDL only)', 1),
-  BoolVariable('SYSTEM_LUA','Use system lua instead of static lua provided with fceux', 1),
+  BoolVariable('SYSTEM_LUA','Use system lua instead of static lua provided with fceux', 0),
   BoolVariable('SYSTEM_MINIZIP', 'Use system minizip instead of static minizip provided with fceux', 0),
   BoolVariable('LSB_FIRST', 'Least signficant byte first (non-PPC)', 1),
   BoolVariable('CLANG', 'Compile with llvm-clang instead of gcc', 0),
@@ -62,6 +62,12 @@ if os.environ.has_key('CPPFLAGS'):
   env.Append(CPPFLAGS = os.environ['CPPFLAGS'].split())
 if os.environ.has_key('LDFLAGS'):
   env.Append(LINKFLAGS = os.environ['LDFLAGS'].split())
+if os.environ.has_key('PKG_CONFIG_PATH'):
+  env['ENV']['PKG_CONFIG_PATH'] = os.environ['PKG_CONFIG_PATH']
+if not os.environ.has_key('PKG_CONFIG_PATH') and env['PLATFORM'] == 'darwin':
+  env['ENV']['PKG_CONFIG_PATH'] = "/usr/local/lib/pkgconfig:/opt/X11/lib/pkgconfig"
+if os.environ.has_key('PKG_CONFIG_LIBDIR'):
+  env['ENV']['PKG_CONFIG_LIBDIR'] = os.environ['PKG_CONFIG_LIBDIR']
 
 print "platform: ", env['PLATFORM']
 
@@ -112,19 +118,18 @@ else:
       Exit(1)
     # Add compiler and linker flags from pkg-config
     config_string = 'pkg-config --cflags --libs gtk+-2.0'
-    if env['PLATFORM'] == 'darwin':
-      config_string = 'PKG_CONFIG_PATH=/opt/X11/lib/pkgconfig/ ' + config_string
     env.ParseConfig(config_string)
     env.Append(CPPDEFINES=["_GTK2"])
     env.Append(CCFLAGS = ["-D_GTK"])
   if env['GTK3']:
     # Add compiler and linker flags from pkg-config
     config_string = 'pkg-config --cflags --libs gtk+-3.0'
-    if env['PLATFORM'] == 'darwin':
-      config_string = 'PKG_CONFIG_PATH=/opt/X11/lib/pkgconfig/ ' + config_string
     env.ParseConfig(config_string)
     env.Append(CPPDEFINES=["_GTK3"])
     env.Append(CCFLAGS = ["-D_GTK"])
+
+  ### Just make every configuration use -ldl, it may be needed for some reason.
+  env.Append(LIBS = ["-ldl"])
 
   ### Lua platform defines
   ### Applies to all files even though only lua needs it, but should be ok
@@ -138,23 +143,27 @@ else:
       # Should work on any *nix
       env.Append(CCFLAGS = ["-DLUA_USE_LINUX"])
     lua_available = False
-    if conf.CheckLib('lua5.1'):
-      env.Append(LINKFLAGS = ["-ldl", "-llua5.1"])
-      env.Append(CCFLAGS = ["-I/usr/include/lua5.1"])
+    if env['SYSTEM_LUA']:
+      if conf.CheckLib('lua5.1'):
+        env.Append(LINKFLAGS = ["-llua5.1"])
+        env.Append(CCFLAGS = ["-I/usr/include/lua5.1"])
+        lua_available = True
+      elif conf.CheckLib('lua'):
+        env.Append(LINKFLAGS = ["-llua"])
+        env.Append(CCFLAGS = ["-I/usr/include/lua"])
+        lua_available = True
+      if lua_available == False:
+        print 'Could not find liblua, exiting!'
+        Exit(1)
+    else:
+      env.Append(CCFLAGS = ["-Isrc/lua/src"])
       lua_available = True
-    elif conf.CheckLib('lua'):
-      env.Append(LINKFLAGS = ["-ldl", "-llua"])
-      env.Append(CCFLAGS = ["-I/usr/include/lua"])
-      lua_available = True
-    if lua_available == False:
-      print 'Could not find liblua, exiting!'
-      Exit(1)
   # "--as-needed" no longer available on OSX (probably BSD as well? TODO: test)
   if env['PLATFORM'] != 'darwin':
     env.Append(LINKFLAGS=['-Wl,--as-needed'])
   
   ### Search for gd if we're not in Windows
-  if env['PLATFORM'] != 'win32' and env['PLATFORM'] != 'cygwin' and env['CREATE_AVI'] and env['LOGO']:
+  if (env['PLATFORM'] != 'win32' and env['PLATFORM'] != 'cygwin') and (env['CREATE_AVI'] or env['LOGO']):
     gd = conf.CheckLib('gd', autoadd=1)
     if gd == 0:
       env['LOGO'] = 0
@@ -205,7 +214,6 @@ fceux_net_server_dst = 'bin/fceux-net-server' + exe_suffix
 
 auxlib_src = 'src/auxlib.lua'
 auxlib_dst = 'bin/auxlib.lua'
-auxlib_inst_dst = prefix + '/share/fceux/auxlib.lua'
 
 fceux_h_src = 'output/fceux.chm'
 fceux_h_dst = 'bin/fceux.chm'
@@ -217,25 +225,17 @@ env.Command(auxlib_dst, auxlib_src, [Copy(auxlib_dst, auxlib_src)])
 
 man_src = 'documentation/fceux.6'
 man_net_src = 'documentation/fceux-net-server.6'
-man_dst = prefix + '/share/man/man6/fceux.6'
-man_net_dst = prefix + '/share/man/man6/fceux-net-server.6'
 
 share_src = 'output/'
-share_dst = prefix + '/share/fceux/'
 
 image_src = 'fceux.png'
-image_dst = prefix + '/share/pixmaps'
 
 desktop_src = 'fceux.desktop'
-desktop_dst = prefix + '/share/applications/'
 
-env.Install(prefix + "/bin/", fceux)
-env.Install(prefix + "/bin/", "fceux-net-server")
-# TODO:  Where to put auxlib on "scons install?"
-env.Alias('install', env.Command(auxlib_inst_dst, auxlib_src, [Copy(auxlib_inst_dst, auxlib_src)]))
-env.Alias('install', env.Command(share_dst, share_src, [Copy(share_dst, share_src)]))
-env.Alias('install', env.Command(man_dst, man_src, [Copy(man_dst, man_src)]))
-env.Alias('install', env.Command(man_net_dst, man_net_src, [Copy(man_net_dst, man_net_src)]))
-env.Alias('install', env.Command(image_dst, image_src, [Copy(image_dst, image_src)]))
-env.Alias('install', env.Command(desktop_dst, desktop_src, [Copy(desktop_dst, desktop_src)]))
-env.Alias('install', (prefix + "/bin/"))
+env.Install(prefix + "/bin/", [fceux, fceux_net_server_src])
+env.InstallAs(prefix + '/share/fceux/', share_src)
+env.Install(prefix + '/share/fceux/', auxlib_src)
+env.Install(prefix + '/share/pixmaps/', image_src)
+env.Install(prefix + '/share/applications/', desktop_src)
+env.Install(prefix + "/share/man/man6/", [man_src, man_net_src])
+env.Alias('install', prefix)

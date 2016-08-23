@@ -753,9 +753,6 @@ std::string FCEU_MakeFName(int type, int id1, const char *cd1)
 			else
 				sprintf(ret,"%s" PSS "fcs" PSS "%s*.fc?",BaseDirectory.c_str(),FileBase);
 			break;
-		case FCEUMKF_CFG:
-			sprintf(ret,"%s"PSS"cfg"PSS"%s.cfg",BaseDirectory.c_str(),FileBase);
-			break;
 	}
 
 	//convert | to . for archive filenames.

@@ -628,11 +628,7 @@ namespace UtfConverter
         {
             throw std::exception();
         }
-#ifndef _GLIBCXX_USE_WCHAR_T
-        return "";
-#else
         return L"";
-#endif
     }
 
     std::string ToUtf8(const std::wstring& widestring)
@@ -757,11 +753,7 @@ std::wstring mbstowcs(std::string str) // UTF8->UTF32
 	try {
 		return UtfConverter::FromUtf8(str);
 	} catch(std::exception) {
-#ifndef _GLIBCXX_USE_WCHAR_T
-		return "(failed UTF-8 conversion)";
-#else
 		return L"(failed UTF-8 conversion)";
-#endif
 	}
 }
 

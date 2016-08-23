@@ -45,14 +45,14 @@ inline float u32_to_float(uint32 u) {
 }
 
 
-/*int write16le(uint16 b, FILE *fp);
+int write16le(uint16 b, FILE *fp);
 int write32le(uint32 b, FILE *fp);
 int write32le(uint32 b, std::ostream* os);
 int write64le(uint64 b, std::ostream* os);
 int read64le(uint64 *Bufo, std::istream *is);
 int read32le(uint32 *Bufo, std::istream *is);
 int read32le(uint32 *Bufo, FILE *fp);
-int read16le(uint16 *Bufo, std::istream *is);*/
+int read16le(uint16 *Bufo, std::istream *is);
 
 void FlipByteOrder(uint8 *src, uint32 count);
 

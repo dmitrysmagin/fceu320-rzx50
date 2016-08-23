@@ -22,6 +22,12 @@
 #ifndef __FCEU_TYPES
 #define __FCEU_TYPES
 
+//enables a hack designed for debugging dragon warrior 3 which treats BRK as a 3-byte opcode
+//#define BRK_3BYTE_HACK
+
+//enables a hack designed for debugging dragon warrior 3 which treats 0F and 1F NL files both as 1F
+//#define DW3_NL_0F_1F_HACK
+
 ///causes the code fragment argument to be compiled in if the build includes debugging
 #ifdef FCEUDEF_DEBUGGER
 #define DEBUG(X) X;
@@ -133,10 +139,5 @@ typedef uint8 (*readfunc)(uint32 A);
 #endif
 
 #include "utils/endian.h"
-
-// Detect if gcc supports wchar_t
-#ifndef _GLIBCXX_USE_WCHAR_T
-#define wstring string
-#endif
 
 #endif

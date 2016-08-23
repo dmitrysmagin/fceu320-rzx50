@@ -39,11 +39,6 @@ THE SOFTWARE.
 #include <algorithm>
 #include <string>
 
-// wtf ??? these could be macros from stdlib.h, so undefine
-#undef fgetc
-#undef fputc
-
-
 class EMUFILE {
 protected:
 	bool failbit;
